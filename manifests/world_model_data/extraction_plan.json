@@ -1,0 +1,111 @@
+{
+  "generated_at": "2026-09-03T04:32:17.082376+00:00",
+  "anchor_universe": {
+    "source": "pumpfun_memecoin_corpus.tokens",
+    "token_rows": 798430,
+    "trade_rows": 33581765,
+    "graduated_rows": 5689,
+    "window": {
+      "start": "2026-06-05",
+      "end": "2026-07-14"
+    }
+  },
+  "layers": {
+    "transaction_microstructure": {
+      "primary": "rpc_getTransaction",
+      "fallback": [
+        "rpc_getTransaction",
+        "pumpfun.trades.tx_signature"
+      ],
+      "solarchive": "skip_no_corpus_coverage",
+      "scope": "rich multimodal subset up to 2500 signatures prioritized by graduated+real-pool mints",
+      "fields": [
+        "signature",
+        "slot",
+        "index",
+        "success",
+        "fee",
+        "compute_units_consumed",
+        "account_keys",
+        "pre_balances",
+        "post_balances",
+        "log_messages",
+        "instructions",
+        "priority_fee_derivable"
+      ],
+      "actions": [
+        "extract_signature_universe_from_pump_trades",
+        "rpc_enrich_rich_subset"
+      ]
+    },
+    "token_ownership_transfers": {
+      "primary": "derived_from_pump_trades",
+      "fallback": [
+        "pumpfun.trades token/sol amounts",
+        "tokens concentration corrected"
+      ],
+      "scope": "full trade-derived ownership flows; BQ SPL transfers if auth",
+      "actions": [
+        "build_wallet_mint_flow_from_trades",
+        "export_creator_holdings_from_tokens",
+        "flag_bq_unavailable"
+      ]
+    },
+    "wallet_history_graph": {
+      "primary": "pumpfun.trades + tokens.creator + red_cohort",
+      "funding_primary": "bq_or_rpc_balance_deltas",
+      "actions": [
+        "wallet_token_participation_edges",
+        "creator_token_edges",
+        "co_buy_edges_rich_subset",
+        "cohort_membership_edges",
+        "funding_edges_from_rpc_balance_changes"
+      ]
+    },
+    "global_market_network_context": {
+      "primary": "pumpfun_aggregates + geckoterminal_sol_usdc",
+      "bq_blocks": false,
+      "actions": [
+        "daily_launch_trade_graduation_aggregates",
+        "gecko_ohlcv_sol_usdc:Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+        "rpc_block_samples_from_enriched_slots"
+      ]
+    },
+    "post_graduation": {
+      "primary": "pumpfun.postgard_*",
+      "supplement": "geckoterminal_pool_ohlcv",
+      "real_pools": 2721,
+      "synthetic_or_null_pools": 2980,
+      "gecko_max_pools": 150,
+      "actions": [
+        "register_postgard_as_authoritative_postgrad",
+        "gecko_ohlcv_for_real_pools",
+        "gecko_search_for_synthetic_pool_discovery"
+      ]
+    },
+    "execution_state": {
+      "primary": "pumpfun.trades/snapshots curve reserves",
+      "postgrad_liquidity": "postgard_snapshots + gecko",
+      "actions": [
+        "export_curve_execution_snapshots",
+        "flag_fee_regime_from_known_pump_schedule"
+      ]
+    }
+  },
+  "rich_subset_policy": {
+    "definition": "Graduated tokens with real migration pool_address, capped at 2721 mints",
+    "rpc_max_signatures": 2500,
+    "rationale": "Broad event/curve corpus remains full PumpFun population; microstructure/graph funding enrichment concentrates on richest multimodal slice."
+  },
+  "source_decisions": {
+    "bigquery": "auth_missing",
+    "solarchive": "skip_no_corpus_coverage",
+    "geckoterminal": "degraded_or_rate_limited",
+    "geckoterminal_planned": true
+  },
+  "do_not": [
+    "download_full_solarchive_archive",
+    "issue_unpartitioned_bigquery_scans",
+    "synthesize_missing_values"
+  ]
+}

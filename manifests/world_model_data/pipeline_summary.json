@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-03T05:51:25.073428+00:00",
+  "stages": [
+    "report"
+  ],
+  "encoders": {
+    "Event Encoder": "READY",
+    "Wallet/Graph Encoder": "READY",
+    "Token/Ownership/Curve Encoder": "READY",
+    "Global Market Encoder": "READY",
+    "Fusion/world-state model": "READY",
+    "prediction heads": "READY"
+  },
+  "world_model_dataset_ready": true
+}

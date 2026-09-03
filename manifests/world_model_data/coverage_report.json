@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-09-03T05:51:25.074936+00:00",
+  "layers": [
+    {
+      "layer": "transaction_microstructure",
+      "tokens_covered": 82,
+      "events_rows": 2500,
+      "date_coverage": "2026-06-05..2026-07-14 (subset)",
+      "quality": "high",
+      "source": "pumpfun.trades.tx_signature + solana_rpc.getTransaction"
+    },
+    {
+      "layer": "token_ownership_transfers",
+      "tokens_covered": 798430,
+      "events_rows": 9644468,
+      "date_coverage": "corpus window via trades",
+      "quality": "trade_derived_only",
+      "source": "pumpfun.trades (+ BigQuery Token Transfers if auth)"
+    },
+    {
+      "layer": "wallet_history_graph",
+      "tokens_covered": 2721,
+      "events_rows": 10691293,
+      "date_coverage": "corpus window",
+      "quality": "strong_participation_partial_funding",
+      "source": "pumpfun + red_cohort + rpc balance-delta proxies"
+    },
+    {
+      "layer": "global_market_network_context",
+      "tokens_covered": 798430,
+      "events_rows": 79,
+      "date_coverage": "2026-06-05..2026-07-14",
+      "quality": "high_pump_aggregates + gecko_sol_usdc",
+      "source": "pumpfun daily aggregates + geckoterminal SOL/USDC"
+    },
+    {
+      "layer": "post_graduation",
+      "tokens_covered": 5669,
+      "events_rows": 1392133,
+      "date_coverage": "graduated subset",
+      "quality": "high_local_postgard",
+      "source": "pumpfun.postgard_* (+ gecko pool OHLCV supplement)"
+    },
+    {
+      "layer": "execution_state",
+      "tokens_covered": 1173,
+      "events_rows": 182297,
+      "date_coverage": "rich subset pre-grad",
+      "quality": "high_curve_reserves",
+      "source": "pumpfun.trades/snapshots curve fields"
+    }
+  ],
+  "metrics": {
+    "transaction_signature_match_rate": 1.0,
+    "mints_with_transfer_or_ownership_history": 798430,
+    "wallet_mint_flow_edges": 9644468,
+    "wallets_with_usable_prior_history": 1006640,
+    "wallets_with_real_funding_edges": 1494,
+    "funding_edge_count": 2169,
+    "graph_edge_counts_by_type": {
+      "wallet_token": 9644468,
+      "creator_token": 798430,
+      "cobuy": 243261,
+      "cohort_member": 2965,
+      "sol_balance_delta_proxy": 2169
+    },
+    "tokens_with_postgrad_history": 5669,
+    "network_context_corpus_days": 38,
+    "execution_state_mints": 1173,
+    "execution_state_rows": 182297,
+    "bigquery_bytes_processed": 0,
+    "solarchive_bytes_downloaded": 0,
+    "gecko_api_calls": 1,
+    "gecko_pools_completed": 150,
+    "rpc_transactions_found": 2500,
+    "rich_subset_mints": 2721
+  },
+  "source_probe_decisions": {
+    "bigquery": "auth_missing",
+    "solarchive": "skip_no_corpus_coverage",
+    "geckoterminal": "usable"
+  },
+  "encoders": {
+    "Event Encoder": "READY",
+    "Wallet/Graph Encoder": "READY",
+    "Token/Ownership/Curve Encoder": "READY",
+    "Global Market Encoder": "READY",
+    "Fusion/world-state model": "READY",
+    "prediction heads": "READY"
+  },
+  "irrecoverable_fields": [
+    "Full SPL/Token-2022 transfer ledger without BigQuery auth or Solarchive 2026",
+    "Parsed System-program funding graph for all wallets (only RPC balance-delta proxies on subset)",
+    "Exact historical priority-fee/Jito tip fields when RPC meta lacks them",
+    "Solarchive txs/accounts for June\u2013July 2026 (index ends 2025-12-05)",
+    "Real pool addresses for synthetic_graduation_queue / null migrations without discovery",
+    "Row-level Pump fee bps history (protocol metadata only)"
+  ],
+  "world_model_dataset_ready": true
+}

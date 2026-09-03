@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-09-03T05:50:34.719108+00:00",
+  "corpus_window": {
+    "start": "2026-06-05",
+    "end": "2026-07-14"
+  },
+  "local_anchors": {
+    "pumpfun_present": true,
+    "red_pump_present": true,
+    "red_cohort_present": true,
+    "postgard_snapshots_present": true
+  },
+  "bigquery": {
+    "dataset": "bigquery-public-data.crypto_solana_mainnet_us",
+    "project": null,
+    "auth_available": false,
+    "skip_live": false,
+    "tables": {},
+    "corpus_coverage": {},
+    "dry_runs": [],
+    "bytes_estimated_total": 0,
+    "decision": "auth_missing",
+    "notes": [
+      "ADC missing: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information."
+    ]
+  },
+  "solarchive": {
+    "available_locally": true,
+    "txs_index_present": true,
+    "corpus_start": "2026-06-05",
+    "corpus_end": "2026-07-14",
+    "txs_partitions_for_corpus": [],
+    "accounts_partitions_for_corpus": [],
+    "txs_coverage_complete": false,
+    "accounts_coverage_complete": false,
+    "estimated_download_bytes_if_present": 379939833560,
+    "estimated_download_gib_if_present": 353.85,
+    "decision": "skip_no_corpus_coverage",
+    "notes": [
+      "Solarchive txs index has no June\u2013July 2026 daily partitions (max=2022-04-30). Do not download archive for this corpus."
+    ],
+    "txs_partition_min": "2020-10-10",
+    "txs_partition_max": "2022-04-30",
+    "txs_partitions_missing": [
+      "2026-06-05",
+      "2026-06-06",
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13",
+      "2026-06-14",
+      "2026-06-15",
+      "2026-06-16",
+      "2026-06-17",
+      "2026-06-18",
+      "2026-06-19",
+      "2026-06-20",
+      "2026-06-21",
+      "2026-06-22",
+      "2026-06-23",
+      "2026-06-24",
+      "2026-06-25",
+      "2026-06-26",
+      "2026-06-27",
+      "2026-06-28",
+      "2026-06-29",
+      "2026-06-30",
+      "2026-07-01",
+      "2026-07-02",
+      "2026-07-03",
+      "2026-07-04",
+      "2026-07-05",
+      "2026-07-06",
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14"
+    ],
+    "accounts_partitions_missing": [
+      "2026-06",
+      "2026-07"
+    ],
+    "accounts_estimated_bytes_if_present": null
+  },
+  "geckoterminal": {
+    "base_url": "https://api.geckoterminal.com/api/v2",
+    "network": "solana",
+    "sol_usdc_pool": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+    "skip_live": false,
+    "rate_limit_hint_per_min": 10,
+    "decision": "usable",
+    "checks": {
+      "network": {
+        "status_code": 200,
+        "ok": true,
+        "via": "sol_usdc_pool_lookup"
+      },
+      "sol_usdc_ohlcv": {
+        "status_code": 200,
+        "ok": true,
+        "candles": 100,
+        "covers_corpus_window": true
+      },
+      "pool_lookup": {
+        "status_code": 200,
+        "ok": true,
+        "pool": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE"
+      }
+    },
+    "notes": []
+  },
+  "source_priority": [
+    "pumpfun_local_for_events_curve_execution",
+    "bigquery_for_microstructure_transfers_funding_if_auth",
+    "rpc_getTransaction_for_signature_microstructure_subset",
+    "geckoterminal_for_sol_market_and_postgrad_pools",
+    "solarchive_skip_no_2026_coverage"
+  ]
+}

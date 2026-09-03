@@ -74,6 +74,18 @@ uv run trencher data audit-feasibility -v
 Writes machine-readable reports and `FEASIBILITY.md` under `manifests/feasibility/`.
 CI uses fixture-sized samples only; the full local corpus is not required.
 
+## World-model historical enrichment
+
+```bash
+uv run trencher data probe-world-model-sources -v
+uv run trencher data recover-world-model-data -v
+```
+
+Recovers microstructure, ownership/graph, global context, post-grad, and execution
+layers into `data/external/world_model/` with manifests under
+`manifests/world_model_data/`. BigQuery requires ADC/`GOOGLE_CLOUD_PROJECT`.
+CI must pass `--skip-live` (no paid/external bulk queries).
+
 ## Architecture
 
 | Layer | Role |

@@ -14,6 +14,7 @@ from trencher import __version__
 from trencher.data.feasibility import run_feasibility_audit
 from trencher.data.historical import download_historical
 from trencher.data.paths import SOURCES, resolve_external_root, resolve_manifest_root
+from trencher.data.world_model import run_source_probe, run_world_model_pipeline
 from trencher.dune.backfill import backfill_range
 from trencher.dune.client import LiveDuneRunner, MockDuneRunner
 from trencher.dune.config import resolve_data_root
@@ -260,6 +261,134 @@ def data_audit_feasibility(
         raise SystemExit(1)
     click.echo(json.dumps(result.summary.get("verdict", {}), indent=2))
     click.echo(f"Reports written under {result.report_dir}")
+
+
+@data.command("probe-world-model-sources")
+@click.option(
+    "--external-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Downloaded corpora root (default: data/external)",
+)
+@click.option(
+    "--manifest-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output dir (default: manifests/world_model_data)",
+)
+@click.option(
+    "--skip-live",
+    is_flag=True,
+    help="Skip live BigQuery/Gecko calls (CI-safe)",
+)
+@click.option("--bq-project", default=None, help="GCP project for BigQuery")
+@click.option("--verbose", "-v", is_flag=True)
+def data_probe_world_model_sources(
+    external_root: Path | None,
+    manifest_dir: Path | None,
+    skip_live: bool,
+    bq_project: str | None,
+    verbose: bool,
+) -> None:
+    """Probe BigQuery, Solarchive indexes, and GeckoTerminal for corpus coverage."""
+    _configure_logging(verbose)
+    root = resolve_external_root(external_root)
+    out = Path(manifest_dir) if manifest_dir else Path("manifests") / "world_model_data"
+    payload = run_source_probe(
+        external_root=root,
+        manifest_dir=out,
+        skip_live=skip_live,
+        bq_project=bq_project,
+    )
+    click.echo(
+        json.dumps(
+            {
+                "bigquery": payload.get("bigquery", {}).get("decision"),
+                "solarchive": payload.get("solarchive", {}).get("decision"),
+                "geckoterminal": payload.get("geckoterminal", {}).get("decision"),
+            },
+            indent=2,
+        )
+    )
+    click.echo(f"Wrote {out / 'source_probe.json'}")
+
+
+@data.command("recover-world-model-data")
+@click.option(
+    "--external-root",
+    type=click.Path(path_type=Path),
+    default=None,
+)
+@click.option(
+    "--manifest-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+)
+@click.option(
+    "--world-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Raw enrichment root (default: data/external/world_model)",
+)
+@click.option("--skip-live", is_flag=True, help="CI-safe: no live BQ/Gecko/RPC")
+@click.option("--bq-project", default=None)
+@click.option("--bq-execute", is_flag=True, help="Execute BQ after successful dry-run")
+@click.option("--rpc-max-signatures", type=int, default=5000)
+@click.option("--gecko-max-pools", type=int, default=200)
+@click.option("--rich-subset-max-mints", type=int, default=2721)
+@click.option(
+    "--max-trade-batches",
+    type=int,
+    default=None,
+    help="Optional cap on trade batches (tests)",
+)
+@click.option(
+    "--stage",
+    "stages",
+    multiple=True,
+    type=click.Choice(["probe", "plan", "acquire", "report"]),
+    help="Subset of pipeline stages (default: all)",
+)
+@click.option("--verbose", "-v", is_flag=True)
+def data_recover_world_model_data(
+    external_root: Path | None,
+    manifest_dir: Path | None,
+    world_root: Path | None,
+    skip_live: bool,
+    bq_project: str | None,
+    bq_execute: bool,
+    rpc_max_signatures: int,
+    gecko_max_pools: int,
+    rich_subset_max_mints: int,
+    max_trade_batches: int | None,
+    stages: tuple[str, ...],
+    verbose: bool,
+) -> None:
+    """Probe, plan, acquire, and report world-model historical enrichments."""
+    _configure_logging(verbose)
+    root = resolve_external_root(external_root)
+    result = run_world_model_pipeline(
+        external_root=root,
+        manifest_dir=Path(manifest_dir)
+        if manifest_dir
+        else Path("manifests") / "world_model_data",
+        world_root=Path(world_root) if world_root else root / "world_model",
+        skip_live=skip_live,
+        bq_project=bq_project,
+        bq_execute=bq_execute,
+        rich_subset_max_mints=rich_subset_max_mints,
+        rpc_max_signatures=rpc_max_signatures,
+        gecko_max_pools=gecko_max_pools,
+        max_trade_batches=max_trade_batches,
+        stages=list(stages) if stages else None,
+    )
+    if not result.ok:
+        for err in result.errors:
+            click.echo(f"ERR {err}", err=True)
+        raise SystemExit(1)
+    click.echo(json.dumps(result.summary.get("encoders", result.summary), indent=2))
+    click.echo(f"Manifests: {result.manifest_dir}")
+    click.echo(f"Data: {result.world_root}")
 
 
 if __name__ == "__main__":

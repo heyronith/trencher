@@ -1,0 +1,250 @@
+"""World-model recovery tests — mocked; zero live bulk queries."""
+
+from __future__ import annotations
+
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+from click.testing import CliRunner
+
+from trencher.cli import main
+from trencher.data.feasibility.concepts import SYSTEM_PROGRAM_WALLET
+from trencher.data.world_model.acquire.gecko import GeckoClient, run_gecko_acquisition
+from trencher.data.world_model.acquire.local_corpus import run_local_acquisition
+from trencher.data.world_model.acquire.rpc import SolanaRpc, run_rpc_acquisition
+from trencher.data.world_model.pipeline import run_world_model_pipeline
+from trencher.data.world_model.probe import probe_solarchive, run_source_probe
+
+
+def _write_mini_corpus(external: Path) -> None:
+    pump = external / "pumpfun_memecoin_corpus"
+    trades = pump / "trades"
+    trades.mkdir(parents=True)
+    tokens = pa.table(
+        {
+            "mint": ["m1", "m2", "m3"],
+            "detected_at": [
+                datetime(2026, 6, 5, tzinfo=UTC),
+                datetime(2026, 6, 6, tzinfo=UTC),
+                datetime(2026, 6, 7, tzinfo=UTC),
+            ],
+            "creator": ["c1", "c2", "c1"],
+            "graduated_at": [datetime(2026, 6, 8, tzinfo=UTC), None, None],
+            "is_mayhem_mode": [False, False, True],
+            "top10_pct_suspect": [False, False, False],
+            "initial_top10_pct_corrected": [10.0, 20.0, 30.0],
+            "dev_buy_pct_corrected": [1.0, 2.0, 3.0],
+            "supply_bug_corrected": [False, False, True],
+            "is_training_ready": [True, True, True],
+        }
+    )
+    pq.write_table(tokens, pump / "tokens.parquet")
+    pq.write_table(
+        pa.table(
+            {
+                "mint": ["m1", "mX"],
+                "migrated_at": [
+                    datetime(2026, 6, 8, tzinfo=UTC),
+                    datetime(2026, 6, 9, tzinfo=UTC),
+                ],
+                "seconds_to_graduation": [10.0, 20.0],
+                "pool_address": ["RealPool111", "synthetic_graduation_queue"],
+            }
+        ),
+        pump / "migrations.parquet",
+    )
+    pq.write_table(
+        pa.table(
+            {
+                "mint": ["m1", "m1", "m2"],
+                "tx_signature": ["sigA", "sigB", "sigC"],
+                "event_time": [
+                    datetime(2026, 6, 5, 1, tzinfo=UTC),
+                    datetime(2026, 6, 5, 2, tzinfo=UTC),
+                    datetime(2026, 6, 6, 1, tzinfo=UTC),
+                ],
+                "user_wallet": ["w1", "w2", SYSTEM_PROGRAM_WALLET],
+                "is_buy": [True, True, True],
+                "sol_amount": [1.0, 2.0, 3.0],
+                "token_amount": [10.0, 20.0, 30.0],
+                "price_sol": [0.1, 0.2, 0.3],
+                "v_sol_bonding_curve": [30.0, 31.0, 32.0],
+                "v_tokens_bonding_curve": [1e9, 9e8, 8e8],
+                "curve_pct_depleted": [1.0, 2.0, 3.0],
+            }
+        ),
+        trades / "trades-00000.parquet",
+    )
+    pq.write_table(
+        pa.table(
+            {
+                "mint": ["m1"],
+                "outcome_label": ["dead"],
+                "rug_detected": [False],
+            }
+        ),
+        pump / "postgard_outcomes.parquet",
+    )
+    pq.write_table(
+        pa.table(
+            {
+                "mint": ["m1"],
+                "snapshot_time": [datetime(2026, 6, 9, tzinfo=UTC)],
+                "price_usd": [1.0],
+            }
+        ),
+        pump / "postgard_snapshots.parquet",
+    )
+    cohort = (
+        external / "red_cohort_2026" / "extracted" / "RED-COHORT-2026-v1"
+    )
+    cohort.mkdir(parents=True)
+    (cohort / "sniper_cohorts.jsonl").write_text(
+        json.dumps({"cohort_id": "c1", "wallets": ["w1"], "mints_hit": [{"mint": "m1"}]})
+        + "\n",
+        encoding="utf-8",
+    )
+    # Solarchive indexes with no 2026 coverage
+    txs = external / "solarchive" / "txs"
+    txs.mkdir(parents=True)
+    (txs / "index.json").write_text(
+        json.dumps(
+            {
+                "partitions": [
+                    {
+                        "partition": "2025-12-01",
+                        "total_size_bytes": 1000,
+                        "file_count": 1,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (external / "solarchive" / "accounts").mkdir(parents=True)
+
+
+def test_cli_probe_help() -> None:
+    runner = CliRunner()
+    result = runner.invoke(main, ["data", "probe-world-model-sources", "--help"])
+    assert result.exit_code == 0
+
+
+def test_probe_solarchive_no_2026(tmp_path: Path) -> None:
+    external = tmp_path / "external"
+    _write_mini_corpus(external)
+    result = probe_solarchive(external / "solarchive")
+    assert result["txs_coverage_complete"] is False
+    assert result["decision"] == "skip_no_corpus_coverage"
+    assert result["estimated_download_gib_if_present"] is not None
+
+
+def test_probe_skip_live(tmp_path: Path) -> None:
+    external = tmp_path / "external"
+    manifests = tmp_path / "manifests"
+    _write_mini_corpus(external)
+    payload = run_source_probe(
+        external_root=external, manifest_dir=manifests, skip_live=True
+    )
+    assert payload["bigquery"]["decision"] == "skipped_for_ci"
+    assert payload["geckoterminal"]["decision"] == "skipped_for_ci"
+    assert (manifests / "source_probe.json").exists()
+
+
+def test_local_acquisition_and_pipeline_skip_live(tmp_path: Path) -> None:
+    external = tmp_path / "external"
+    manifests = tmp_path / "manifests"
+    world = tmp_path / "world"
+    _write_mini_corpus(external)
+    result = run_world_model_pipeline(
+        external_root=external,
+        manifest_dir=manifests,
+        world_root=world,
+        skip_live=True,
+        rpc_max_signatures=10,
+        gecko_max_pools=1,
+        max_trade_batches=2,
+    )
+    assert result.ok
+    assert (manifests / "source_probe.json").exists()
+    assert (manifests / "extraction_plan.json").exists()
+    assert (manifests / "WORLD_MODEL_DATA.md").exists()
+    assert (world / "graph" / "edges_wallet_token.parquet").exists()
+    local = run_local_acquisition(
+        external_root=external,
+        world_root=world / "again",
+        rich_subset_max_mints=10,
+        rpc_max_signatures=10,
+        max_trade_batches=1,
+    )
+    assert local["layers"]["rich_subset"]["mint_count"] == 1
+
+
+def test_gecko_and_rpc_mocked(tmp_path: Path) -> None:
+    world = tmp_path / "world"
+    micro = world / "microstructure"
+    micro.mkdir(parents=True)
+    pq.write_table(
+        pa.table({"mint": ["m1"], "tx_signature": ["sigA"]}),
+        micro / "signature_targets.parquet",
+    )
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+
+        def get(self, url: str, params=None, timeout=60):
+            resp = MagicMock()
+            resp.status_code = 200
+            if "ohlcv" in url:
+                resp.json.return_value = {
+                    "data": {
+                        "attributes": {
+                            "ohlcv_list": [[1780704000, 1, 2, 0.5, 1.5, 100]]
+                        }
+                    }
+                }
+            else:
+                resp.json.return_value = {"data": {}}
+            return resp
+
+    gecko = run_gecko_acquisition(
+        world_root=world,
+        pools=["RealPool111"],
+        max_pools=1,
+        client=GeckoClient(session=FakeSession(), min_interval=0),
+    )
+    assert gecko["api_calls"] >= 1
+
+    rpc_client = SolanaRpc(min_interval=0)
+
+    def fake_call(method: str, params: list):
+        return {
+            "slot": 1,
+            "blockTime": 1,
+            "meta": {
+                "err": None,
+                "fee": 5000,
+                "computeUnitsConsumed": 100,
+                "preBalances": [100, 50],
+                "postBalances": [90, 60],
+                "logMessages": ["ok"],
+                "innerInstructions": [],
+            },
+            "transaction": {
+                "message": {
+                    "accountKeys": ["a", "b"],
+                }
+            },
+        }
+
+    with patch.object(rpc_client, "call", side_effect=fake_call):
+        rpc = run_rpc_acquisition(
+            world_root=world, max_signatures=5, rpc=rpc_client, skip_live=False
+        )
+    assert rpc["found"] == 1
+    assert rpc["signature_match_rate"] == 1.0

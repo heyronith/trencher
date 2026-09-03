@@ -7,6 +7,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "click>=8.1",
     "dune-client>=1.7",
+    "google-cloud-bigquery>=3.25",
     "huggingface-hub>=1.29.0",
     "pandas>=2.2",
     "pyarrow>=18.0",
