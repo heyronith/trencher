@@ -80,5 +80,6 @@ def run_doctor(*, config_path: Path | None = None, data_root: Path | None = None
 
     root = data_root or Path(os.environ.get("TRENCHER_DATA_ROOT", "data/raw/dune"))
     report.add_ok(f"Data root: {root} (writable check skipped in doctor)")
+    report.add_ok("live preflight: uv run trencher dune validate-queries")
 
     return report

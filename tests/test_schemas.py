@@ -26,6 +26,25 @@ def test_validate_dataframe_round_trip(sample_token_lifecycle_df) -> None:
     validate_dataframe(sample_token_lifecycle_df, "token_lifecycle")
 
 
+def test_protocol_safe_fields_present() -> None:
+    lifecycle = get_schema("token_lifecycle")
+    assert "quote_mint" in lifecycle.names
+    assert "token_program" in lifecycle.names
+    assert "instruction_name" in lifecycle.names
+    assert "user_wallet" in lifecycle.names
+    trades = get_schema("trades_events")
+    assert "base_mint" in trades.names
+    assert "real_base_reserves" in trades.names
+    assert "real_quote_reserves" in trades.names
+    assert "trade_source" in trades.names
+    micro = get_schema("transaction_microstructure")
+    assert "instructions_json" in micro.names
+    assert "address_table_lookups_json" in micro.names
+    graph = get_schema("wallet_graph")
+    assert "from_is_participant" in graph.names
+    assert get_schema("dex_trades") is trades
+
+
 def test_all_schemas_are_pyarrow(dataset=None) -> None:
     for name, schema in DATASET_SCHEMAS.items():
         assert isinstance(schema, pa.Schema), name

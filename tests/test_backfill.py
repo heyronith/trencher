@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pandas as pd
@@ -110,3 +111,37 @@ def test_all_datasets_have_sql_templates() -> None:
     datasets = load_datasets_config()
     for name, cfg in datasets.items():
         assert cfg.sql_path.exists(), f"Missing SQL for {name}"
+
+
+def test_chunk_days_issues_one_query_per_window(
+    tmp_data_root, sample_token_lifecycle_df
+) -> None:
+    runner = MockDuneRunner(responses={"": sample_token_lifecycle_df})
+    results = backfill_range(
+        runner,
+        "token_lifecycle",
+        date(2025, 1, 1),
+        date(2025, 1, 2),
+        chunk_days=2,
+        data_root=tmp_data_root,
+    )
+    assert len(runner.calls) == 1
+    sql = runner.calls[0]["sql"]
+    assert "2025-01-01 00:00:00" in sql
+    assert "2025-01-03 00:00:00" in sql
+    assert runner.calls[0]["parameters"]["start_ts"] == "2025-01-01 00:00:00"
+    assert len(results) == 2
+    assert {r.partition_date for r in results} == {date(2025, 1, 1), date(2025, 1, 2)}
+
+
+def test_saved_query_passes_date_parameters(tmp_data_root, sample_token_lifecycle_df) -> None:
+    datasets = load_datasets_config()
+    cfg = replace(datasets["token_lifecycle"], query_id=4242)
+    runner = MockDuneRunner()
+    runner.default_response = sample_token_lifecycle_df
+    backfill_partition(runner, cfg, date(2025, 1, 1), data_root=tmp_data_root)
+    assert runner.calls[0]["query_id"] == 4242
+    assert runner.calls[0]["parameters"] == {
+        "start_ts": "2025-01-01 00:00:00",
+        "end_ts": "2025-01-02 00:00:00",
+    }

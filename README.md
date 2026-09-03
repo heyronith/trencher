@@ -6,7 +6,7 @@ On-chain raw data extraction for the meme-coin world model. Pulls verified Pump 
 
 ```bash
 uv sync --all-extras
-cp .env.example .env   # add DUNE_API_KEY for backfill
+cp .env.example .env   # add DUNE_API_KEY for backfill / live preflight
 ```
 
 ## Validate (no Dune credits)
@@ -19,7 +19,14 @@ uv run pytest
 uv run trencher dune doctor
 ```
 
-Enable GitHub Actions CI: copy `ci/github-actions-ci.yml.example` to `.github/workflows/ci.yml`.
+## Live Dune preflight (low-cost, required before historical backfill)
+
+```bash
+export DUNE_API_KEY=...
+uv run trencher dune validate-queries
+```
+
+This checks current Dune tables/columns via `information_schema` and takes small partition samples. It does not run the historical backfill.
 
 ## Backfill one day
 
@@ -28,10 +35,11 @@ export DUNE_API_KEY=...
 uv run trencher dune backfill \
   --dataset token_lifecycle \
   --start 2025-01-01 \
-  --end 2025-01-01
+  --end 2025-01-01 \
+  --chunk-days 1
 ```
 
-Partitions land at `data/raw/dune/<dataset>/dt=YYYY-MM-DD/part-00000.parquet` with a sidecar `manifest.json`. Re-running a completed partition is skipped unless `--force` is passed.
+`--chunk-days` is the Dune query window. Results are still written as daily `dt=YYYY-MM-DD` partitions. Re-running a completed partition is skipped unless `--force` is passed.
 
 Dry-run (no API calls):
 
@@ -43,13 +51,13 @@ uv run trencher dune backfill --dataset trades_events --start 2025-01-01 --end 2
 
 | Layer | Role |
 |-------|------|
-| `src/trencher/schemas/` | Versioned PyArrow canonical schemas (8 raw dataset types) |
+| `src/trencher/schemas/` | Versioned PyArrow canonical schemas (v1.1) |
 | `src/trencher/queries/` | Parameterized Dune SQL + `datasets.yaml` registry |
-| `src/trencher/dune/` | Client, backfill engine, manifests, checkpoints |
+| `src/trencher/dune/` | Client, backfill engine, preflight, manifests, checkpoints |
 | `data/raw/dune/` | Immutable Parquet output (gitignored) |
 
-**Datasets:** `token_lifecycle`, `trades_events`, `transaction_microstructure`, `token_transfers`, `wallet_funding`, `wallet_graph`, `market_context`, `execution_liquidity`
+**Datasets:** `token_lifecycle`, `trades_events`, `dex_trades`, `transaction_microstructure`, `token_transfers`, `wallet_funding`, `wallet_graph`, `market_context`, `execution_liquidity`
 
-**Dune sources (verified):** `pumpdotfun_solana.*` decoded call/evt tables, `solana.instruction_calls`, `solana.transactions`, `solana.blocks`, `tokens_solana.transfers`.
+**Dune sources:** `pumpdotfun_solana.*` (including v2 where exposed), `dex_solana.trades`, `solana.instruction_calls`, `solana.transactions`, `solana.blocks`, `tokens_solana.transfers`.
 
-Each partition manifest records SQL hash, parameters, Dune execution ID, row counts, source time bounds, and file checksums for auditability.
+Each partition manifest records SQL hash, parameters (including the query window), Dune execution ID, row counts, source time bounds, and file checksums.

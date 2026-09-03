@@ -1,10 +1,20 @@
--- PumpSwap pool creation events for Pump-origin tokens.
--- Verified: pump_amm_evt_createpoolevent (DefiLlama dimension-adapters pump-swap).
+-- PumpSwap pool creation events for Pump-origin tokens (v1 + Token-2022 v2 mints).
+-- Verified: pump_amm_evt_createpoolevent.
 
 WITH pump_mints AS (
-    SELECT DISTINCT account_mint AS mint, call_tx_signer AS creator_wallet
+    SELECT DISTINCT
+        account_mint AS mint,
+        COALESCE(creator, account_user) AS creator_wallet
     FROM pumpdotfun_solana.pump_call_create
     WHERE call_block_time < TIMESTAMP '{{end_ts}}'
+    /* optional:pumpdotfun_solana.pump_call_create_v2 */
+    UNION
+    SELECT DISTINCT
+        account_mint AS mint,
+        COALESCE(creator, account_user) AS creator_wallet
+    FROM pumpdotfun_solana.pump_call_create_v2
+    WHERE call_block_time < TIMESTAMP '{{end_ts}}'
+    /* /optional:pumpdotfun_solana.pump_call_create_v2 */
 )
 SELECT
     e.evt_block_time AS block_time,
@@ -18,22 +28,28 @@ SELECT
     'create_pool_event' AS event_type,
     e.pool,
     pm.mint,
-    e.quote_mint,
-    pm.creator_wallet,
     e.base_mint,
+    e.quote_mint,
+    COALESCE(e.coin_creator, e.creator, pm.creator_wallet) AS creator_wallet,
+    CAST(NULL AS varchar) AS token_program,
+    CAST(NULL AS boolean) AS is_token_2022,
     e.lp_mint,
-    e.base_amount,
-    e.quote_amount,
-    e.pool_base_token_reserves,
-    e.pool_quote_token_reserves,
-    e.initial_virtual_base_reserves,
-    e.initial_virtual_quote_reserves,
+    e.base_amount_in AS base_amount,
+    e.quote_amount_in AS quote_amount,
+    e.pool_base_amount AS pool_base_token_reserves,
+    e.pool_quote_amount AS pool_quote_token_reserves,
+    CAST(NULL AS uint256) AS initial_virtual_base_reserves,
+    CAST(NULL AS uint256) AS initial_virtual_quote_reserves,
     'pumpdotfun_solana.pump_amm_evt_createpoolevent' AS source_table,
     'evt_block_time' AS source_partition_col,
     'pump_amm' AS protocol,
     '1' AS protocol_version,
-    '1.0.0' AS schema_version,
-    CAST(NULL AS varchar) AS raw_payload_json
+    '1.1.0' AS schema_version,
+    CONCAT(
+        '{"event":"CreatePoolEvent","pool":"', CAST(e.pool AS varchar),
+        '","base_mint":"', CAST(e.base_mint AS varchar),
+        '","quote_mint":"', CAST(e.quote_mint AS varchar), '"}'
+    ) AS raw_payload_json
 FROM pumpdotfun_solana.pump_amm_evt_createpoolevent e
 INNER JOIN pump_mints pm ON e.base_mint = pm.mint
 WHERE e.evt_block_time >= TIMESTAMP '{{start_ts}}'

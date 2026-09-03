@@ -19,8 +19,12 @@ SELECT
     'time' AS source_partition_col,
     'solana' AS protocol,
     '1' AS protocol_version,
-    '1.0.0' AS schema_version,
-    CAST(NULL AS varchar) AS raw_payload_json
+    '1.1.0' AS schema_version,
+    CONCAT(
+        '{"slot":', CAST(b.slot AS varchar),
+        ',"hash":"', CAST(b.hash AS varchar),
+        '","parent_slot":', CAST(b.parent_slot AS varchar), '}'
+    ) AS raw_payload_json
 FROM solana.blocks b
 WHERE b.time >= TIMESTAMP '{{start_ts}}'
   AND b.time < TIMESTAMP '{{end_ts}}'

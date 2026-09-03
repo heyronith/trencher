@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import pandas as pd
 from dune_client.client import DuneClient
 from dune_client.query import QueryBase
+from dune_client.types import QueryParameter
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 
@@ -31,7 +32,17 @@ class DuneRunner(Protocol):
         *,
         performance: str = "medium",
         query_id: int | None = None,
+        parameters: dict[str, str] | None = None,
     ) -> QueryExecutionResult: ...
+
+
+def _query_parameters(parameters: dict[str, str] | None) -> list[QueryParameter] | None:
+    if not parameters:
+        return None
+    return [
+        QueryParameter.text_type(name=key, value=str(value))
+        for key, value in parameters.items()
+    ]
 
 
 class LiveDuneRunner:
@@ -56,16 +67,19 @@ class LiveDuneRunner:
         *,
         performance: str | None = None,
         query_id: int | None = None,
+        parameters: dict[str, str] | None = None,
     ) -> QueryExecutionResult:
         perf = performance or self._performance
         try:
             if query_id is not None:
-                query = QueryBase(query_id=query_id)
-                df = self._client.run_query_dataframe(
-                    query=query,
-                    performance=perf,
+                query = QueryBase(
+                    query_id=query_id,
+                    params=_query_parameters(parameters),
                 )
-                execution_id = None
+                response = self._client.run_query(query=query, performance=perf)
+                rows = response.result.rows if response.result else []
+                df = pd.DataFrame(rows)
+                execution_id = response.execution_id
             else:
                 response = self._client.run_sql(query_sql=sql, performance=perf)
                 execution_id = response.execution_id
@@ -99,8 +113,16 @@ class MockDuneRunner:
         *,
         performance: str = "medium",
         query_id: int | None = None,
+        parameters: dict[str, str] | None = None,
     ) -> QueryExecutionResult:
-        self.calls.append({"sql": sql, "performance": performance, "query_id": query_id})
+        self.calls.append(
+            {
+                "sql": sql,
+                "performance": performance,
+                "query_id": query_id,
+                "parameters": parameters,
+            }
+        )
         key = str(query_id) if query_id is not None else sql.strip()
         df = self.responses.get(key)
         if df is None:

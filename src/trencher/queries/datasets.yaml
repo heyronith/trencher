@@ -1,78 +1,123 @@
 # Canonical Dune backfill datasets.
 # Source tables verified against Dune docs (docs.dune.com/data-catalog) and
-# pumpdotfun_solana decoded tables referenced in public Dune queries (DefiLlama, etc.).
+# pumpdotfun_solana decoded IDL tables. Optional v2 tables are included in SQL
+# behind /* optional:... */ markers and stripped when preflight finds them absent.
 #
 # Partition columns used in WHERE clauses:
 #   - pumpdotfun_solana.* call tables  -> call_block_time
 #   - pumpdotfun_solana.* evt tables   -> evt_block_time
-#   - solana.*                         -> block_time / block_date
+#   - solana.*                         -> block_time / block_date / time
 #   - tokens_solana.transfers          -> block_time
+#   - dex_solana.trades                -> block_time (block_month partition key)
 
 datasets:
   token_lifecycle:
     schema_dataset: token_lifecycle
-    description: Pump token creation and migration/graduation lifecycle events
+    description: Pump token creation and migration/graduation lifecycle events (v1 + v2)
     sql_file: token_lifecycle.sql
     partition_column: call_block_time
+    preflight_cost: low
+    coverage_start: "2024-01-14"
     source_tables:
       - pumpdotfun_solana.pump_call_create
       - pumpdotfun_solana.pump_call_migrate
       - pumpdotfun_solana.pump_evt_createevent
       - pumpdotfun_solana.pump_evt_completeevent
+      - pumpdotfun_solana.pump_call_create_v2
+      - pumpdotfun_solana.pump_evt_completepumpammmigrationevent
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2
+      - pumpdotfun_solana.pump_evt_completepumpammmigrationevent
 
   trades_events:
     schema_dataset: trades_events
-    description: Bonding-curve TradeEvents and PumpSwap buy/sell events
+    description: Bonding-curve TradeEvents and PumpSwap buy/sell events (quote-generic)
     sql_file: trades_events.sql
     partition_column: evt_block_time
+    preflight_cost: low
+    coverage_start: "2024-01-14"
     source_tables:
       - pumpdotfun_solana.pump_evt_tradeevent
       - pumpdotfun_solana.pump_amm_evt_buyevent
       - pumpdotfun_solana.pump_amm_evt_sellevent
+      - pumpdotfun_solana.pump_amm_evt_createpoolevent
+
+  dex_trades:
+    schema_dataset: trades_events
+    description: Post-graduation Solana DEX trades for Pump-origin mints
+    sql_file: dex_trades.sql
+    partition_column: block_time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
+    source_tables:
+      - dex_solana.trades
+      - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_create_v2
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2
 
   transaction_microstructure:
     schema_dataset: transaction_microstructure
     description: Raw Pump and PumpSwap program instructions and parent transactions
     sql_file: transaction_microstructure.sql
     partition_column: block_time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
     source_tables:
       - solana.instruction_calls
       - solana.transactions
 
   token_transfers:
     schema_dataset: token_transfers
-    description: SPL token transfers for Pump-origin mints
+    description: SPL and Token-2022 transfers for Pump-origin mints
     sql_file: token_transfers.sql
     partition_column: block_time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
     source_tables:
       - tokens_solana.transfers
       - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_create_v2
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2
 
   wallet_funding:
     schema_dataset: wallet_funding
-    description: Native SOL transfers involving Pump creators and traders
+    description: Native SOL transfers involving Pump creators and traders plus external funders
     sql_file: wallet_funding.sql
     partition_column: block_time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
     source_tables:
       - tokens_solana.transfers
       - pumpdotfun_solana.pump_evt_tradeevent
       - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_create_v2
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2
 
   wallet_graph:
     schema_dataset: wallet_graph
-    description: Wallet-to-wallet transfer edges for Pump ecosystem participants
+    description: Wallet-to-wallet transfer edges including external counterparties
     sql_file: wallet_graph.sql
     partition_column: block_time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
     source_tables:
       - tokens_solana.transfers
       - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_create_v2
       - pumpdotfun_solana.pump_evt_tradeevent
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2
 
   market_context:
     schema_dataset: market_context
     description: Solana block-level network throughput and fee context
     sql_file: market_context.sql
     partition_column: time
+    preflight_cost: high
+    coverage_start: "2024-01-14"
     source_tables:
       - solana.blocks
 
@@ -81,6 +126,11 @@ datasets:
     description: PumpSwap pool creation and liquidity state events
     sql_file: execution_liquidity.sql
     partition_column: evt_block_time
+    preflight_cost: low
+    coverage_start: "2025-02-20"
     source_tables:
       - pumpdotfun_solana.pump_amm_evt_createpoolevent
       - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_create_v2
+    optional_source_tables:
+      - pumpdotfun_solana.pump_call_create_v2

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 DATASET_SCHEMAS: dict[str, pa.Schema] = {
     "token_lifecycle": TOKEN_LIFECYCLE_SCHEMA,
     "trades_events": TRADES_EVENTS_SCHEMA,
+    "dex_trades": TRADES_EVENTS_SCHEMA,
     "transaction_microstructure": TRANSACTION_MICROSTRUCTURE_SCHEMA,
     "token_transfers": TOKEN_TRANSFERS_SCHEMA,
     "wallet_funding": WALLET_FUNDING_SCHEMA,

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-SCHEMA_VERSION = "1.0.0"
+from trencher.queries.constants import SCHEMA_VERSION as CANONICAL_SCHEMA_VERSION
+
+SCHEMA_VERSION = CANONICAL_SCHEMA_VERSION
 
 # Shared provenance / ordering columns appended to every raw dataset.
 PROVENANCE_FIELDS = [

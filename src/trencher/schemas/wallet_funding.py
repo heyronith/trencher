@@ -18,8 +18,9 @@ WALLET_FUNDING_SCHEMA = with_provenance(
         ("to_token_account", pa.string()),
         ("amount_lamports", pa.decimal128(38, 0)),
         ("amount_sol", pa.float64()),
+        ("from_is_participant", pa.bool_()),
+        ("to_is_participant", pa.bool_()),
         ("tx_signer", pa.string()),
         ("outer_executing_account", pa.string()),
-        ("is_pump_participant", pa.bool_()),
     ]
 )

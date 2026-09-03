@@ -15,6 +15,7 @@ TOKEN_TRANSFERS_SCHEMA = with_provenance(
         ("mint", pa.string()),
         ("symbol", pa.string()),
         ("token_version", pa.string()),
+        ("is_token_2022", pa.bool_()),
         ("from_token_account", pa.string()),
         ("to_token_account", pa.string()),
         ("from_owner", pa.string()),
