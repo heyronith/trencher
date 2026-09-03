@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T05:50:34.719108+00:00",
+  "generated_at": "2026-09-03T18:33:12.720063+00:00",
   "corpus_window": {
     "start": "2026-06-05",
     "end": "2026-07-14"
@@ -12,17 +12,431 @@
   },
   "bigquery": {
     "dataset": "bigquery-public-data.crypto_solana_mainnet_us",
-    "project": null,
-    "auth_available": false,
+    "project": "trencher1",
+    "auth_available": true,
     "skip_live": false,
-    "tables": {},
-    "corpus_coverage": {},
-    "dry_runs": [],
-    "bytes_estimated_total": 0,
-    "decision": "auth_missing",
-    "notes": [
-      "ADC missing: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information."
-    ]
+    "tables": {
+      "Transactions": {
+        "requested": "Transactions",
+        "resolved": "bigquery-public-data.crypto_solana_mainnet_us.Transactions",
+        "schema": [
+          {
+            "name": "block_slot",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_timestamp",
+            "type": "TIMESTAMP",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "recent_block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "signature",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "index",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "fee",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "status",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "err",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "compute_units_consumed",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "accounts",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "log_messages",
+            "type": "STRING",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "balance_changes",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "pre_token_balances",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "post_token_balances",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          }
+        ],
+        "num_rows": 570031267402,
+        "num_bytes": 958371306644750
+      },
+      "Token Transfers": {
+        "requested": "Token Transfers",
+        "resolved": "bigquery-public-data.crypto_solana_mainnet_us.Token Transfers",
+        "schema": [
+          {
+            "name": "block_slot",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_timestamp",
+            "type": "TIMESTAMP",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "tx_signature",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "source",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "destination",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "authority",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "value",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "decimals",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mint",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mint_authority",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "fee",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "fee_decimals",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "memo",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "transfer_type",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          }
+        ],
+        "num_rows": 147554023483,
+        "num_bytes": 44465932066945
+      },
+      "Blocks": {
+        "requested": "Blocks",
+        "resolved": "bigquery-public-data.crypto_solana_mainnet_us.Blocks",
+        "schema": [
+          {
+            "name": "slot",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_timestamp",
+            "type": "TIMESTAMP",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "height",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "previous_block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "transaction_count",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "leader_reward",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "leader",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          }
+        ],
+        "num_rows": 421988481,
+        "num_bytes": 75105463508
+      },
+      "Accounts": {
+        "requested": "Accounts",
+        "resolved": "bigquery-public-data.crypto_solana_mainnet_us.Accounts",
+        "schema": [
+          {
+            "name": "block_slot",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_hash",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "block_timestamp",
+            "type": "TIMESTAMP",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pubkey",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "tx_signature",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "retrieval_timestamp",
+            "type": "TIMESTAMP",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "executable",
+            "type": "BOOLEAN",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "lamports",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "owner",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "rent_epoch",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "program",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "space",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "account_type",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "is_native",
+            "type": "BOOLEAN",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mint",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "state",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "token_amount",
+            "type": "NUMERIC",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "token_amount_decimals",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "program_data",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "authorized_voters",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "authorized_withdrawer",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "prior_voters",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "node_pubkey",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "commission",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "epoch_credits",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "votes",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "root_slot",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "last_timestamp",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          },
+          {
+            "name": "data",
+            "type": "RECORD",
+            "mode": "REPEATED"
+          }
+        ],
+        "num_rows": 166615685,
+        "num_bytes": 144367733647
+      },
+      "Rewards": {
+        "requested": "Rewards",
+        "resolved": null,
+        "schema": [],
+        "errors": [
+          "bigquery-public-data.crypto_solana_mainnet_us.Rewards: 404 GET https://bigquery.googleapis.com/bigquery/v2/projects/bigquery-public-data/datasets/crypto_solana_mainnet_us/tables/Rewards?prettyPrint=false: Not found: Table solana-data-sandbox:crypto_solana_mainnet_us.Rewards",
+          "bigquery-public-data.crypto_solana_mainnet_us.rewards: 404 GET https://bigquery.googleapis.com/bigquery/v2/projects/bigquery-public-data/datasets/crypto_solana_mainnet_us/tables/rewards?prettyPrint=false: Not found: Table solana-data-sandbox:crypto_solana_mainnet_us.rewards",
+          "bigquery-public-data.crypto_solana_mainnet_us.Rewards: 404 GET https://bigquery.googleapis.com/bigquery/v2/projects/bigquery-public-data/datasets/crypto_solana_mainnet_us/tables/Rewards?prettyPrint=false: Not found: Table solana-data-sandbox:crypto_solana_mainnet_us.Rewards"
+        ]
+      }
+    },
+    "corpus_coverage": {
+      "transactions_day_counts": {
+        "status": "too_expensive",
+        "estimated_bytes": 90563272152
+      },
+      "token_transfers_day_counts": {
+        "status": "dry_run_ok",
+        "estimated_bytes": 24523677328
+      },
+      "blocks_day_counts": {
+        "status": "dry_run_ok",
+        "estimated_bytes": 138394688
+      }
+    },
+    "dry_runs": [
+      {
+        "name": "transactions_day_counts",
+        "dry_run": true,
+        "estimated_bytes": 90563272152,
+        "estimated_gib": 84.3436,
+        "within_abort_threshold": false,
+        "sql_sha16": "155774084eb6b9b3"
+      },
+      {
+        "name": "token_transfers_day_counts",
+        "dry_run": true,
+        "estimated_bytes": 24523677328,
+        "estimated_gib": 22.8395,
+        "within_abort_threshold": true,
+        "sql_sha16": "dc9db1c10f954acc"
+      },
+      {
+        "name": "blocks_day_counts",
+        "dry_run": true,
+        "estimated_bytes": 138394688,
+        "estimated_gib": 0.1289,
+        "within_abort_threshold": true,
+        "sql_sha16": "65f5b1a8c0dc5b14"
+      }
+    ],
+    "bytes_estimated_total": 115225344168,
+    "decision": "usable_with_partition_filters",
+    "notes": []
   },
   "solarchive": {
     "available_locally": true,

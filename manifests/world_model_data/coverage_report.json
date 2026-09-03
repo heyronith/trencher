@@ -1,82 +1,106 @@
 {
-  "generated_at": "2026-09-03T05:51:25.074936+00:00",
+  "generated_at": "2026-09-03T18:44:31.138241+00:00",
   "layers": [
     {
       "layer": "transaction_microstructure",
-      "tokens_covered": 82,
-      "events_rows": 2500,
-      "date_coverage": "2026-06-05..2026-07-14 (subset)",
-      "quality": "high",
-      "source": "pumpfun.trades.tx_signature + solana_rpc.getTransaction"
+      "tokens": 82,
+      "wallets": null,
+      "rows_edges": 2500,
+      "date_coverage": "2026-06-05..2026-07-14 (enriched subset)",
+      "source": "pumpfun.tx_signature + solana_rpc.getTransaction",
+      "quality": "high_subset"
     },
     {
       "layer": "token_ownership_transfers",
-      "tokens_covered": 798430,
-      "events_rows": 9644468,
-      "date_coverage": "corpus window via trades",
-      "quality": "trade_derived_only",
-      "source": "pumpfun.trades (+ BigQuery Token Transfers if auth)"
+      "tokens": 2627,
+      "wallets": 332489,
+      "rows_edges": 559703,
+      "date_coverage": "2026-06-05..2026-07-14",
+      "source": "bigquery.Token Transfers (rich mints)",
+      "quality": "ledger"
     },
     {
       "layer": "wallet_history_graph",
-      "tokens_covered": 2721,
-      "events_rows": 10691293,
+      "tokens": 2721,
+      "wallets": 1006640,
+      "rows_edges": 11550229,
       "date_coverage": "corpus window",
-      "quality": "strong_participation_partial_funding",
-      "source": "pumpfun + red_cohort + rpc balance-delta proxies"
+      "source": "pumpfun + red_cohort + bq SPL transfers + rpc proxies",
+      "quality": "strong_with_spl_funding"
     },
     {
       "layer": "global_market_network_context",
-      "tokens_covered": 798430,
-      "events_rows": 79,
+      "tokens": 798430,
+      "wallets": null,
+      "rows_edges": 140,
       "date_coverage": "2026-06-05..2026-07-14",
-      "quality": "high_pump_aggregates + gecko_sol_usdc",
-      "source": "pumpfun daily aggregates + geckoterminal SOL/USDC"
+      "source": "pumpfun daily + geckoterminal SOL/USDC + bigquery.Blocks",
+      "quality": "high"
     },
     {
       "layer": "post_graduation",
-      "tokens_covered": 5669,
-      "events_rows": 1392133,
+      "tokens": 5669,
+      "wallets": null,
+      "rows_edges": 1392133,
       "date_coverage": "graduated subset",
-      "quality": "high_local_postgard",
-      "source": "pumpfun.postgard_* (+ gecko pool OHLCV supplement)"
+      "source": "pumpfun.postgard_* (+ gecko pool OHLCV)",
+      "quality": "high_local_postgard"
     },
     {
       "layer": "execution_state",
-      "tokens_covered": 1173,
-      "events_rows": 182297,
+      "tokens": 1173,
+      "wallets": null,
+      "rows_edges": 182297,
       "date_coverage": "rich subset pre-grad",
-      "quality": "high_curve_reserves",
-      "source": "pumpfun.trades/snapshots curve fields"
+      "source": "pumpfun.trades curve reserves",
+      "quality": "curve_observed_subset"
+    },
+    {
+      "layer": "account_ownership_snapshots",
+      "tokens": 100,
+      "wallets": 4,
+      "rows_edges": 222,
+      "date_coverage": "2026-06..2026-07",
+      "source": "bigquery.Accounts",
+      "quality": "ledger_snapshots"
     }
   ],
   "metrics": {
     "transaction_signature_match_rate": 1.0,
-    "mints_with_transfer_or_ownership_history": 798430,
-    "wallet_mint_flow_edges": 9644468,
-    "wallets_with_usable_prior_history": 1006640,
-    "wallets_with_real_funding_edges": 1494,
-    "funding_edge_count": 2169,
+    "true_spl_transfer_count": 559703,
+    "mints_with_genuine_ownership_histories": 2627,
+    "wallets_with_prior_history": 1006640,
+    "wallets_with_genuine_funding_edges": 332442,
+    "genuine_wallet_funding_edges": 523086,
+    "shared_funder_graph_edges": 335850,
+    "creator_ownership_transfer_rows": 107896,
+    "transaction_microstructure_tokens": 82,
+    "transaction_microstructure_txs": 2500,
+    "execution_state_mints": 1173,
+    "execution_state_rows": 182297,
+    "account_snapshot_rows": 222,
+    "account_snapshot_mints": 100,
+    "network_context_corpus_days": 38,
+    "blocks_daily_rows": 61,
+    "tokens_with_postgrad_history": 5669,
+    "bigquery_bytes_processed": 656323392556,
+    "bigquery_bytes_billed": 656323641344,
+    "solarchive_bytes_downloaded": 0,
+    "gecko_pools_completed": 150,
     "graph_edge_counts_by_type": {
       "wallet_token": 9644468,
       "creator_token": 798430,
       "cobuy": 243261,
       "cohort_member": 2965,
-      "sol_balance_delta_proxy": 2169
+      "spl_transfer": 523086,
+      "sol_balance_delta_proxy": 2169,
+      "shared_funder": 335850,
+      "creator_related_transfer": 107896
     },
-    "tokens_with_postgrad_history": 5669,
-    "network_context_corpus_days": 38,
-    "execution_state_mints": 1173,
-    "execution_state_rows": 182297,
-    "bigquery_bytes_processed": 0,
-    "solarchive_bytes_downloaded": 0,
-    "gecko_api_calls": 1,
-    "gecko_pools_completed": 150,
-    "rpc_transactions_found": 2500,
     "rich_subset_mints": 2721
   },
   "source_probe_decisions": {
-    "bigquery": "auth_missing",
+    "bigquery": "usable_with_partition_filters",
     "solarchive": "skip_no_corpus_coverage",
     "geckoterminal": "usable"
   },
@@ -85,16 +109,20 @@
     "Wallet/Graph Encoder": "READY",
     "Token/Ownership/Curve Encoder": "READY",
     "Global Market Encoder": "READY",
-    "Fusion/world-state model": "READY",
+    "Fusion/world-state model": "PARTIAL",
     "prediction heads": "READY"
   },
   "irrecoverable_fields": [
-    "Full SPL/Token-2022 transfer ledger without BigQuery auth or Solarchive 2026",
-    "Parsed System-program funding graph for all wallets (only RPC balance-delta proxies on subset)",
-    "Exact historical priority-fee/Jito tip fields when RPC meta lacks them",
+    "Native SOL system-program transfer ledger (Instructions SELECT ~7.7 TiB for corpus window; cost-aborted)",
+    "Full Transactions table scans for microstructure (~370+ GiB/day for signature column alone; use RPC subset instead)",
     "Solarchive txs/accounts for June\u2013July 2026 (index ends 2025-12-05)",
-    "Real pool addresses for synthetic_graduation_queue / null migrations without discovery",
-    "Row-level Pump fee bps history (protocol metadata only)"
+    "Real pool addresses for synthetic/null migrations without discovery",
+    "Row-level Pump fee bps history (protocol metadata only)",
+    "Transaction microstructure still covers only 82 tokens / 2500 enriched txs \u2014 not the full 798k universe"
   ],
-  "world_model_dataset_ready": true
+  "world_model_dataset_ready": true,
+  "readiness_notes": [
+    "READY requires meaningful trainability, not merely non-empty tables.",
+    "Prior e84fdef overstated readiness with 82-token microstructure and trade-derived ownership."
+  ]
 }

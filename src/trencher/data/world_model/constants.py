@@ -17,9 +17,10 @@ BQ_TABLES = (
     "Rewards",
 )
 # Hard safety caps — stay well under free 1 TiB/month.
-BQ_MAX_BYTES_BILLED_DEFAULT = 25 * 1024**3  # 25 GiB per query
-BQ_SESSION_BUDGET_BYTES = 200 * 1024**3  # 200 GiB soft session budget
-BQ_DRY_RUN_ABORT_BYTES = 50 * 1024**3  # abort if dry-run exceeds 50 GiB
+BQ_MAX_BYTES_BILLED_DEFAULT = 25 * 1024**3  # 25 GiB per small query
+BQ_SESSION_BUDGET_BYTES = 800 * 1024**3  # 800 GiB soft session budget
+BQ_DRY_RUN_ABORT_BYTES = 50 * 1024**3  # abort small queries if dry-run exceeds 50 GiB
+BQ_TT_ABORT_BYTES = 650 * 1024**3  # allow one planned Token Transfers extract
 
 SOLARCHIVE_TXS_REL = "txs"
 SOLARCHIVE_ACCOUNTS_REL = "accounts"
