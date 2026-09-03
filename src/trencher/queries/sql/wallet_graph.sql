@@ -13,7 +13,7 @@ WITH participants AS (
         WHERE call_block_time < TIMESTAMP '{{end_ts}}'
         /* optional:pumpdotfun_solana.pump_call_create_v2 */
         UNION ALL
-        SELECT COALESCE(creator, account_user) AS wallet, call_block_time AS first_seen
+        SELECT COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create_v2.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_call_create_v2.creator */, account_user) AS wallet, call_block_time AS first_seen
         FROM pumpdotfun_solana.pump_call_create_v2
         WHERE call_block_time < TIMESTAMP '{{end_ts}}'
         UNION ALL
@@ -26,10 +26,10 @@ WITH participants AS (
         FROM pumpdotfun_solana.pump_evt_tradeevent
         WHERE evt_block_time < TIMESTAMP '{{end_ts}}'
         UNION ALL
-        SELECT creator AS wallet, evt_block_time AS first_seen
+        SELECT /* optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator */ AS wallet, evt_block_time AS first_seen
         FROM pumpdotfun_solana.pump_evt_tradeevent
         WHERE evt_block_time < TIMESTAMP '{{end_ts}}'
-          AND creator IS NOT NULL
+          AND /* optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator */ IS NOT NULL
     ) w
     WHERE wallet IS NOT NULL
     GROUP BY 1

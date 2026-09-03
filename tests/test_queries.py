@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from trencher.dune.config import load_datasets_config, load_sql_template, render_sql
+from trencher.dune.config import (
+    load_datasets_config,
+    load_sql_template,
+    render_sql,
+    strip_optional_columns,
+)
+from trencher.dune.preflight import unguarded_optional_column_refs
 
 
 def test_dex_trades_dataset_registered() -> None:
@@ -75,3 +81,43 @@ def test_all_sql_templates_parameterized() -> None:
         assert "{{end_ts}}" in sql
         rendered = render_sql(sql, start_ts="2025-01-01 00:00:00", end_ts="2025-01-02 00:00:00")
         assert "{{start_ts}}" not in rendered
+        assert "optional-col:" not in rendered
+
+
+def test_optional_columns_are_guarded() -> None:
+    for cfg in load_datasets_config().values():
+        template = load_sql_template(cfg)
+        unguarded = unguarded_optional_column_refs(template, cfg.source_tables)
+        assert unguarded == [], f"{cfg.name} has unguarded optional columns: {unguarded}"
+
+
+def test_optional_column_block_nulls_missing_columns() -> None:
+    template = (
+        "SELECT /* optional-col:demo.table.ix_name:varchar */ ix_name "
+        "/* /optional-col:demo.table.ix_name */ FROM demo.table"
+    )
+    kept = strip_optional_columns(template, {"demo.table": {"ix_name"}})
+    assert "ix_name" in kept
+    assert "CAST(NULL" not in kept
+    dropped = strip_optional_columns(template, {"demo.table": set()})
+    assert dropped == "SELECT CAST(NULL AS varchar) FROM demo.table"
+
+
+def test_dex_trades_does_not_use_vaults_as_pool() -> None:
+    sql = load_sql_template(load_datasets_config()["dex_trades"])
+    assert "COALESCE(t.token_bought_vault, t.token_sold_vault) AS pool" not in sql
+    assert "COALESCE(token_bought_vault, token_sold_vault) AS pool" not in sql
+    assert "t.project_main_id" in sql
+    assert "AS pool" in sql
+    assert "t.token_bought_vault" in sql
+    assert "t.token_sold_vault" in sql
+
+
+def test_dex_trades_prunes_block_month() -> None:
+    sql = load_sql_template(load_datasets_config()["dex_trades"])
+    rendered = render_sql(sql, start_ts="2025-01-15 00:00:00", end_ts="2025-01-16 00:00:00")
+    assert "t.block_month >=" in rendered
+    assert "date_trunc('month', TIMESTAMP '2025-01-15 00:00:00')" in rendered
+    assert "INTERVAL '1' SECOND" in rendered
+    assert "t.block_time >=" in rendered
+    assert "t.block_time <" in rendered

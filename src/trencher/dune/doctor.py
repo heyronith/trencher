@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from trencher import __version__
-from trencher.dune.config import load_datasets_config, load_sql_template
+from trencher.dune.config import load_datasets_config, load_sql_template, resolve_data_root
 from trencher.schemas.registry import DATASET_SCHEMAS, get_schema
 
 
@@ -78,7 +78,7 @@ def run_doctor(*, config_path: Path | None = None, data_root: Path | None = None
         for table in cfg.source_tables:
             report.add_ok(f"  source table documented: {table}")
 
-    root = data_root or Path(os.environ.get("TRENCHER_DATA_ROOT", "data/raw/dune"))
+    root = resolve_data_root(data_root)
     report.add_ok(f"Data root: {root} (writable check skipped in doctor)")
     report.add_ok("live preflight: uv run trencher dune validate-queries")
 

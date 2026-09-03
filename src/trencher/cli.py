@@ -12,6 +12,7 @@ import click
 from trencher import __version__
 from trencher.dune.backfill import backfill_range
 from trencher.dune.client import LiveDuneRunner, MockDuneRunner
+from trencher.dune.config import resolve_data_root
 from trencher.dune.doctor import run_doctor
 from trencher.dune.preflight import format_preflight, run_preflight
 
@@ -63,11 +64,12 @@ def dune_validate_queries(
     json_out: bool,
 ) -> None:
     """Low-cost live check of Dune tables/columns/queries before backfill."""
+    root = resolve_data_root(data_root)
     runner = LiveDuneRunner()
     report = run_preflight(
         runner,
         config_path=config_path,
-        data_root=data_root,
+        data_root=root,
         include_samples=not skip_samples,
     )
     if json_out:
@@ -116,13 +118,16 @@ def dune_backfill(
     _configure_logging(verbose)
     start_date = date(start.year, start.month, start.day)
     end_date = date(end.year, end.month, end.day)
+    root = resolve_data_root(data_root)
 
     runner = MockDuneRunner() if dry_run else LiveDuneRunner()
+    enabled_tables = None
+    enabled_columns = None
     if not dry_run and not skip_preflight:
         preflight = run_preflight(
             runner,
             config_path=config_path,
-            data_root=data_root,
+            data_root=root,
             include_samples=False,
         )
         for warn in preflight.warnings:
@@ -131,6 +136,8 @@ def dune_backfill(
             for err in preflight.errors:
                 click.echo(f"ERR {err}", err=True)
             raise SystemExit("Preflight failed; refusing to start backfill")
+        enabled_tables = preflight.existing_tables
+        enabled_columns = preflight.columns
 
     results = backfill_range(
         runner,
@@ -138,10 +145,12 @@ def dune_backfill(
         start_date,
         end_date,
         chunk_days=chunk_days,
-        data_root=data_root,
+        data_root=root,
         force=force,
         dry_run=dry_run,
         config_path=config_path,
+        enabled_tables=enabled_tables,
+        enabled_columns=enabled_columns,
     )
     skipped = sum(1 for r in results if r.skipped)
     written = sum(1 for r in results if not r.skipped and not r.dry_run)

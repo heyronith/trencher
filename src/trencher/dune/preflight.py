@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from trencher.dune.client import DuneRunner
-from trencher.dune.config import DatasetConfig, load_datasets_config, save_enabled_tables
+from trencher.dune.client import DuneExecutionError, DuneRunner
+from trencher.dune.config import (
+    OPTIONAL_COL_BLOCK,
+    DatasetConfig,
+    load_datasets_config,
+    load_sql_template,
+    render_sql,
+    resolve_data_root,
+    save_enabled_tables,
+    strip_optional_blocks,
+)
 from trencher.dune.doctor import DoctorReport
 
 REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -102,7 +113,11 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "block_time",
         "block_slot",
         "block_date",
+        "block_month",
         "tx_id",
+        "tx_index",
+        "outer_instruction_index",
+        "inner_instruction_index",
         "project",
         "trader_id",
         "token_bought_mint_address",
@@ -159,10 +174,15 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "slot",
         "date",
         "hash",
+        "height",
         "total_transactions",
         "successful_transactions",
         "failed_transactions",
+        "total_non_vote_transactions",
+        "successful_non_vote_transactions",
+        "failed_non_vote_transactions",
         "parent_slot",
+        "previous_block_hash",
     ),
 }
 
@@ -171,6 +191,7 @@ OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {
     "pumpdotfun_solana.pump_call_create_v2": ("creator", "account_tokenProgram"),
     "pumpdotfun_solana.pump_evt_createevent": ("creator", "token_program", "quote_mint"),
     "pumpdotfun_solana.pump_evt_completeevent": ("quote_mint",),
+    "pumpdotfun_solana.pump_evt_completepumpammmigrationevent": ("quote_mint",),
     "pumpdotfun_solana.pump_evt_tradeevent": (
         "quote_mint",
         "quote_amount",
@@ -197,13 +218,27 @@ OPTIONAL_COLUMNS: dict[str, tuple[str, ...]] = {
     "solana.transactions": ("return_data", "return_data_program_id", "cost_units"),
 }
 
+VALIDATE_START_TS = "2024-01-14 00:00:00"
+VALIDATE_END_TS = "2024-01-14 00:00:01"
+_EXPLAIN_UNSUPPORTED = re.compile(
+    r"mismatched input:?\s*'?EXPLAIN|EXPLAIN[^\n]{0,80}not supported|"
+    r"Unknown statement|unexpected.*EXPLAIN",
+    re.IGNORECASE,
+)
+_AS_ALIAS = re.compile(r"\bAS\s+[A-Za-z_][A-Za-z0-9_]*", re.IGNORECASE)
+_SQL_STRING = re.compile(r"'(?:''|[^'])*'")
+_SQL_LINE_COMMENT = re.compile(r"--[^\n]*")
+_SQL_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
 
 @dataclass
 class PreflightReport:
     ok: bool
+    data_root: str | None = None
     existing_tables: set[str] = field(default_factory=set)
     columns: dict[str, set[str]] = field(default_factory=dict)
     samples: list[dict[str, str]] = field(default_factory=list)
+    sql_validations: list[dict[str, str]] = field(default_factory=list)
     checks: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
@@ -314,14 +349,121 @@ LIMIT 1
 """.strip()
 
 
+def _strip_sql_noise(sql: str) -> str:
+    sql = _SQL_STRING.sub("''", sql)
+    sql = OPTIONAL_COL_BLOCK.sub(" ", sql)
+    sql = _SQL_BLOCK_COMMENT.sub(" ", sql)
+    sql = _SQL_LINE_COMMENT.sub(" ", sql)
+    return _AS_ALIAS.sub(" ", sql)
+
+
+def optional_col_guards(template: str) -> set[str]:
+    return {match.group(1) for match in OPTIONAL_COL_BLOCK.finditer(template)}
+
+
+def unguarded_optional_column_refs(template: str, tables: Iterable[str] | None = None) -> list[str]:
+    """Optional catalog columns used in SQL without any ``optional-col`` guard.
+
+    Identifier leftovers after stripping guards are ignored when the same
+    ``schema.table.column`` is already guarded — those leftovers usually belong
+    to a different table that shares the column name (e.g. required ``creator``).
+    """
+    guarded = optional_col_guards(template)
+    body = _strip_sql_noise(template)
+    found: list[str] = []
+    table_iter: Iterable[str] = OPTIONAL_COLUMNS if tables is None else tables
+    for table in table_iter:
+        for col in OPTIONAL_COLUMNS.get(table, ()):
+            key = f"{table}.{col}"
+            if key in guarded:
+                continue
+            if re.search(rf"\b{re.escape(col)}\b", body):
+                found.append(key)
+    return found
+
+
+def explain_validate_sql(sql: str) -> str:
+    return "EXPLAIN (TYPE VALIDATE)\n" + sql.rstrip().rstrip(";")
+
+
+def fallback_validate_sql(sql: str) -> str:
+    inner = sql.rstrip().rstrip(";")
+    return f"SELECT * FROM (\n{inner}\n) AS _trencher_validate WHERE 1 = 0"
+
+
+def _explain_is_valid(df) -> bool:
+    if df is None or df.empty:
+        return False
+    row = df.iloc[0].to_dict()
+    for key, value in row.items():
+        if str(key).lower() != "valid":
+            continue
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"true", "1", "t"}
+    return True
+
+
+def _record_validation(report: PreflightReport, dataset: str, method: str, detail: str) -> None:
+    report.sql_validations.append({"dataset": dataset, "method": method, "detail": detail})
+
+
+def _validate_rendered_sql(
+    runner: DuneRunner,
+    report: PreflightReport,
+    dataset: str,
+    sql: str,
+    *,
+    use_explain: bool,
+) -> bool:
+    """Return whether EXPLAIN remains the preferred method."""
+    if use_explain:
+        wrapped = explain_validate_sql(sql)
+        try:
+            result = runner.run_sql(wrapped)
+        except DuneExecutionError as exc:
+            message = str(exc)
+            if _EXPLAIN_UNSUPPORTED.search(message):
+                report.add_warn(
+                    f"{dataset}: EXPLAIN (TYPE VALIDATE) unsupported; "
+                    "falling back to zero-row compile"
+                )
+                _validate_rendered_sql(runner, report, dataset, sql, use_explain=False)
+                return False
+            report.add_error(f"{dataset} EXPLAIN (TYPE VALIDATE) failed: {message}")
+            _record_validation(report, dataset, "explain_validate", f"error: {message}")
+            return True
+        if not _explain_is_valid(result.dataframe):
+            report.add_error(f"{dataset} EXPLAIN (TYPE VALIDATE) returned not valid")
+            _record_validation(report, dataset, "explain_validate", "valid=false")
+            return True
+        report.add_ok(f"{dataset}: EXPLAIN (TYPE VALIDATE) ok")
+        _record_validation(report, dataset, "explain_validate", "valid=true")
+        return True
+
+    wrapped = fallback_validate_sql(sql)
+    try:
+        runner.run_sql(wrapped)
+    except DuneExecutionError as exc:
+        report.add_error(f"{dataset} zero-row SQL validation failed: {exc}")
+        _record_validation(report, dataset, "zero_row", f"error: {exc}")
+        return False
+    report.add_ok(f"{dataset}: zero-row SQL validation ok")
+    _record_validation(report, dataset, "zero_row", "ok")
+    return False
+
+
 def run_preflight(
     runner: DuneRunner,
     *,
     config_path: Path | None = None,
     data_root: Path | None = None,
     include_samples: bool = True,
+    include_sql_validation: bool = True,
 ) -> PreflightReport:
     report = PreflightReport(ok=True)
+    root = resolve_data_root(data_root)
+    report.data_root = str(root)
     datasets = load_datasets_config(config_path)
     tables = _all_dataset_tables(datasets)
     optional = {t for cfg in datasets.values() for t in cfg.optional_source_tables}
@@ -357,6 +499,47 @@ def run_preflight(
             if col.lower() not in have:
                 report.add_warn(f"{table} missing optional column {col}")
 
+    save_enabled_tables(root, report.existing_tables, report.columns)
+    report.add_ok(f"wrote enabled-table cache under {root}")
+
+    use_explain = True
+    for cfg in datasets.values():
+        template = load_sql_template(cfg)
+        remaining = strip_optional_blocks(template, report.existing_tables)
+        present_tables = [t for t in cfg.source_tables if t in report.existing_tables]
+        for ref in unguarded_optional_column_refs(remaining, present_tables):
+            table, _, column = ref.rpartition(".")
+            have = {c.lower() for c in report.columns.get(table, set())}
+            if column.lower() not in have:
+                report.add_error(
+                    f"{cfg.name} SQL references unavailable column {ref} "
+                    "without an optional-col guard"
+                )
+
+        if not include_sql_validation:
+            continue
+        missing_required = [
+            table for table in cfg.required_source_tables if table not in report.existing_tables
+        ]
+        if missing_required:
+            report.add_warn(
+                f"{cfg.name}: skip SQL validation; missing required tables "
+                + ", ".join(missing_required)
+            )
+            continue
+        sql = render_sql(
+            template,
+            start_ts=VALIDATE_START_TS,
+            end_ts=VALIDATE_END_TS,
+            enabled_tables=report.existing_tables,
+            enabled_columns=report.columns,
+        )
+        keep_explain = _validate_rendered_sql(
+            runner, report, cfg.name, sql, use_explain=use_explain
+        )
+        if use_explain and not keep_explain:
+            use_explain = False
+
     if include_samples:
         sample_parts: list[str] = []
         seen: set[tuple[str, str]] = set()
@@ -364,6 +547,8 @@ def run_preflight(
             if not cfg.required_source_tables:
                 continue
             table = cfg.required_source_tables[0]
+            if table not in report.existing_tables:
+                continue
             recent_bounds = _window_bounds(cfg, recent=True)
             if recent_bounds:
                 key = (table, "recent")
@@ -410,10 +595,6 @@ def run_preflight(
                     f"rows={payload.get('row_count')}"
                 )
 
-    if data_root is not None:
-        save_enabled_tables(data_root, report.existing_tables)
-        report.add_ok(f"wrote enabled-table cache under {data_root}")
-
     return report
 
 
@@ -421,8 +602,10 @@ def format_preflight(report: PreflightReport) -> str:
     return json.dumps(
         {
             "ok": report.ok,
+            "data_root": report.data_root,
             "existing_tables": sorted(report.existing_tables),
             "samples": report.samples,
+            "sql_validations": report.sql_validations,
             "checks": report.checks,
             "warnings": report.warnings,
             "errors": report.errors,

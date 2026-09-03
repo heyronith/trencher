@@ -26,7 +26,10 @@ export DUNE_API_KEY=...
 uv run trencher dune validate-queries
 ```
 
-This checks current Dune tables/columns via `information_schema` and takes small partition samples. It does not run the historical backfill.
+This checks current Dune tables/columns via `information_schema`, persists the
+enabled-table cache under the data root, and semantically compiles every rendered
+dataset query with `EXPLAIN (TYPE VALIDATE)` (falling back to a zero-row compile
+if Dune rejects EXPLAIN). It does not run the historical backfill.
 
 ## Backfill one day
 

@@ -8,7 +8,7 @@
 #   - pumpdotfun_solana.* evt tables   -> evt_block_time
 #   - solana.*                         -> block_time / block_date / time
 #   - tokens_solana.transfers          -> block_time
-#   - dex_solana.trades                -> block_time (block_month partition key)
+#   - dex_solana.trades                -> block_time + block_month partition pruning
 
 datasets:
   token_lifecycle:

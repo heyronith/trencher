@@ -115,11 +115,11 @@ pump_transactions AS (
         CAST(json_format(CAST(t.signers AS json)) AS varchar) AS signers_json,
         CAST(json_format(CAST(t.address_table_lookups AS json)) AS varchar) AS address_table_lookups_json,
         CAST(json_format(CAST(t.loaded_addresses AS json)) AS varchar) AS loaded_addresses_json,
-        t.return_data_program_id,
-        CAST(json_format(CAST(t.return_data AS json)) AS varchar) AS return_data_json,
+        /* optional-col:solana.transactions.return_data_program_id:varchar */ t.return_data_program_id /* /optional-col:solana.transactions.return_data_program_id */ AS return_data_program_id,
+        /* optional-col:solana.transactions.return_data:varchar */ CAST(json_format(CAST(t.return_data AS json)) AS varchar) /* /optional-col:solana.transactions.return_data */ AS return_data_json,
         t.fee AS fee_lamports,
         t.compute_units_consumed,
-        t.cost_units,
+        /* optional-col:solana.transactions.cost_units:bigint */ t.cost_units /* /optional-col:solana.transactions.cost_units */ AS cost_units,
         CAST(json_format(CAST(t.log_messages AS json)) AS varchar) AS log_messages_json,
         CAST(json_format(CAST(t.pre_balances AS json)) AS varchar) AS pre_balances_json,
         CAST(json_format(CAST(t.post_balances AS json)) AS varchar) AS post_balances_json,
@@ -138,8 +138,8 @@ pump_transactions AS (
             ',"signers":', COALESCE(json_format(CAST(t.signers AS json)), 'null'),
             ',"address_table_lookups":', COALESCE(json_format(CAST(t.address_table_lookups AS json)), 'null'),
             ',"loaded_addresses":', COALESCE(json_format(CAST(t.loaded_addresses AS json)), 'null'),
-            ',"return_data_program_id":"', COALESCE(t.return_data_program_id, ''),
-            '","return_data":', COALESCE(json_format(CAST(t.return_data AS json)), 'null'),
+            ',"return_data_program_id":"', COALESCE(/* optional-col:solana.transactions.return_data_program_id:varchar */ t.return_data_program_id /* /optional-col:solana.transactions.return_data_program_id */, ''),
+            '","return_data":', COALESCE(/* optional-col:solana.transactions.return_data:varchar */ json_format(CAST(t.return_data AS json)) /* /optional-col:solana.transactions.return_data */, 'null'),
             '}'
         ) AS raw_payload_json
     FROM solana.transactions t

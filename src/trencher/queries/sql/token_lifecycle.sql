@@ -23,8 +23,8 @@ SELECT
     account_bondingCurve AS bonding_curve,
     account_associatedBondingCurve AS associated_bonding_curve,
     CAST(NULL AS varchar) AS quote_mint,
-    COALESCE(account_tokenProgram, 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') AS token_program,
-    COALESCE(account_tokenProgram, 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create.account_tokenProgram:varchar */ account_tokenProgram /* /optional-col:pumpdotfun_solana.pump_call_create.account_tokenProgram */, 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') AS token_program,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create.account_tokenProgram:varchar */ account_tokenProgram /* /optional-col:pumpdotfun_solana.pump_call_create.account_tokenProgram */, 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
         = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' AS is_token_2022,
     false AS migrated,
     CAST(NULL AS varchar) AS migration_tx_id,
@@ -104,16 +104,16 @@ SELECT
     'CreateEvent' AS instruction_name,
     CAST(NULL AS varchar) AS instruction_discriminator,
     mint,
-    COALESCE(creator, "user") AS creator_wallet,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_createevent.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_evt_createevent.creator */, "user") AS creator_wallet,
     "user" AS user_wallet,
     name,
     symbol,
     uri,
     bonding_curve,
     CAST(NULL AS varchar) AS associated_bonding_curve,
-    COALESCE(quote_mint, 'So11111111111111111111111111111111111111112') AS quote_mint,
-    token_program,
-    token_program = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' AS is_token_2022,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_createevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_createevent.quote_mint */, 'So11111111111111111111111111111111111111112') AS quote_mint,
+    /* optional-col:pumpdotfun_solana.pump_evt_createevent.token_program:varchar */ token_program /* /optional-col:pumpdotfun_solana.pump_evt_createevent.token_program */ AS token_program,
+    /* optional-col:pumpdotfun_solana.pump_evt_createevent.token_program:varchar */ token_program /* /optional-col:pumpdotfun_solana.pump_evt_createevent.token_program */ = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' AS is_token_2022,
     false AS migrated,
     CAST(NULL AS varchar) AS migration_tx_id,
     CAST(NULL AS varchar) AS pool,
@@ -124,12 +124,12 @@ SELECT
     'pumpdotfun_solana.pump_evt_createevent' AS source_table,
     'evt_block_time' AS source_partition_col,
     'pump' AS protocol,
-    CASE WHEN token_program = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' THEN '2' ELSE '1' END
+    CASE WHEN /* optional-col:pumpdotfun_solana.pump_evt_createevent.token_program:varchar */ token_program /* /optional-col:pumpdotfun_solana.pump_evt_createevent.token_program */ = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' THEN '2' ELSE '1' END
         AS protocol_version,
     '1.1.0' AS schema_version,
     CONCAT(
         '{"event":"CreateEvent","mint":"', CAST(mint AS varchar),
-        '","creator":"', CAST(COALESCE(creator, "user") AS varchar), '"}'
+        '","creator":"', CAST(COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_createevent.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_evt_createevent.creator */, "user") AS varchar), '"}'
     ) AS raw_payload_json
 FROM pumpdotfun_solana.pump_evt_createevent
 WHERE evt_block_time >= TIMESTAMP '{{start_ts}}'
@@ -157,7 +157,7 @@ SELECT
     CAST(NULL AS varchar) AS uri,
     bonding_curve,
     CAST(NULL AS varchar) AS associated_bonding_curve,
-    COALESCE(quote_mint, 'So11111111111111111111111111111111111111112') AS quote_mint,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_completeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_completeevent.quote_mint */, 'So11111111111111111111111111111111111111112') AS quote_mint,
     CAST(NULL AS varchar) AS token_program,
     CAST(NULL AS boolean) AS is_token_2022,
     true AS migrated,
@@ -193,7 +193,7 @@ SELECT
     'create_v2' AS instruction_name,
     'd6904cec5f8b31b4' AS instruction_discriminator,
     account_mint AS mint,
-    COALESCE(creator, account_user) AS creator_wallet,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create_v2.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_call_create_v2.creator */, account_user) AS creator_wallet,
     account_user AS user_wallet,
     name,
     symbol,
@@ -201,7 +201,7 @@ SELECT
     account_bondingCurve AS bonding_curve,
     account_associatedBondingCurve AS associated_bonding_curve,
     CAST(NULL AS varchar) AS quote_mint,
-    COALESCE(account_tokenProgram, 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb') AS token_program,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create_v2.account_tokenProgram:varchar */ account_tokenProgram /* /optional-col:pumpdotfun_solana.pump_call_create_v2.account_tokenProgram */, 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb') AS token_program,
     true AS is_token_2022,
     false AS migrated,
     CAST(NULL AS varchar) AS migration_tx_id,
@@ -217,7 +217,7 @@ SELECT
     '1.1.0' AS schema_version,
     CONCAT(
         '{"instruction":"create_v2","mint":"', CAST(account_mint AS varchar),
-        '","creator":"', CAST(COALESCE(creator, account_user) AS varchar), '"}'
+        '","creator":"', CAST(COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create_v2.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_call_create_v2.creator */, account_user) AS varchar), '"}'
     ) AS raw_payload_json
 FROM pumpdotfun_solana.pump_call_create_v2
 WHERE call_block_time >= TIMESTAMP '{{start_ts}}'
@@ -247,7 +247,7 @@ SELECT
     CAST(NULL AS varchar) AS uri,
     bonding_curve,
     CAST(NULL AS varchar) AS associated_bonding_curve,
-    COALESCE(quote_mint, 'So11111111111111111111111111111111111111112') AS quote_mint,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_completepumpammmigrationevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_completepumpammmigrationevent.quote_mint */, 'So11111111111111111111111111111111111111112') AS quote_mint,
     CAST(NULL AS varchar) AS token_program,
     CAST(NULL AS boolean) AS is_token_2022,
     true AS migrated,

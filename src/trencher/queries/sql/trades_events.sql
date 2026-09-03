@@ -14,53 +14,53 @@ WITH curve_trades AS (
         evt_index AS event_index,
         'pump_bonding_curve' AS venue,
         'trade_event' AS event_type,
-        COALESCE(ix_name, CASE WHEN is_buy THEN 'buy' ELSE 'sell' END) AS instruction_name,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name:varchar */ ix_name /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name */, CASE WHEN is_buy THEN 'buy' ELSE 'sell' END) AS instruction_name,
         CAST(NULL AS varchar) AS instruction_discriminator,
         CASE WHEN is_buy THEN 'buy' ELSE 'sell' END AS side,
         mint,
         mint AS base_mint,
-        COALESCE(quote_mint, 'So11111111111111111111111111111111111111112') AS quote_mint,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112') AS quote_mint,
         CAST(NULL AS varchar) AS pool,
         "user" AS trader_wallet,
-        creator AS creator_wallet,
+        /* optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator */ AS creator_wallet,
         CAST(NULL AS varchar) AS token_program,
         CAST(NULL AS boolean) AS is_token_2022,
         token_amount AS base_amount,
-        COALESCE(quote_amount, sol_amount) AS quote_amount,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_amount:uint256 */ quote_amount /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_amount */, sol_amount) AS quote_amount,
         CASE
-            WHEN COALESCE(quote_mint, 'So11111111111111111111111111111111111111112')
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112')
                 IN ('So11111111111111111111111111111111111111112', '11111111111111111111111111111111')
-            THEN COALESCE(quote_amount, sol_amount)
+            THEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_amount:uint256 */ quote_amount /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_amount */, sol_amount)
         END AS sol_amount,
         token_amount,
         is_buy,
         virtual_token_reserves AS virtual_base_reserves,
-        COALESCE(virtual_quote_reserves, virtual_sol_reserves) AS virtual_quote_reserves,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.virtual_quote_reserves:uint256 */ virtual_quote_reserves /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.virtual_quote_reserves */, virtual_sol_reserves) AS virtual_quote_reserves,
         real_token_reserves AS real_base_reserves,
-        COALESCE(real_quote_reserves, real_sol_reserves) AS real_quote_reserves,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.real_quote_reserves:uint256 */ real_quote_reserves /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.real_quote_reserves */, real_sol_reserves) AS real_quote_reserves,
         CASE
-            WHEN COALESCE(quote_mint, 'So11111111111111111111111111111111111111112')
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112')
                 IN ('So11111111111111111111111111111111111111112', '11111111111111111111111111111111')
-            THEN COALESCE(virtual_quote_reserves, virtual_sol_reserves)
+            THEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.virtual_quote_reserves:uint256 */ virtual_quote_reserves /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.virtual_quote_reserves */, virtual_sol_reserves)
         END AS virtual_sol_reserves,
         CASE
-            WHEN COALESCE(quote_mint, 'So11111111111111111111111111111111111111112')
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112')
                 IN ('So11111111111111111111111111111111111111112', '11111111111111111111111111111111')
             THEN virtual_token_reserves
         END AS virtual_token_reserves,
         CASE
-            WHEN COALESCE(quote_mint, 'So11111111111111111111111111111111111111112')
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112')
                 IN ('So11111111111111111111111111111111111111112', '11111111111111111111111111111111')
-            THEN COALESCE(real_quote_reserves, real_sol_reserves)
+            THEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.real_quote_reserves:uint256 */ real_quote_reserves /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.real_quote_reserves */, real_sol_reserves)
         END AS real_sol_reserves,
         CASE
-            WHEN COALESCE(quote_mint, 'So11111111111111111111111111111111111111112')
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint:varchar */ quote_mint /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.quote_mint */, 'So11111111111111111111111111111111111111112')
                 IN ('So11111111111111111111111111111111111111112', '11111111111111111111111111111111')
             THEN real_token_reserves
         END AS real_token_reserves,
         CAST(NULL AS uint256) AS lp_fee,
         fee AS protocol_fee,
-        creator_fee AS coin_creator_fee,
+        /* optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator_fee:uint256 */ creator_fee /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.creator_fee */ AS coin_creator_fee,
         fee,
         fee_basis_points,
         timestamp AS event_timestamp,
@@ -84,14 +84,14 @@ WITH curve_trades AS (
         'evt_block_time' AS source_partition_col,
         'pump' AS protocol,
         CASE
-            WHEN COALESCE(ix_name, '') LIKE '%v2%' THEN '2'
-            WHEN COALESCE(ix_name, '') = 'buy_exact_sol_in' THEN '2'
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name:varchar */ ix_name /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name */, '') LIKE '%v2%' THEN '2'
+            WHEN COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name:varchar */ ix_name /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name */, '') = 'buy_exact_sol_in' THEN '2'
             ELSE '1'
         END AS protocol_version,
         '1.1.0' AS schema_version,
         CONCAT(
             '{"event":"TradeEvent","mint":"', CAST(mint AS varchar),
-            '","ix_name":"', CAST(COALESCE(ix_name, '') AS varchar),
+            '","ix_name":"', CAST(COALESCE(/* optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name:varchar */ ix_name /* /optional-col:pumpdotfun_solana.pump_evt_tradeevent.ix_name */, '') AS varchar),
             '","is_buy":', CASE WHEN is_buy THEN 'true' ELSE 'false' END, '}'
         ) AS raw_payload_json
     FROM pumpdotfun_solana.pump_evt_tradeevent
@@ -110,7 +110,7 @@ amm_buys AS (
         b.evt_index AS event_index,
         'pumpswap' AS venue,
         'buy_event' AS event_type,
-        COALESCE(b.ix_name, 'buy') AS instruction_name,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.ix_name:varchar */ b.ix_name /* /optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.ix_name */, 'buy') AS instruction_name,
         CAST(NULL AS varchar) AS instruction_discriminator,
         'buy' AS side,
         p.base_mint AS mint,
@@ -118,7 +118,7 @@ amm_buys AS (
         p.quote_mint,
         b.pool,
         b."user" AS trader_wallet,
-        COALESCE(b.coin_creator, p.creator) AS creator_wallet,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.coin_creator:varchar */ b.coin_creator /* /optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.coin_creator */, p.creator) AS creator_wallet,
         CAST(NULL AS varchar) AS token_program,
         CAST(NULL AS boolean) AS is_token_2022,
         b.base_amount_out AS base_amount,
@@ -151,7 +151,7 @@ amm_buys AS (
         END AS real_token_reserves,
         b.lp_fee,
         b.protocol_fee,
-        b.coin_creator_fee,
+        /* optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.coin_creator_fee:uint256 */ b.coin_creator_fee /* /optional-col:pumpdotfun_solana.pump_amm_evt_buyevent.coin_creator_fee */ AS coin_creator_fee,
         b.protocol_fee AS fee,
         CAST(NULL AS bigint) AS fee_basis_points,
         b.timestamp AS event_timestamp,
@@ -199,7 +199,7 @@ amm_sells AS (
         s.evt_index AS event_index,
         'pumpswap' AS venue,
         'sell_event' AS event_type,
-        COALESCE(s.ix_name, 'sell') AS instruction_name,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.ix_name:varchar */ s.ix_name /* /optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.ix_name */, 'sell') AS instruction_name,
         CAST(NULL AS varchar) AS instruction_discriminator,
         'sell' AS side,
         p.base_mint AS mint,
@@ -207,7 +207,7 @@ amm_sells AS (
         p.quote_mint,
         s.pool,
         s."user" AS trader_wallet,
-        COALESCE(s.coin_creator, p.creator) AS creator_wallet,
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.coin_creator:varchar */ s.coin_creator /* /optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.coin_creator */, p.creator) AS creator_wallet,
         CAST(NULL AS varchar) AS token_program,
         CAST(NULL AS boolean) AS is_token_2022,
         s.base_amount_in AS base_amount,
@@ -240,7 +240,7 @@ amm_sells AS (
         END AS real_token_reserves,
         s.lp_fee,
         s.protocol_fee,
-        s.coin_creator_fee,
+        /* optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.coin_creator_fee:uint256 */ s.coin_creator_fee /* /optional-col:pumpdotfun_solana.pump_amm_evt_sellevent.coin_creator_fee */ AS coin_creator_fee,
         s.protocol_fee AS fee,
         CAST(NULL AS bigint) AS fee_basis_points,
         s.timestamp AS event_timestamp,

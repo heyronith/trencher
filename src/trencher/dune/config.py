@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from importlib import resources
@@ -17,8 +18,15 @@ OPTIONAL_BLOCK = re.compile(
     r"/\* optional:(.+?) \*/\n?(.*?)\n?/\* /optional:\1 \*/",
     re.DOTALL,
 )
+OPTIONAL_COL_BLOCK = re.compile(
+    r"/\* optional-col:((?:[A-Za-z0-9_]+\.){2}[A-Za-z0-9_]+):([A-Za-z0-9_]+) \*/"
+    r"\s*(.*?)\s*"
+    r"/\* /optional-col:\1 \*/",
+    re.DOTALL,
+)
 
 PREFLIGHT_TABLES_FILE = ".preflight-tables.json"
+DEFAULT_DATA_ROOT = Path("data/raw/dune")
 
 
 @dataclass(frozen=True)
@@ -75,6 +83,13 @@ def load_sql_template(dataset: DatasetConfig) -> str:
     return sql_path.read_text()
 
 
+def resolve_data_root(data_root: Path | None = None) -> Path:
+    """Single effective data root for preflight cache and backfill output."""
+    if data_root is not None:
+        return Path(data_root)
+    return Path(os.environ.get("TRENCHER_DATA_ROOT", DEFAULT_DATA_ROOT))
+
+
 def strip_optional_blocks(template: str, enabled_tables: set[str] | None) -> str:
     """Keep optional SQL only for tables Dune actually exposes."""
 
@@ -88,38 +103,96 @@ def strip_optional_blocks(template: str, enabled_tables: set[str] | None) -> str
     return OPTIONAL_BLOCK.sub(repl, template)
 
 
+def _table_and_column(full_name: str) -> tuple[str, str]:
+    schema, table, column = full_name.rsplit(".", 2)
+    return f"{schema}.{table}", column
+
+
+def strip_optional_columns(
+    template: str,
+    enabled_columns: dict[str, set[str]] | None,
+) -> str:
+    """Replace optional-col blocks with NULL when the catalog lacks the column.
+
+    ``enabled_columns is None`` keeps the original expression (full-SQL preview).
+    A missing table key or column name is treated as absent.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        full_name = match.group(1)
+        sqltype = match.group(2)
+        body = match.group(3)
+        if enabled_columns is None:
+            return body
+        table, column = _table_and_column(full_name)
+        have = {c.lower() for c in enabled_columns.get(table, set())}
+        if column.lower() in have:
+            return body
+        return f"CAST(NULL AS {sqltype})"
+
+    return OPTIONAL_COL_BLOCK.sub(repl, template)
+
+
 def render_sql(
     template: str,
     *,
     start_ts: str,
     end_ts: str,
     enabled_tables: set[str] | None = None,
+    enabled_columns: dict[str, set[str]] | None = None,
 ) -> str:
     sql = strip_optional_blocks(template, enabled_tables)
+    sql = strip_optional_columns(sql, enabled_columns)
     return sql.replace("{{start_ts}}", start_ts).replace("{{end_ts}}", end_ts)
 
 
 def preflight_tables_path(data_root: Path) -> Path:
-    return data_root / PREFLIGHT_TABLES_FILE
+    return resolve_data_root(data_root) / PREFLIGHT_TABLES_FILE
 
 
-def load_enabled_tables(data_root: Path | None) -> set[str] | None:
+def _read_preflight_payload(data_root: Path | None) -> dict[str, Any] | None:
     if data_root is None:
         return None
     path = preflight_tables_path(data_root)
     if not path.exists():
         return None
     payload = json.loads(path.read_text())
+    return payload if isinstance(payload, dict) else None
+
+
+def load_enabled_tables(data_root: Path | None) -> set[str] | None:
+    payload = _read_preflight_payload(data_root)
+    if not payload:
+        return None
     tables = payload.get("existing_tables")
     if not tables:
         return None
     return set(tables)
 
 
-def save_enabled_tables(data_root: Path, tables: set[str]) -> Path:
+def load_enabled_columns(data_root: Path | None) -> dict[str, set[str]] | None:
+    payload = _read_preflight_payload(data_root)
+    if not payload:
+        return None
+    columns = payload.get("columns")
+    if not columns or not isinstance(columns, dict):
+        return None
+    return {str(table): {str(col) for col in cols} for table, cols in columns.items()}
+
+
+def save_enabled_tables(
+    data_root: Path,
+    tables: set[str],
+    columns: dict[str, set[str]] | None = None,
+) -> Path:
     path = preflight_tables_path(data_root)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"existing_tables": sorted(tables)}, indent=2) + "\n")
+    payload: dict[str, Any] = {"existing_tables": sorted(tables)}
+    if columns is not None:
+        payload["columns"] = {
+            table: sorted(cols) for table, cols in sorted(columns.items())
+        }
+    path.write_text(json.dumps(payload, indent=2) + "\n")
     return path
 
 

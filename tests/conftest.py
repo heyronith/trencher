@@ -58,3 +58,8 @@ def sample_token_lifecycle_df() -> pd.DataFrame:
 @pytest.fixture
 def tmp_data_root(tmp_path: Path) -> Path:
     return tmp_path / "data" / "raw" / "dune"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TRENCHER_DATA_ROOT", str(tmp_path / "isolated-dune"))

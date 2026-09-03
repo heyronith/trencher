@@ -11,7 +11,7 @@ WITH pump_mints AS (
     UNION
     SELECT DISTINCT
         account_mint AS mint,
-        COALESCE(creator, account_user) AS creator_wallet
+        COALESCE(/* optional-col:pumpdotfun_solana.pump_call_create_v2.creator:varchar */ creator /* /optional-col:pumpdotfun_solana.pump_call_create_v2.creator */, account_user) AS creator_wallet
     FROM pumpdotfun_solana.pump_call_create_v2
     WHERE call_block_time < TIMESTAMP '{{end_ts}}'
     /* /optional:pumpdotfun_solana.pump_call_create_v2 */
@@ -30,7 +30,7 @@ SELECT
     pm.mint,
     e.base_mint,
     e.quote_mint,
-    COALESCE(e.coin_creator, e.creator, pm.creator_wallet) AS creator_wallet,
+    COALESCE(/* optional-col:pumpdotfun_solana.pump_amm_evt_createpoolevent.coin_creator:varchar */ e.coin_creator /* /optional-col:pumpdotfun_solana.pump_amm_evt_createpoolevent.coin_creator */, e.creator, pm.creator_wallet) AS creator_wallet,
     CAST(NULL AS varchar) AS token_program,
     CAST(NULL AS boolean) AS is_token_2022,
     e.lp_mint,

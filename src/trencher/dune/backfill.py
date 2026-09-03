@@ -17,9 +17,11 @@ from trencher.dune.client import DuneRunner
 from trencher.dune.config import (
     DatasetConfig,
     load_datasets_config,
+    load_enabled_columns,
     load_enabled_tables,
     load_sql_template,
     render_sql,
+    resolve_data_root,
 )
 from trencher.dune.manifest import (
     PartitionManifest,
@@ -34,8 +36,6 @@ from trencher.schemas.registry import get_schema
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DATA_ROOT = Path("data/raw/dune")
-
 
 @dataclass
 class BackfillResult:
@@ -46,12 +46,6 @@ class BackfillResult:
     row_count: int
     parquet_path: Path | None
     manifest_path: Path | None
-
-
-def _default_data_root() -> Path:
-    import os
-
-    return Path(os.environ.get("TRENCHER_DATA_ROOT", DEFAULT_DATA_ROOT))
 
 
 def iter_date_chunks(start: date, end: date, chunk_days: int) -> list[tuple[date, date]]:
@@ -276,9 +270,10 @@ def backfill_chunk(
     dry_run: bool = False,
     schema_version: str = SCHEMA_VERSION,
     enabled_tables: set[str] | None = None,
+    enabled_columns: dict[str, set[str]] | None = None,
 ) -> list[BackfillResult]:
     """Execute one Dune query for [chunk_start, chunk_end] and write daily partitions."""
-    root = data_root or _default_data_root()
+    root = resolve_data_root(data_root)
     days = iter_days(chunk_start, chunk_end)
     if not force:
         incomplete = [
@@ -303,9 +298,22 @@ def backfill_chunk(
         write_days = days
 
     start_ts, end_ts = _ts_bounds(query_start, query_end)
-    tables = enabled_tables if enabled_tables is not None else load_enabled_tables(root)
+    tables = (
+        enabled_tables if enabled_tables is not None else (load_enabled_tables(root) or set())
+    )
+    columns = (
+        enabled_columns
+        if enabled_columns is not None
+        else (load_enabled_columns(root) or {})
+    )
     template = load_sql_template(dataset_cfg)
-    sql = render_sql(template, start_ts=start_ts, end_ts=end_ts, enabled_tables=tables)
+    sql = render_sql(
+        template,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        enabled_tables=tables,
+        enabled_columns=columns,
+    )
     hashed = sql_hash(sql)
 
     if dry_run:
@@ -364,6 +372,7 @@ def backfill_partition(
     dry_run: bool = False,
     schema_version: str = SCHEMA_VERSION,
     enabled_tables: set[str] | None = None,
+    enabled_columns: dict[str, set[str]] | None = None,
 ) -> BackfillResult:
     results = backfill_chunk(
         runner,
@@ -375,6 +384,7 @@ def backfill_partition(
         dry_run=dry_run,
         schema_version=schema_version,
         enabled_tables=enabled_tables,
+        enabled_columns=enabled_columns,
     )
     return results[0]
 
@@ -391,13 +401,14 @@ def backfill_range(
     dry_run: bool = False,
     config_path: Path | None = None,
     enabled_tables: set[str] | None = None,
+    enabled_columns: dict[str, set[str]] | None = None,
 ) -> list[BackfillResult]:
     datasets = load_datasets_config(config_path)
     if dataset_name not in datasets:
         known = ", ".join(sorted(datasets))
         raise KeyError(f"Unknown dataset {dataset_name!r}. Known: {known}")
     dataset_cfg = datasets[dataset_name]
-    root = data_root or _default_data_root()
+    root = resolve_data_root(data_root)
     results: list[BackfillResult] = []
     for chunk_start, chunk_end in iter_date_chunks(start, end, chunk_days):
         results.extend(
@@ -410,6 +421,7 @@ def backfill_range(
                 force=force,
                 dry_run=dry_run,
                 enabled_tables=enabled_tables,
+                enabled_columns=enabled_columns,
             )
         )
     return results
