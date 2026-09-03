@@ -83,7 +83,8 @@ uv run trencher data recover-world-model-data -v
 
 Recovers microstructure, ownership/graph, global context, post-grad, and execution
 layers into `data/external/world_model/` with manifests under
-`manifests/world_model_data/`. BigQuery requires ADC/`GOOGLE_CLOUD_PROJECT`.
+`manifests/world_model_data/`. BigQuery requires ADC/`GOOGLE_CLOUD_PROJECT`
+(e.g. `trencher1`) and is invoked with `--bq-execute` after dry-runs.
 CI must pass `--skip-live` (no paid/external bulk queries).
 
 ## Architecture
