@@ -1,0 +1,86 @@
+# Canonical Dune backfill datasets.
+# Source tables verified against Dune docs (docs.dune.com/data-catalog) and
+# pumpdotfun_solana decoded tables referenced in public Dune queries (DefiLlama, etc.).
+#
+# Partition columns used in WHERE clauses:
+#   - pumpdotfun_solana.* call tables  -> call_block_time
+#   - pumpdotfun_solana.* evt tables   -> evt_block_time
+#   - solana.*                         -> block_time / block_date
+#   - tokens_solana.transfers          -> block_time
+
+datasets:
+  token_lifecycle:
+    schema_dataset: token_lifecycle
+    description: Pump token creation and migration/graduation lifecycle events
+    sql_file: token_lifecycle.sql
+    partition_column: call_block_time
+    source_tables:
+      - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_call_migrate
+      - pumpdotfun_solana.pump_evt_createevent
+      - pumpdotfun_solana.pump_evt_completeevent
+
+  trades_events:
+    schema_dataset: trades_events
+    description: Bonding-curve TradeEvents and PumpSwap buy/sell events
+    sql_file: trades_events.sql
+    partition_column: evt_block_time
+    source_tables:
+      - pumpdotfun_solana.pump_evt_tradeevent
+      - pumpdotfun_solana.pump_amm_evt_buyevent
+      - pumpdotfun_solana.pump_amm_evt_sellevent
+
+  transaction_microstructure:
+    schema_dataset: transaction_microstructure
+    description: Raw Pump and PumpSwap program instructions and parent transactions
+    sql_file: transaction_microstructure.sql
+    partition_column: block_time
+    source_tables:
+      - solana.instruction_calls
+      - solana.transactions
+
+  token_transfers:
+    schema_dataset: token_transfers
+    description: SPL token transfers for Pump-origin mints
+    sql_file: token_transfers.sql
+    partition_column: block_time
+    source_tables:
+      - tokens_solana.transfers
+      - pumpdotfun_solana.pump_call_create
+
+  wallet_funding:
+    schema_dataset: wallet_funding
+    description: Native SOL transfers involving Pump creators and traders
+    sql_file: wallet_funding.sql
+    partition_column: block_time
+    source_tables:
+      - tokens_solana.transfers
+      - pumpdotfun_solana.pump_evt_tradeevent
+      - pumpdotfun_solana.pump_call_create
+
+  wallet_graph:
+    schema_dataset: wallet_graph
+    description: Wallet-to-wallet transfer edges for Pump ecosystem participants
+    sql_file: wallet_graph.sql
+    partition_column: block_time
+    source_tables:
+      - tokens_solana.transfers
+      - pumpdotfun_solana.pump_call_create
+      - pumpdotfun_solana.pump_evt_tradeevent
+
+  market_context:
+    schema_dataset: market_context
+    description: Solana block-level network throughput and fee context
+    sql_file: market_context.sql
+    partition_column: time
+    source_tables:
+      - solana.blocks
+
+  execution_liquidity:
+    schema_dataset: execution_liquidity
+    description: PumpSwap pool creation and liquidity state events
+    sql_file: execution_liquidity.sql
+    partition_column: evt_block_time
+    source_tables:
+      - pumpdotfun_solana.pump_amm_evt_createpoolevent
+      - pumpdotfun_solana.pump_call_create
