@@ -199,7 +199,8 @@ def download_historical(
                             "join_keys": f.get("join_keys"),
                         }
                         for f in inventory["files"]
-                        if f.get("format") in {"parquet", "csv", "csv.gz", "jsonl", "jsonl.gz", "json"}
+                        if f.get("format")
+                        in {"parquet", "csv", "csv.gz", "jsonl", "jsonl.gz", "json"}
                     ],
                 },
             }

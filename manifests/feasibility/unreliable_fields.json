@@ -1,0 +1,13 @@
+{
+  "fields": [
+    "pumpfun.tokens.initial_top1_pct",
+    "pumpfun.tokens.initial_top5_pct",
+    "pumpfun.tokens.initial_top10_pct",
+    "pumpfun.tokens.dev_buy_pct",
+    "pumpfun.wallet_stats.tokens_traded",
+    "pumpfun.wallet_stats.total_trades",
+    "pumpfun.wallet_stats.total_buy_volume_sol",
+    "pumpfun.wallet_stats.total_sell_volume_sol",
+    "pumpfun.migrations.pool_address (synthetic sentinels)"
+  ]
+}

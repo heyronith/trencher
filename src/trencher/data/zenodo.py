@@ -20,12 +20,18 @@ from trencher.data.download import DownloadError, download_http
 logger = logging.getLogger(__name__)
 
 
-def fetch_zenodo_record(record_id: str, *, session: requests.Session | None = None) -> dict[str, Any]:
+def fetch_zenodo_record(
+    record_id: str,
+    *,
+    session: requests.Session | None = None,
+) -> dict[str, Any]:
     http = session or requests.Session()
     url = f"https://zenodo.org/api/records/{record_id}"
     response = http.get(url, timeout=60)
     if response.status_code != 200:
-        raise DownloadError(f"Zenodo record {record_id} fetch failed: HTTP {response.status_code}")
+        raise DownloadError(
+            f"Zenodo record {record_id} fetch failed: HTTP {response.status_code}"
+        )
     return response.json()
 
 

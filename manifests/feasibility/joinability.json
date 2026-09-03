@@ -1,0 +1,82 @@
+{
+  "token_mint_overlap": {
+    "pumpfun_vs_red_pump": {
+      "left": 798430,
+      "right": 860194,
+      "intersection": 108629,
+      "jaccard": 0.07008345188210284,
+      "coverage_of_left": 0.13605325451197975,
+      "coverage_of_right": 0.12628430330832346
+    },
+    "pumpfun_graduated_vs_migrations": {
+      "left": 5689,
+      "right": 5701,
+      "intersection": 5689,
+      "jaccard": 0.997895106121733,
+      "coverage_of_left": 1.0,
+      "coverage_of_right": 0.997895106121733
+    },
+    "pumpfun_graduated_vs_postgard_outcomes": {
+      "left": 5689,
+      "right": 5669,
+      "intersection": 5669,
+      "jaccard": 0.9964844436632097,
+      "coverage_of_left": 0.9964844436632097,
+      "coverage_of_right": 1.0
+    },
+    "pumpfun_graduated_vs_red_pump_graduated": {
+      "left": 5689,
+      "right": 1652,
+      "intersection": 1,
+      "jaccard": 0.00013623978201634878,
+      "coverage_of_left": 0.00017577781683951485,
+      "coverage_of_right": 0.0006053268765133172
+    },
+    "red_pump_graduated_vs_migrations": {
+      "left": 1652,
+      "right": 5701,
+      "intersection": 1,
+      "jaccard": 0.00013601741022850925,
+      "coverage_of_left": 0.0006053268765133172,
+      "coverage_of_right": 0.00017540782318891423
+    },
+    "cohort_mints_vs_pumpfun": {
+      "left": 5975,
+      "right": 798430,
+      "intersection": 4216,
+      "jaccard": 0.005268755256570635,
+      "coverage_of_left": 0.7056066945606695,
+      "coverage_of_right": 0.005280362711821951
+    },
+    "cohort_mints_vs_red_pump": {
+      "left": 5975,
+      "right": 860194,
+      "intersection": 0,
+      "jaccard": 0.0,
+      "coverage_of_left": 0.0,
+      "coverage_of_right": 0.0
+    }
+  },
+  "wallet_overlap": {
+    "cohort_wallets_vs_trade_wallets": {
+      "left": 2965,
+      "right": 1006640,
+      "intersection": 2874,
+      "jaccard": 0.0028547844458946827,
+      "coverage_of_left": 0.9693086003372682,
+      "coverage_of_right": 0.0028550425176825877
+    },
+    "trade_wallets_scanned": 1006640,
+    "trade_wallet_scan_capped": false
+  },
+  "creator_overlap": {
+    "unique_creators": 166751,
+    "creators_also_in_trade_wallets": 98946,
+    "creators_also_in_cohort_wallets": 398
+  },
+  "cohort_summary": {
+    "cohorts": 1012,
+    "unique_wallets": 2965,
+    "unique_mints_hit": 5975
+  }
+}

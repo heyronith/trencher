@@ -11,6 +11,7 @@ from pathlib import Path
 import click
 
 from trencher import __version__
+from trencher.data.feasibility import run_feasibility_audit
 from trencher.data.historical import download_historical
 from trencher.data.paths import SOURCES, resolve_external_root, resolve_manifest_root
 from trencher.dune.backfill import backfill_range
@@ -211,6 +212,54 @@ def data_download_historical(
         for err in result.errors:
             click.echo(f"ERR {err}", err=True)
         raise SystemExit(1)
+
+
+@data.command("audit-feasibility")
+@click.option(
+    "--external-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Downloaded corpora root (default: data/external)",
+)
+@click.option(
+    "--manifest-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Parent of feasibility/ reports (default: manifests)",
+)
+@click.option(
+    "--trade-wallet-batches",
+    type=int,
+    default=None,
+    help="Optional cap on trade batches when collecting wallet sets",
+)
+@click.option(
+    "--skip-heavy-trade-scan",
+    is_flag=True,
+    help="Skip full trades/snapshots streaming quality scans",
+)
+@click.option("--verbose", "-v", is_flag=True)
+def data_audit_feasibility(
+    external_root: Path | None,
+    manifest_root: Path | None,
+    trade_wallet_batches: int | None,
+    skip_heavy_trade_scan: bool,
+    verbose: bool,
+) -> None:
+    """Audit local historical corpora for research-grade model feasibility."""
+    _configure_logging(verbose)
+    result = run_feasibility_audit(
+        external_root=resolve_external_root(external_root),
+        manifest_root=manifest_root,
+        trade_wallet_max_batches=trade_wallet_batches,
+        skip_heavy_trade_scan=skip_heavy_trade_scan,
+    )
+    if not result.ok:
+        for err in result.errors:
+            click.echo(f"ERR {err}", err=True)
+        raise SystemExit(1)
+    click.echo(json.dumps(result.summary.get("verdict", {}), indent=2))
+    click.echo(f"Reports written under {result.report_dir}")
 
 
 if __name__ == "__main__":

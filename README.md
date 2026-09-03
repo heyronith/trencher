@@ -65,6 +65,15 @@ metadata under `manifests/external/` (committed). Sources:
 - Zenodo RED-COHORT-2026 (`21765387`) archive + extracted tree
 - Hugging Face `solarchive/solarchive` README/schemas/indexes only (no full chain)
 
+## Feasibility audit
+
+```bash
+uv run trencher data audit-feasibility -v
+```
+
+Writes machine-readable reports and `FEASIBILITY.md` under `manifests/feasibility/`.
+CI uses fixture-sized samples only; the full local corpus is not required.
+
 ## Architecture
 
 | Layer | Role |

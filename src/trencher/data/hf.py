@@ -63,9 +63,7 @@ def is_solarchive_light_file(path: str, size: int) -> bool:
         return True
     if name == "index.json":
         return True
-    if "schemas/" in lower and lower.endswith(".json"):
-        return True
-    return False
+    return "schemas/" in lower and lower.endswith(".json")
 
 
 def select_solarchive_files(files: list[dict[str, Any]]) -> list[dict[str, Any]]:

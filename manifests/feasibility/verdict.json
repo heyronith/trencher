@@ -1,0 +1,103 @@
+{
+  "can_build_research_grade_model": true,
+  "fully_supported_components": [
+    "pre-graduation trade/event history at arbitrary T",
+    "bonding-curve price/reserve trajectory",
+    "wallet participation history (recomputed from trades)",
+    "graduation / time-to-graduation labels",
+    "self-generated survival, barrier, return, MFE/MAE, inactivity labels",
+    "buyer/activity persistence labels"
+  ],
+  "partially_supported_components": [
+    "Post-graduation trajectory only for ~5.7k graduated tokens",
+    "RED-PUMP overlaps PumpFun only partially (different observation windows/populations)",
+    "RED-COHORT is a short June 11-25 window coordination catalogue, not full-history wallet graph"
+  ],
+  "exclude_or_recompute": [
+    "wallet_stats activity/volume aggregates",
+    "uncorrected concentration percentages; top10_pct_suspect==True rows for concentration features",
+    "System Program wallet trades for wallet features",
+    "trades with null/inconsistent sol/price for SOL P&L features",
+    "synthetic/backfilled migration pool_address values when needing real pools",
+    "source outcome_label taxonomies as canonical labels",
+    "entry_price_20s/30s/1m_usd as predictive features (graduation leakage)"
+  ],
+  "solarchive_supplementation_required": false,
+  "solarchive_rationale": "Not required for the intended research-grade bonding-curve/graduation model. Solarchive would only be needed for raw instruction/account reconstruction beyond what trades/snapshots already encode, or for chain periods outside this corpus.",
+  "known_issues_check_results": [
+    {
+      "check": "1.1_mayhem_count_near_109561",
+      "pass": true
+    },
+    {
+      "check": "2.1_suspect_near_1486",
+      "pass": true
+    },
+    {
+      "check": "7_entry_price_leakage_pattern",
+      "pass": true
+    },
+    {
+      "check": "3.1_inconsistency_near_3_38pct",
+      "value": 0.03383744124229325,
+      "pass": true
+    },
+    {
+      "check": "3.2_null_price_near_7_03pct",
+      "value": 0.07027805119832146,
+      "pass": true
+    },
+    {
+      "check": "3.3_system_program_near_19_92pct",
+      "value": 0.1992420886752081,
+      "pass": true
+    },
+    {
+      "check": "3.4_curve_oob_near_3_62pct",
+      "value": 0.03620446989608795,
+      "pass": true
+    },
+    {
+      "check": "5.5_jul3_outage_zero_or_near_zero_trades",
+      "pass": true
+    },
+    {
+      "check": "3.4_snapshot_oob_near_2_71pct",
+      "value": 0.027127294943831905,
+      "pass": true
+    },
+    {
+      "check": "4.55_synthetic_near_1380",
+      "pass": true
+    },
+    {
+      "check": "4.55_backfilled_near_69",
+      "pass": true
+    },
+    {
+      "check": "4.5_no_rug_outcome_label",
+      "pass": true
+    },
+    {
+      "check": "dup_launches_near_18",
+      "pass": true
+    },
+    {
+      "check": "nonstandard_outcomes_near_215",
+      "pass": true
+    },
+    {
+      "check": "both_grad_timeout_near_14",
+      "pass": true
+    }
+  ],
+  "coverage_highlights": {
+    "red_pump_mint_coverage_of_red_pump": 0.12628430330832346,
+    "cohort_wallet_coverage_in_trades": 0.9693086003372682
+  },
+  "reasons": [
+    "PumpFun provides ordered trades, curve state, graduation, and post-grad paths for graduates.",
+    "Labels (survival, barriers, MFE/MAE, persistence) can be regenerated from price/activity paths.",
+    "KNOWN_ISSUES are quantified and filterable; unreliable aggregates are identifiable."
+  ]
+}

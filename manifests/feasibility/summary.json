@@ -1,0 +1,710 @@
+{
+  "generated_at": "2026-09-03T04:12:11.240375+00:00",
+  "external_root": "data/external",
+  "quality": {
+    "generated_at": "2026-09-03T04:12:05.821275+00:00",
+    "tokens": {
+      "rows": 798430,
+      "unique_mints": 798430,
+      "duplicate_mint_rows": 0,
+      "mayhem_tokens": 109561,
+      "mayhem_rate": 0.13722054532019087,
+      "top10_pct_suspect_true": 1486,
+      "top10_pct_suspect_null": 81900,
+      "supply_bug_corrected_true": 109561,
+      "graduated_tokens": 5689,
+      "is_training_ready_true": 563677,
+      "initial_top10_pct_gt_100": 30722,
+      "initial_top10_pct_corrected_gt_100": 1486,
+      "leakage_entry_price_null_rates": {
+        "entry_price_20s_usd": {
+          "graduated_null_rate": 0.0003515556336790297,
+          "non_graduated_null_rate": 0.9364205963864617
+        },
+        "entry_price_30s_usd": {
+          "graduated_null_rate": 0.00017577781683951485,
+          "non_graduated_null_rate": 0.9362074120046775
+        },
+        "entry_price_1m_usd": {
+          "graduated_null_rate": 0.0,
+          "non_graduated_null_rate": 0.9359500770112811
+        }
+      },
+      "detected_at_min": "2026-06-05 09:12:26.343743+00:00",
+      "detected_at_max": "2026-07-14 15:01:42.759724+00:00",
+      "known_issues_checks": {
+        "1.1_mayhem_count_near_109561": true,
+        "2.1_suspect_near_1486": true,
+        "7_entry_price_leakage_pattern": true
+      }
+    },
+    "trades": {
+      "rows": 33581765,
+      "unique_mints_in_trades": 622870,
+      "null_price_sol_rows": 2360061,
+      "null_price_sol_rate": 0.07027805119832146,
+      "null_sol_amount_rows": 2357752,
+      "null_sol_amount_rate": 0.07020929364492903,
+      "mints_with_any_null_price": 20292,
+      "system_program_trade_rows": 6690901,
+      "system_program_trade_rate": 0.1992420886752081,
+      "curve_pct_depleted_out_of_0_100": 1215810,
+      "curve_pct_depleted_oob_rate": 0.03620446989608795,
+      "sol_amount_inconsistent_rows": 1136321,
+      "sol_amount_inconsistent_rate_vs_checked": 0.03639522685885434,
+      "checked_consistency_rows": 31221704,
+      "jul3_trade_rows": 0,
+      "day_null_price_rates_sample": {
+        "2026-06-09": 0.3583861981089354,
+        "2026-06-10": 0.44086788522916526,
+        "2026-07-02": 0.0074084760433815915,
+        "2026-07-04": 0.0094092974484446
+      },
+      "known_issues_checks": {
+        "3.1_inconsistency_near_3_38pct": [
+          0.03383744124229325,
+          true
+        ],
+        "3.2_null_price_near_7_03pct": [
+          0.07027805119832146,
+          true
+        ],
+        "3.3_system_program_near_19_92pct": [
+          0.1992420886752081,
+          true
+        ],
+        "3.4_curve_oob_near_3_62pct": [
+          0.03620446989608795,
+          true
+        ],
+        "5.5_jul3_outage_zero_or_near_zero_trades": true
+      }
+    },
+    "snapshots": {
+      "rows": 26934864,
+      "curve_pct_depleted_eob_out_of_0_100": 730670,
+      "curve_pct_depleted_eob_oob_rate": 0.027127294943831905,
+      "known_issues_checks": {
+        "3.4_snapshot_oob_near_2_71pct": [
+          0.027127294943831905,
+          true
+        ]
+      }
+    },
+    "migrations": {
+      "rows": 5701,
+      "unique_mints": 5701,
+      "synthetic_graduation_queue": 1380,
+      "backfilled_from_pumpswap_trade": 69,
+      "synthetic_or_backfilled_rate": 0.2541659358007367,
+      "known_issues_checks": {
+        "4.55_synthetic_near_1380": true,
+        "4.55_backfilled_near_69": true
+      }
+    },
+    "postgard_outcomes": {
+      "rows": 5669,
+      "unique_mints": 5669,
+      "outcome_label_counts": {
+        "dead": 2692,
+        "minor_pump": 320,
+        "slow_bleed": 784,
+        "pump_dump": 1072,
+        "major_pump": 607,
+        "sustained": 194
+      },
+      "has_rug_label_value": false,
+      "rug_detected_true": 181,
+      "known_issues_checks": {
+        "4.5_no_rug_outcome_label": true
+      }
+    },
+    "red_pump": {
+      "launch_rows": 860213,
+      "unique_launch_mints": 860194,
+      "duplicate_launch_mints": 18,
+      "outcome_rows": 833171,
+      "outcome_counts": {
+        "GRADUATED": 1652,
+        "TIMEOUT": 831304,
+        ".6": 1,
+        "ka": 1,
+        "8": 1,
+        "": 75,
+        "30.098749692": 1,
+        "30.000020821": 1,
+        "an": 1,
+        "7": 1,
+        "773": 1,
+        "777": 1,
+        "250$": 1,
+        "30.906406493": 1,
+        "433.": 1,
+        "000": 24,
+        "25": 1,
+        "000 FT": 2,
+        "666": 1,
+        "01": 1,
+        "HELLO": 1,
+        "31.164222038": 1,
+        "30.082540755": 1,
+        "16": 1,
+        "30": 4,
+        "30.71473926": 1,
+        "30.397617661": 1,
+        "30.073392988": 1,
+        "42.562587836": 1,
+        "30.396662335": 1,
+        "14.857804038": 1,
+        "19.922427839": 1,
+        "44.575508075": 1,
+        "368": 1,
+        "m": 1,
+        "IDIOTS": 2,
+        "000X A": 2,
+        "333tokens": 2,
+        "39.708670093": 1,
+        "33.062738281": 1,
+        "30.603105125": 1,
+        "30.397396501": 1,
+        "30.000000001": 3,
+        "REAAAD": 8,
+        "if": 1,
+        "48": 1,
+        "1": 1,
+        "WHAT": 1,
+        "22": 1,
+        "s": 1,
+        "Luna": 1,
+        "30.000000006": 1,
+        "60.342904345": 1,
+        "30.466653682": 1,
+        "i won": 1,
+        "1\u00a3": 1,
+        "30.197500019": 1,
+        "34.535735861": 1,
+        "4tod": 1,
+        "875": 1,
+        "555": 2,
+        "851.04%": 1,
+        "3": 1,
+        "32.233781911": 1,
+        "34.970485327": 1,
+        "33.040400669": 1,
+        "30.009827187": 1,
+        "TW": 1,
+        "600": 1,
+        "37.797192928": 1,
+        "31.387531021": 1,
+        "30.049626559": 1,
+        "30.458886038": 1,
+        "00": 3,
+        "58": 1,
+        "cuc": 1,
+        "42.38681171": 1,
+        "1b BTC": 1,
+        "695.59": 1,
+        "38.483950613": 1,
+        "k": 18,
+        "epw": 1,
+        "619": 1,
+        "EGGPLAN": 1
+      },
+      "nonstandard_or_blank_outcomes": 215,
+      "mints_with_both_graduated_and_timeout": 14,
+      "known_issues_checks": {
+        "dup_launches_near_18": true,
+        "nonstandard_outcomes_near_215": true,
+        "both_grad_timeout_near_14": true
+      }
+    },
+    "known_issues_document_bytes": 14886
+  },
+  "joinability": {
+    "token_mint_overlap": {
+      "pumpfun_vs_red_pump": {
+        "left": 798430,
+        "right": 860194,
+        "intersection": 108629,
+        "jaccard": 0.07008345188210284,
+        "coverage_of_left": 0.13605325451197975,
+        "coverage_of_right": 0.12628430330832346
+      },
+      "pumpfun_graduated_vs_migrations": {
+        "left": 5689,
+        "right": 5701,
+        "intersection": 5689,
+        "jaccard": 0.997895106121733,
+        "coverage_of_left": 1.0,
+        "coverage_of_right": 0.997895106121733
+      },
+      "pumpfun_graduated_vs_postgard_outcomes": {
+        "left": 5689,
+        "right": 5669,
+        "intersection": 5669,
+        "jaccard": 0.9964844436632097,
+        "coverage_of_left": 0.9964844436632097,
+        "coverage_of_right": 1.0
+      },
+      "pumpfun_graduated_vs_red_pump_graduated": {
+        "left": 5689,
+        "right": 1652,
+        "intersection": 1,
+        "jaccard": 0.00013623978201634878,
+        "coverage_of_left": 0.00017577781683951485,
+        "coverage_of_right": 0.0006053268765133172
+      },
+      "red_pump_graduated_vs_migrations": {
+        "left": 1652,
+        "right": 5701,
+        "intersection": 1,
+        "jaccard": 0.00013601741022850925,
+        "coverage_of_left": 0.0006053268765133172,
+        "coverage_of_right": 0.00017540782318891423
+      },
+      "cohort_mints_vs_pumpfun": {
+        "left": 5975,
+        "right": 798430,
+        "intersection": 4216,
+        "jaccard": 0.005268755256570635,
+        "coverage_of_left": 0.7056066945606695,
+        "coverage_of_right": 0.005280362711821951
+      },
+      "cohort_mints_vs_red_pump": {
+        "left": 5975,
+        "right": 860194,
+        "intersection": 0,
+        "jaccard": 0.0,
+        "coverage_of_left": 0.0,
+        "coverage_of_right": 0.0
+      }
+    },
+    "wallet_overlap": {
+      "cohort_wallets_vs_trade_wallets": {
+        "left": 2965,
+        "right": 1006640,
+        "intersection": 2874,
+        "jaccard": 0.0028547844458946827,
+        "coverage_of_left": 0.9693086003372682,
+        "coverage_of_right": 0.0028550425176825877
+      },
+      "trade_wallets_scanned": 1006640,
+      "trade_wallet_scan_capped": false
+    },
+    "creator_overlap": {
+      "unique_creators": 166751,
+      "creators_also_in_trade_wallets": 98946,
+      "creators_also_in_cohort_wallets": 398
+    },
+    "cohort_summary": {
+      "cohorts": 1012,
+      "unique_wallets": 2965,
+      "unique_mints_hit": 5975
+    }
+  },
+  "reconstruction": {
+    "ordered_trade_event_history": {
+      "supported": "full",
+      "evidence": [
+        "trades.*.event_time + seconds_since_launch + mint + tx_signature",
+        "sortable per-mint trade streams"
+      ],
+      "caveats": [
+        "exclude System Program wallet rows for participant history",
+        "exclude sol_amount-inconsistent and null-price rows for SOL P&L",
+        "Jul 3 2026 collection outage (zero trades)"
+      ]
+    },
+    "price_reserve_trajectory": {
+      "supported": "full",
+      "evidence": [
+        "trades.price_sol, market_cap_sol, v_sol/v_tokens bonding curve",
+        "snapshots bucket OHLCV + curve_pct_depleted_eob"
+      ],
+      "caveats": [
+        "~7% null price_sol rows (mostly whole-token early failures)",
+        "curve_pct_depleted can exceed 100 (cap 110) especially post Jul 4",
+        "raw reserve units need documented scaling relationship"
+      ]
+    },
+    "wallet_participation_history": {
+      "supported": "full",
+      "evidence": [
+        "trades.user_wallet with event_time per mint",
+        "can recompute first/last/activity from trades"
+      ],
+      "caveats": [
+        "do not use wallet_stats activity/volume aggregates (stale)",
+        "exclude System Program address"
+      ]
+    },
+    "bonding_curve_state": {
+      "supported": "full",
+      "evidence": [
+        "per-trade and per-bucket reserve/price/curve depletion fields"
+      ],
+      "caveats": [
+        "concentration fields need corrected columns + suspect exclusions"
+      ]
+    },
+    "graduation": {
+      "supported": "full",
+      "evidence": [
+        "tokens.graduated_at / seconds_to_graduation",
+        "migrations.migrated_at",
+        "red_pump outcomes GRADUATED vs TIMEOUT"
+      ],
+      "caveats": [
+        "migrations.pool_address partially synthetic",
+        "source populations differ slightly across tables"
+      ]
+    },
+    "post_graduation_trajectory": {
+      "supported": "partial",
+      "evidence": [
+        "postgard_snapshots price/liquidity/volume after graduation",
+        "postgard_outcomes peak/horizon fields for graduated subset"
+      ],
+      "caveats": [
+        "only ~5.7k graduated tokens, not full 798k launch universe",
+        "source outcome_label is source-specific; regenerate labels ourselves"
+      ]
+    }
+  },
+  "labels": {
+    "survival_horizons": {
+      "supported": "full",
+      "method": "From observation time T, use future trades/snapshots/postgard or red_pump TIMEOUT censoring at 24h for survival analysis.",
+      "sources": [
+        "pumpfun.trades",
+        "pumpfun.snapshots",
+        "red_pump.outcomes"
+      ]
+    },
+    "plus_x_before_minus_y_barriers": {
+      "supported": "full",
+      "method": "Walk forward price_sol / postgrad price_usd path after T; detect first barrier hits.",
+      "sources": [
+        "pumpfun.trades",
+        "pumpfun.snapshots",
+        "pumpfun.postgard_snapshots"
+      ],
+      "caveats": [
+        "requires clean price path; drop null/inconsistent trade prices"
+      ]
+    },
+    "future_return_distributions": {
+      "supported": "full",
+      "method": "Compute returns at fixed horizons from T using price path.",
+      "sources": [
+        "pumpfun.trades",
+        "pumpfun.snapshots",
+        "pumpfun.postgard_snapshots"
+      ]
+    },
+    "mfe_mae": {
+      "supported": "full",
+      "method": "Max favorable/adverse excursion from price path after T within horizon.",
+      "sources": [
+        "pumpfun.trades",
+        "pumpfun.snapshots",
+        "pumpfun.postgard_snapshots"
+      ]
+    },
+    "time_to_graduation_crash_inactivity": {
+      "supported": "full",
+      "method": "graduation via graduated_at/migrations; crash via drawdown barriers; inactivity via time since last trade/unique wallet activity.",
+      "sources": [
+        "pumpfun.tokens",
+        "pumpfun.migrations",
+        "pumpfun.trades",
+        "red_pump.outcomes"
+      ]
+    },
+    "buyer_activity_persistence": {
+      "supported": "full",
+      "method": "Recompute per-wallet trade counts/volumes over windows from trades; optionally join RED-COHORT membership as coordination feature.",
+      "sources": [
+        "pumpfun.trades",
+        "red_cohort.sniper_cohorts"
+      ],
+      "caveats": [
+        "ignore wallet_stats aggregates; exclude system program"
+      ]
+    },
+    "source_specific_labels_to_ignore_as_canonical": [
+      "postgard_outcomes.outcome_label (dead/pump_dump/etc are source taxonomy)",
+      "postgard_outcomes.success_label / target_label_legacy",
+      "quickstart rug filter on outcome_label='rug' (does not exist)"
+    ]
+  },
+  "verdict": {
+    "can_build_research_grade_model": true,
+    "fully_supported_components": [
+      "pre-graduation trade/event history at arbitrary T",
+      "bonding-curve price/reserve trajectory",
+      "wallet participation history (recomputed from trades)",
+      "graduation / time-to-graduation labels",
+      "self-generated survival, barrier, return, MFE/MAE, inactivity labels",
+      "buyer/activity persistence labels"
+    ],
+    "partially_supported_components": [
+      "Post-graduation trajectory only for ~5.7k graduated tokens",
+      "RED-PUMP overlaps PumpFun only partially (different observation windows/populations)",
+      "RED-COHORT is a short June 11-25 window coordination catalogue, not full-history wallet graph"
+    ],
+    "exclude_or_recompute": [
+      "wallet_stats activity/volume aggregates",
+      "uncorrected concentration percentages; top10_pct_suspect==True rows for concentration features",
+      "System Program wallet trades for wallet features",
+      "trades with null/inconsistent sol/price for SOL P&L features",
+      "synthetic/backfilled migration pool_address values when needing real pools",
+      "source outcome_label taxonomies as canonical labels",
+      "entry_price_20s/30s/1m_usd as predictive features (graduation leakage)"
+    ],
+    "solarchive_supplementation_required": false,
+    "solarchive_rationale": "Not required for the intended research-grade bonding-curve/graduation model. Solarchive would only be needed for raw instruction/account reconstruction beyond what trades/snapshots already encode, or for chain periods outside this corpus.",
+    "known_issues_check_results": [
+      {
+        "check": "1.1_mayhem_count_near_109561",
+        "pass": true
+      },
+      {
+        "check": "2.1_suspect_near_1486",
+        "pass": true
+      },
+      {
+        "check": "7_entry_price_leakage_pattern",
+        "pass": true
+      },
+      {
+        "check": "3.1_inconsistency_near_3_38pct",
+        "value": 0.03383744124229325,
+        "pass": true
+      },
+      {
+        "check": "3.2_null_price_near_7_03pct",
+        "value": 0.07027805119832146,
+        "pass": true
+      },
+      {
+        "check": "3.3_system_program_near_19_92pct",
+        "value": 0.1992420886752081,
+        "pass": true
+      },
+      {
+        "check": "3.4_curve_oob_near_3_62pct",
+        "value": 0.03620446989608795,
+        "pass": true
+      },
+      {
+        "check": "5.5_jul3_outage_zero_or_near_zero_trades",
+        "pass": true
+      },
+      {
+        "check": "3.4_snapshot_oob_near_2_71pct",
+        "value": 0.027127294943831905,
+        "pass": true
+      },
+      {
+        "check": "4.55_synthetic_near_1380",
+        "pass": true
+      },
+      {
+        "check": "4.55_backfilled_near_69",
+        "pass": true
+      },
+      {
+        "check": "4.5_no_rug_outcome_label",
+        "pass": true
+      },
+      {
+        "check": "dup_launches_near_18",
+        "pass": true
+      },
+      {
+        "check": "nonstandard_outcomes_near_215",
+        "pass": true
+      },
+      {
+        "check": "both_grad_timeout_near_14",
+        "pass": true
+      }
+    ],
+    "coverage_highlights": {
+      "red_pump_mint_coverage_of_red_pump": 0.12628430330832346,
+      "cohort_wallet_coverage_in_trades": 0.9693086003372682
+    },
+    "reasons": [
+      "PumpFun provides ordered trades, curve state, graduation, and post-grad paths for graduates.",
+      "Labels (survival, barriers, MFE/MAE, persistence) can be regenerated from price/activity paths.",
+      "KNOWN_ISSUES are quantified and filterable; unreliable aggregates are identifiable."
+    ]
+  },
+  "column_concept_map": {
+    "mint": [
+      {
+        "source": "pumpfun.tokens.mint",
+        "role": "primary_key"
+      },
+      {
+        "source": "pumpfun.trades.mint",
+        "role": "foreign_key"
+      },
+      {
+        "source": "pumpfun.snapshots.mint",
+        "role": "foreign_key"
+      },
+      {
+        "source": "pumpfun.migrations.mint",
+        "role": "foreign_key"
+      },
+      {
+        "source": "pumpfun.postgard_*.mint",
+        "role": "foreign_key"
+      },
+      {
+        "source": "red_pump.launches.mint",
+        "role": "primary_key"
+      },
+      {
+        "source": "red_pump.outcomes.mint",
+        "role": "foreign_key"
+      },
+      {
+        "source": "red_cohort.sniper_cohorts.mints_hit",
+        "role": "set_membership"
+      }
+    ],
+    "wallet": [
+      {
+        "source": "pumpfun.trades.user_wallet",
+        "role": "trader_wallet"
+      },
+      {
+        "source": "pumpfun.wallet_stats.wallet",
+        "role": "wallet_id_unreliable_aggs"
+      },
+      {
+        "source": "red_cohort.sniper_cohorts.wallets",
+        "role": "cohort_member"
+      }
+    ],
+    "creator": [
+      {
+        "source": "pumpfun.tokens.creator",
+        "role": "token_creator"
+      }
+    ],
+    "event_time": [
+      {
+        "source": "pumpfun.trades.event_time",
+        "role": "trade_timestamp"
+      },
+      {
+        "source": "pumpfun.snapshots.bucket_start",
+        "role": "snapshot_timestamp"
+      },
+      {
+        "source": "pumpfun.tokens.detected_at",
+        "role": "launch_observation_time"
+      },
+      {
+        "source": "red_pump.launches.created_timestamp",
+        "role": "chain_create_time_ms"
+      },
+      {
+        "source": "red_pump.launches.t",
+        "role": "observer_seen_time_ms"
+      }
+    ],
+    "price": [
+      {
+        "source": "pumpfun.trades.price_sol",
+        "role": "bonding_curve_price_sol"
+      },
+      {
+        "source": "pumpfun.snapshots.price_sol_eob",
+        "role": "bucket_end_price_sol"
+      },
+      {
+        "source": "pumpfun.postgard_snapshots.price_usd",
+        "role": "post_grad_dex_price_usd"
+      }
+    ],
+    "reserves": [
+      {
+        "source": "pumpfun.trades.v_sol_bonding_curve",
+        "role": "raw_curve_sol_reserves"
+      },
+      {
+        "source": "pumpfun.trades.v_tokens_bonding_curve",
+        "role": "raw_curve_token_reserves"
+      },
+      {
+        "source": "pumpfun.snapshots.v_sol_eob",
+        "role": "bucket_end_sol_reserves"
+      },
+      {
+        "source": "pumpfun.snapshots.v_tokens_eob",
+        "role": "bucket_end_token_reserves"
+      }
+    ],
+    "graduation": [
+      {
+        "source": "pumpfun.tokens.graduated_at",
+        "role": "graduation_time"
+      },
+      {
+        "source": "pumpfun.migrations.migrated_at",
+        "role": "migration_time"
+      },
+      {
+        "source": "pumpfun.migrations.pool_address",
+        "role": "pool_id_sometimes_synthetic"
+      },
+      {
+        "source": "red_pump.outcomes.outcome",
+        "role": "graduated_or_timeout_label"
+      }
+    ],
+    "outcome_labels_source": [
+      {
+        "source": "pumpfun.postgard_outcomes.outcome_label",
+        "role": "source_specific_postgrad_label_ignore_for_canonical"
+      },
+      {
+        "source": "pumpfun.postgard_outcomes.rug_detected",
+        "role": "source_rug_flag_optional"
+      },
+      {
+        "source": "red_pump.outcomes.outcome",
+        "role": "survival_censoring_label_grad_vs_timeout"
+      }
+    ]
+  },
+  "unreliable_fields": [
+    "pumpfun.tokens.initial_top1_pct",
+    "pumpfun.tokens.initial_top5_pct",
+    "pumpfun.tokens.initial_top10_pct",
+    "pumpfun.tokens.dev_buy_pct",
+    "pumpfun.wallet_stats.tokens_traded",
+    "pumpfun.wallet_stats.total_trades",
+    "pumpfun.wallet_stats.total_buy_volume_sol",
+    "pumpfun.wallet_stats.total_sell_volume_sol",
+    "pumpfun.migrations.pool_address (synthetic sentinels)"
+  ],
+  "leakage_risk_fields": [
+    "pumpfun.tokens.entry_price_20s_usd",
+    "pumpfun.tokens.entry_price_30s_usd",
+    "pumpfun.tokens.entry_price_1m_usd",
+    "pumpfun.tokens.graduated_at",
+    "pumpfun.tokens.seconds_to_graduation",
+    "pumpfun.tokens.peak_market_cap_sol",
+    "pumpfun.tokens.peak_market_cap_at",
+    "pumpfun.postgard_outcomes.*"
+  ],
+  "exclude_wallets": [
+    "BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s"
+  ]
+}

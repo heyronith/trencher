@@ -1,0 +1,12 @@
+{
+  "fields": [
+    "pumpfun.tokens.entry_price_20s_usd",
+    "pumpfun.tokens.entry_price_30s_usd",
+    "pumpfun.tokens.entry_price_1m_usd",
+    "pumpfun.tokens.graduated_at",
+    "pumpfun.tokens.seconds_to_graduation",
+    "pumpfun.tokens.peak_market_cap_sol",
+    "pumpfun.tokens.peak_market_cap_at",
+    "pumpfun.postgard_outcomes.*"
+  ]
+}

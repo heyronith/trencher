@@ -163,7 +163,11 @@ def _json_inventory(path: Path) -> dict[str, Any]:
             "row_count": len(payload),
             "columns": columns,
             "column_types": {c: "json" for c in columns},
-            "join_keys": [c for c in columns if c.lower() in {k.lower() for k in JOIN_KEY_CANDIDATES}],
+            "join_keys": [
+                c
+                for c in columns
+                if c.lower() in {k.lower() for k in JOIN_KEY_CANDIDATES}
+            ],
             "timestamp_bounds": {},
         }
     if isinstance(payload, dict):
@@ -172,7 +176,9 @@ def _json_inventory(path: Path) -> dict[str, Any]:
             "columns": list(payload.keys()),
             "column_types": {c: "json" for c in payload},
             "join_keys": [
-                c for c in payload if c.lower() in {k.lower() for k in JOIN_KEY_CANDIDATES}
+                c
+                for c in payload
+                if c.lower() in {k.lower() for k in JOIN_KEY_CANDIDATES}
             ],
             "timestamp_bounds": {},
         }

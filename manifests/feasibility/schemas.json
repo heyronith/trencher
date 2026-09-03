@@ -1,0 +1,814 @@
+{
+  "tokens": {
+    "path": "data/external/pumpfun_memecoin_corpus/tokens.parquet",
+    "rows": 798430,
+    "columns": [
+      {
+        "name": "mint",
+        "type": "string"
+      },
+      {
+        "name": "detected_at",
+        "type": "timestamp[us, tz=UTC]"
+      },
+      {
+        "name": "tracking_expires_at",
+        "type": "timestamp[us, tz=UTC]"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "name": "uri",
+        "type": "string"
+      },
+      {
+        "name": "is_mayhem_mode",
+        "type": "bool"
+      },
+      {
+        "name": "creator",
+        "type": "string"
+      },
+      {
+        "name": "creator_past_tokens",
+        "type": "double"
+      },
+      {
+        "name": "creator_past_rugs",
+        "type": "double"
+      },
+      {
+        "name": "initial_buy_tokens",
+        "type": "double"
+      },
+      {
+        "name": "initial_buy_sol",
+        "type": "double"
+      },
+      {
+        "name": "v_tokens_bonding_curve",
+        "type": "double"
+      },
+      {
+        "name": "v_sol_bonding_curve",
+        "type": "double"
+      },
+      {
+        "name": "initial_market_cap_sol",
+        "type": "double"
+      },
+      {
+        "name": "initial_price_sol",
+        "type": "double"
+      },
+      {
+        "name": "dev_buy_pct",
+        "type": "double"
+      },
+      {
+        "name": "bonding_curve_key",
+        "type": "string"
+      },
+      {
+        "name": "initial_holder_count",
+        "type": "double"
+      },
+      {
+        "name": "initial_top1_pct",
+        "type": "double"
+      },
+      {
+        "name": "initial_top5_pct",
+        "type": "double"
+      },
+      {
+        "name": "initial_top10_pct",
+        "type": "double"
+      },
+      {
+        "name": "initial_gini",
+        "type": "double"
+      },
+      {
+        "name": "graduated_at",
+        "type": "timestamp[us, tz=UTC]"
+      },
+      {
+        "name": "seconds_to_graduation",
+        "type": "double"
+      },
+      {
+        "name": "peak_market_cap_sol",
+        "type": "double"
+      },
+      {
+        "name": "peak_market_cap_at",
+        "type": "timestamp[us, tz=UTC]"
+      },
+      {
+        "name": "trade_count",
+        "type": "int64"
+      },
+      {
+        "name": "data_quality_score",
+        "type": "double"
+      },
+      {
+        "name": "is_training_ready",
+        "type": "bool"
+      },
+      {
+        "name": "is_zombie",
+        "type": "bool"
+      },
+      {
+        "name": "entry_price_usd",
+        "type": "double"
+      },
+      {
+        "name": "entry_price_20s_usd",
+        "type": "double"
+      },
+      {
+        "name": "entry_price_30s_usd",
+        "type": "double"
+      },
+      {
+        "name": "entry_price_1m_usd",
+        "type": "double"
+      },
+      {
+        "name": "launch_snipe_delta_sol",
+        "type": "double"
+      },
+      {
+        "name": "first_trade_price_sol",
+        "type": "double"
+      },
+      {
+        "name": "is_cashback_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "initial_top1_pct_corrected",
+        "type": "double"
+      },
+      {
+        "name": "initial_top5_pct_corrected",
+        "type": "double"
+      },
+      {
+        "name": "initial_top10_pct_corrected",
+        "type": "double"
+      },
+      {
+        "name": "dev_buy_pct_corrected",
+        "type": "double"
+      },
+      {
+        "name": "supply_bug_corrected",
+        "type": "bool"
+      },
+      {
+        "name": "top10_pct_suspect",
+        "type": "bool"
+      }
+    ],
+    "timestamp_bounds": {
+      "detected_at": {
+        "min": "2026-06-05 09:12:26.343743+00:00",
+        "max": "2026-07-14 15:01:42.759724+00:00"
+      },
+      "tracking_expires_at": {
+        "min": "2026-06-07 09:12:26.343743+00:00",
+        "max": "2026-07-16 15:01:42.759724+00:00"
+      },
+      "creator": {
+        "min": "11napB8c7tP2ka57srCnisZYZecTYM19u4BEVCpyvoA",
+        "max": "zzig7g6opmqZFVq2gcmwACpvyaCK61CKoUDCCSZRqHs"
+      },
+      "creator_past_tokens": {
+        "min": "0.0",
+        "max": "10003.0"
+      },
+      "creator_past_rugs": {
+        "min": "0.0",
+        "max": "9966.0"
+      },
+      "graduated_at": {
+        "min": "2026-06-09 13:08:38.921759+00:00",
+        "max": "2026-07-14 15:00:29.583412+00:00"
+      },
+      "seconds_to_graduation": {
+        "min": "0.0011229515075683594",
+        "max": "22286.914417028427"
+      },
+      "peak_market_cap_at": {
+        "min": "2026-06-05 09:12:26.343743+00:00",
+        "max": "2026-07-14 15:01:45.144961+00:00"
+      },
+      "data_quality_score": {
+        "min": "0.0",
+        "max": "1.0"
+      }
+    }
+  },
+  "snapshots": {
+    "path": "data/external/pumpfun_memecoin_corpus/snapshots.parquet",
+    "rows": 26934864,
+    "columns": [
+      {
+        "name": "mint",
+        "type": "large_string"
+      },
+      {
+        "name": "bucket_start",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "bucket_seconds",
+        "type": "int64"
+      },
+      {
+        "name": "phase",
+        "type": "int64"
+      },
+      {
+        "name": "v_tokens_eob",
+        "type": "double"
+      },
+      {
+        "name": "v_sol_eob",
+        "type": "double"
+      },
+      {
+        "name": "market_cap_sol_eob",
+        "type": "double"
+      },
+      {
+        "name": "price_sol_eob",
+        "type": "double"
+      },
+      {
+        "name": "curve_pct_depleted_eob",
+        "type": "double"
+      },
+      {
+        "name": "delta_v_sol",
+        "type": "double"
+      },
+      {
+        "name": "delta_v_tokens",
+        "type": "double"
+      },
+      {
+        "name": "delta_curve_pct",
+        "type": "double"
+      },
+      {
+        "name": "trade_count",
+        "type": "int64"
+      },
+      {
+        "name": "buy_count",
+        "type": "int64"
+      },
+      {
+        "name": "sell_count",
+        "type": "int64"
+      },
+      {
+        "name": "buy_volume_sol",
+        "type": "double"
+      },
+      {
+        "name": "sell_volume_sol",
+        "type": "double"
+      },
+      {
+        "name": "net_flow_sol",
+        "type": "double"
+      },
+      {
+        "name": "buy_pressure",
+        "type": "double"
+      },
+      {
+        "name": "avg_trade_sol",
+        "type": "double"
+      },
+      {
+        "name": "median_trade_sol",
+        "type": "double"
+      },
+      {
+        "name": "largest_buy_sol",
+        "type": "double"
+      },
+      {
+        "name": "largest_sell_sol",
+        "type": "double"
+      },
+      {
+        "name": "price_open",
+        "type": "double"
+      },
+      {
+        "name": "price_close",
+        "type": "double"
+      },
+      {
+        "name": "price_high",
+        "type": "double"
+      },
+      {
+        "name": "price_low",
+        "type": "double"
+      },
+      {
+        "name": "price_return_pct",
+        "type": "double"
+      },
+      {
+        "name": "unique_wallets",
+        "type": "int64"
+      }
+    ],
+    "timestamp_bounds": {}
+  },
+  "migrations": {
+    "path": "data/external/pumpfun_memecoin_corpus/migrations.parquet",
+    "rows": 5701,
+    "columns": [
+      {
+        "name": "mint",
+        "type": "large_string"
+      },
+      {
+        "name": "migrated_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "seconds_to_graduation",
+        "type": "double"
+      },
+      {
+        "name": "pool_address",
+        "type": "large_string"
+      }
+    ],
+    "timestamp_bounds": {
+      "migrated_at": {
+        "min": "2026-06-09 13:08:38.921759+00:00",
+        "max": "2026-07-14 15:22:32.622963+00:00"
+      },
+      "seconds_to_graduation": {
+        "min": "0.0011229515075683594",
+        "max": "22286.914417028427"
+      }
+    }
+  },
+  "wallet_stats": {
+    "path": "data/external/pumpfun_memecoin_corpus/wallet_stats.parquet",
+    "rows": 1016374,
+    "columns": [
+      {
+        "name": "wallet",
+        "type": "large_string"
+      },
+      {
+        "name": "first_seen_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "last_seen_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "tokens_traded",
+        "type": "int64"
+      },
+      {
+        "name": "graduated_tokens_traded",
+        "type": "int64"
+      },
+      {
+        "name": "total_trades",
+        "type": "int64"
+      },
+      {
+        "name": "total_buy_volume_sol",
+        "type": "double"
+      },
+      {
+        "name": "total_sell_volume_sol",
+        "type": "double"
+      }
+    ],
+    "timestamp_bounds": {
+      "first_seen_at": {
+        "min": "2026-06-05 09:12:28.604950+00:00",
+        "max": "2026-07-14 15:29:17.271960+00:00"
+      },
+      "last_seen_at": {
+        "min": "2026-06-05 09:13:08.074315+00:00",
+        "max": "2026-07-14 15:29:18.624084+00:00"
+      },
+      "graduated_tokens_traded": {
+        "min": "0",
+        "max": "26"
+      }
+    }
+  },
+  "postgard_outcomes": {
+    "path": "data/external/pumpfun_memecoin_corpus/postgard_outcomes.parquet",
+    "rows": 5669,
+    "columns": [
+      {
+        "name": "mint",
+        "type": "large_string"
+      },
+      {
+        "name": "computed_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "peak_price_usd",
+        "type": "double"
+      },
+      {
+        "name": "peak_price_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "peak_mcap_usd",
+        "type": "double"
+      },
+      {
+        "name": "peak_liquidity_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_grad_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_1m_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_5m_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_10m_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_20s_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_30s_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_at_30m_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_change_1h_pct",
+        "type": "double"
+      },
+      {
+        "name": "price_change_6h_pct",
+        "type": "double"
+      },
+      {
+        "name": "price_change_24h_pct",
+        "type": "double"
+      },
+      {
+        "name": "price_change_36h_pct",
+        "type": "double"
+      },
+      {
+        "name": "still_liquid_at_24h",
+        "type": "bool"
+      },
+      {
+        "name": "still_liquid_at_48h",
+        "type": "bool"
+      },
+      {
+        "name": "rug_detected",
+        "type": "bool"
+      },
+      {
+        "name": "rug_at",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "total_volume_24h_usd",
+        "type": "double"
+      },
+      {
+        "name": "total_volume_48h_usd",
+        "type": "double"
+      },
+      {
+        "name": "success_label",
+        "type": "bool"
+      },
+      {
+        "name": "success_window_mins",
+        "type": "double"
+      },
+      {
+        "name": "target_label_legacy",
+        "type": "large_string"
+      },
+      {
+        "name": "volume_to_liquidity_ratio",
+        "type": "double"
+      },
+      {
+        "name": "outcome_label",
+        "type": "large_string"
+      }
+    ],
+    "timestamp_bounds": {
+      "computed_at": {
+        "min": "2026-06-11 11:45:51.096916+00:00",
+        "max": "2026-07-14 15:29:35.206103+00:00"
+      },
+      "peak_price_at": {
+        "min": "2026-06-09 13:08:52.504717+00:00",
+        "max": "2026-07-14 15:09:39.605710+00:00"
+      },
+      "price_at_grad_usd": {
+        "min": "1.654e-10",
+        "max": "0.01204"
+      },
+      "price_at_1m_usd": {
+        "min": "1.654e-10",
+        "max": "0.01204"
+      },
+      "price_at_5m_usd": {
+        "min": "1.654e-10",
+        "max": "0.008244"
+      },
+      "price_at_10m_usd": {
+        "min": "1.627e-10",
+        "max": "0.01247"
+      },
+      "price_at_20s_usd": {
+        "min": "1.654e-10",
+        "max": "0.01204"
+      },
+      "price_at_30s_usd": {
+        "min": "1.654e-10",
+        "max": "0.01204"
+      },
+      "price_at_30m_usd": {
+        "min": "1.301e-10",
+        "max": "0.00675"
+      },
+      "still_liquid_at_24h": {
+        "min": "False",
+        "max": "True"
+      },
+      "still_liquid_at_48h": {
+        "min": "False",
+        "max": "True"
+      },
+      "rug_detected": {
+        "min": "False",
+        "max": "True"
+      },
+      "rug_at": {
+        "min": "2026-06-22 04:40:07.787163+00:00",
+        "max": "2026-07-14 12:51:24.474581+00:00"
+      },
+      "volume_to_liquidity_ratio": {
+        "min": "0.0016",
+        "max": "1620.9245"
+      }
+    }
+  },
+  "postgard_snapshots": {
+    "path": "data/external/pumpfun_memecoin_corpus/postgard_snapshots.parquet",
+    "rows": 1392133,
+    "columns": [
+      {
+        "name": "mint",
+        "type": "large_string"
+      },
+      {
+        "name": "snapshot_time",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "seconds_since_graduation",
+        "type": "double"
+      },
+      {
+        "name": "phase",
+        "type": "int64"
+      },
+      {
+        "name": "pair_address",
+        "type": "large_string"
+      },
+      {
+        "name": "dex_id",
+        "type": "large_string"
+      },
+      {
+        "name": "incomplete_data",
+        "type": "bool"
+      },
+      {
+        "name": "price_native",
+        "type": "double"
+      },
+      {
+        "name": "price_usd",
+        "type": "double"
+      },
+      {
+        "name": "price_change_5m",
+        "type": "double"
+      },
+      {
+        "name": "price_change_1h",
+        "type": "double"
+      },
+      {
+        "name": "price_change_6h",
+        "type": "double"
+      },
+      {
+        "name": "price_change_24h",
+        "type": "double"
+      },
+      {
+        "name": "market_cap_usd",
+        "type": "double"
+      },
+      {
+        "name": "fdv_usd",
+        "type": "double"
+      },
+      {
+        "name": "liquidity_usd",
+        "type": "double"
+      },
+      {
+        "name": "liquidity_base",
+        "type": "double"
+      },
+      {
+        "name": "liquidity_quote",
+        "type": "double"
+      },
+      {
+        "name": "volume_5m",
+        "type": "double"
+      },
+      {
+        "name": "volume_1h",
+        "type": "double"
+      },
+      {
+        "name": "volume_6h",
+        "type": "double"
+      },
+      {
+        "name": "volume_24h",
+        "type": "double"
+      },
+      {
+        "name": "buys_5m",
+        "type": "int64"
+      },
+      {
+        "name": "sells_5m",
+        "type": "int64"
+      },
+      {
+        "name": "buys_1h",
+        "type": "int64"
+      },
+      {
+        "name": "sells_1h",
+        "type": "int64"
+      },
+      {
+        "name": "buy_pressure_1h",
+        "type": "double"
+      }
+    ],
+    "timestamp_bounds": {
+      "snapshot_time": {
+        "min": "2026-06-09 13:08:52.504717+00:00",
+        "max": "2026-07-14 15:27:46.443891+00:00"
+      },
+      "seconds_since_graduation": {
+        "min": "0.33",
+        "max": "172808.99"
+      },
+      "incomplete_data": {
+        "min": "False",
+        "max": "True"
+      },
+      "price_native": {
+        "min": "5.321e-13",
+        "max": "13.4397"
+      }
+    }
+  },
+  "trades": {
+    "path": "data/external/pumpfun_memecoin_corpus/trades",
+    "rows": 33581765,
+    "columns": [
+      {
+        "name": "id",
+        "type": "int64"
+      },
+      {
+        "name": "mint",
+        "type": "large_string"
+      },
+      {
+        "name": "tx_signature",
+        "type": "large_string"
+      },
+      {
+        "name": "event_time",
+        "type": "timestamp[us, tz=+01:00]"
+      },
+      {
+        "name": "seconds_since_launch",
+        "type": "double"
+      },
+      {
+        "name": "is_buy",
+        "type": "bool"
+      },
+      {
+        "name": "sol_amount",
+        "type": "double"
+      },
+      {
+        "name": "token_amount",
+        "type": "double"
+      },
+      {
+        "name": "user_wallet",
+        "type": "large_string"
+      },
+      {
+        "name": "v_tokens_bonding_curve",
+        "type": "double"
+      },
+      {
+        "name": "v_sol_bonding_curve",
+        "type": "double"
+      },
+      {
+        "name": "market_cap_sol",
+        "type": "double"
+      },
+      {
+        "name": "price_sol",
+        "type": "double"
+      },
+      {
+        "name": "curve_pct_depleted",
+        "type": "double"
+      },
+      {
+        "name": "source",
+        "type": "large_string"
+      }
+    ],
+    "timestamp_bounds": {
+      "tx_signature": {
+        "min": "112BV7bBewS1UioMv3vvUHL6uMPh4NeyvukFx7dhwvBaAnbV6uBiXr8mYvsAT2hBu2GYGSkvcMr51HrP9MnAyZj",
+        "max": "zzyp5tLZ31jArxUerk4Byn3zbLkuULp6QbToVjEXp5UNYAkG4RsShPZJdsjuc64wUXyuTsA18GUqMfwfNJANnE5"
+      },
+      "event_time": {
+        "min": "2026-06-05 09:12:28.604950+00:00",
+        "max": "2026-06-10 23:59:59.808596+00:00"
+      }
+    },
+    "shard_count": 18
+  }
+}

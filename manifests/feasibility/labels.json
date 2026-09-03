@@ -1,0 +1,67 @@
+{
+  "survival_horizons": {
+    "supported": "full",
+    "method": "From observation time T, use future trades/snapshots/postgard or red_pump TIMEOUT censoring at 24h for survival analysis.",
+    "sources": [
+      "pumpfun.trades",
+      "pumpfun.snapshots",
+      "red_pump.outcomes"
+    ]
+  },
+  "plus_x_before_minus_y_barriers": {
+    "supported": "full",
+    "method": "Walk forward price_sol / postgrad price_usd path after T; detect first barrier hits.",
+    "sources": [
+      "pumpfun.trades",
+      "pumpfun.snapshots",
+      "pumpfun.postgard_snapshots"
+    ],
+    "caveats": [
+      "requires clean price path; drop null/inconsistent trade prices"
+    ]
+  },
+  "future_return_distributions": {
+    "supported": "full",
+    "method": "Compute returns at fixed horizons from T using price path.",
+    "sources": [
+      "pumpfun.trades",
+      "pumpfun.snapshots",
+      "pumpfun.postgard_snapshots"
+    ]
+  },
+  "mfe_mae": {
+    "supported": "full",
+    "method": "Max favorable/adverse excursion from price path after T within horizon.",
+    "sources": [
+      "pumpfun.trades",
+      "pumpfun.snapshots",
+      "pumpfun.postgard_snapshots"
+    ]
+  },
+  "time_to_graduation_crash_inactivity": {
+    "supported": "full",
+    "method": "graduation via graduated_at/migrations; crash via drawdown barriers; inactivity via time since last trade/unique wallet activity.",
+    "sources": [
+      "pumpfun.tokens",
+      "pumpfun.migrations",
+      "pumpfun.trades",
+      "red_pump.outcomes"
+    ]
+  },
+  "buyer_activity_persistence": {
+    "supported": "full",
+    "method": "Recompute per-wallet trade counts/volumes over windows from trades; optionally join RED-COHORT membership as coordination feature.",
+    "sources": [
+      "pumpfun.trades",
+      "red_cohort.sniper_cohorts"
+    ],
+    "caveats": [
+      "ignore wallet_stats aggregates; exclude system program"
+    ]
+  },
+  "source_specific_labels_to_ignore_as_canonical": [
+    "postgard_outcomes.outcome_label (dead/pump_dump/etc are source taxonomy)",
+    "postgard_outcomes.success_label / target_label_legacy",
+    "quickstart rug filter on outcome_label='rug' (does not exist)"
+  ]
+}

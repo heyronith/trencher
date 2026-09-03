@@ -1,0 +1,69 @@
+{
+  "ordered_trade_event_history": {
+    "supported": "full",
+    "evidence": [
+      "trades.*.event_time + seconds_since_launch + mint + tx_signature",
+      "sortable per-mint trade streams"
+    ],
+    "caveats": [
+      "exclude System Program wallet rows for participant history",
+      "exclude sol_amount-inconsistent and null-price rows for SOL P&L",
+      "Jul 3 2026 collection outage (zero trades)"
+    ]
+  },
+  "price_reserve_trajectory": {
+    "supported": "full",
+    "evidence": [
+      "trades.price_sol, market_cap_sol, v_sol/v_tokens bonding curve",
+      "snapshots bucket OHLCV + curve_pct_depleted_eob"
+    ],
+    "caveats": [
+      "~7% null price_sol rows (mostly whole-token early failures)",
+      "curve_pct_depleted can exceed 100 (cap 110) especially post Jul 4",
+      "raw reserve units need documented scaling relationship"
+    ]
+  },
+  "wallet_participation_history": {
+    "supported": "full",
+    "evidence": [
+      "trades.user_wallet with event_time per mint",
+      "can recompute first/last/activity from trades"
+    ],
+    "caveats": [
+      "do not use wallet_stats activity/volume aggregates (stale)",
+      "exclude System Program address"
+    ]
+  },
+  "bonding_curve_state": {
+    "supported": "full",
+    "evidence": [
+      "per-trade and per-bucket reserve/price/curve depletion fields"
+    ],
+    "caveats": [
+      "concentration fields need corrected columns + suspect exclusions"
+    ]
+  },
+  "graduation": {
+    "supported": "full",
+    "evidence": [
+      "tokens.graduated_at / seconds_to_graduation",
+      "migrations.migrated_at",
+      "red_pump outcomes GRADUATED vs TIMEOUT"
+    ],
+    "caveats": [
+      "migrations.pool_address partially synthetic",
+      "source populations differ slightly across tables"
+    ]
+  },
+  "post_graduation_trajectory": {
+    "supported": "partial",
+    "evidence": [
+      "postgard_snapshots price/liquidity/volume after graduation",
+      "postgard_outcomes peak/horizon fields for graduated subset"
+    ],
+    "caveats": [
+      "only ~5.7k graduated tokens, not full 798k launch universe",
+      "source outcome_label is source-specific; regenerate labels ourselves"
+    ]
+  }
+}

@@ -1,0 +1,219 @@
+{
+  "generated_at": "2026-09-03T04:12:05.821275+00:00",
+  "tokens": {
+    "rows": 798430,
+    "unique_mints": 798430,
+    "duplicate_mint_rows": 0,
+    "mayhem_tokens": 109561,
+    "mayhem_rate": 0.13722054532019087,
+    "top10_pct_suspect_true": 1486,
+    "top10_pct_suspect_null": 81900,
+    "supply_bug_corrected_true": 109561,
+    "graduated_tokens": 5689,
+    "is_training_ready_true": 563677,
+    "initial_top10_pct_gt_100": 30722,
+    "initial_top10_pct_corrected_gt_100": 1486,
+    "leakage_entry_price_null_rates": {
+      "entry_price_20s_usd": {
+        "graduated_null_rate": 0.0003515556336790297,
+        "non_graduated_null_rate": 0.9364205963864617
+      },
+      "entry_price_30s_usd": {
+        "graduated_null_rate": 0.00017577781683951485,
+        "non_graduated_null_rate": 0.9362074120046775
+      },
+      "entry_price_1m_usd": {
+        "graduated_null_rate": 0.0,
+        "non_graduated_null_rate": 0.9359500770112811
+      }
+    },
+    "detected_at_min": "2026-06-05 09:12:26.343743+00:00",
+    "detected_at_max": "2026-07-14 15:01:42.759724+00:00",
+    "known_issues_checks": {
+      "1.1_mayhem_count_near_109561": true,
+      "2.1_suspect_near_1486": true,
+      "7_entry_price_leakage_pattern": true
+    }
+  },
+  "trades": {
+    "rows": 33581765,
+    "unique_mints_in_trades": 622870,
+    "null_price_sol_rows": 2360061,
+    "null_price_sol_rate": 0.07027805119832146,
+    "null_sol_amount_rows": 2357752,
+    "null_sol_amount_rate": 0.07020929364492903,
+    "mints_with_any_null_price": 20292,
+    "system_program_trade_rows": 6690901,
+    "system_program_trade_rate": 0.1992420886752081,
+    "curve_pct_depleted_out_of_0_100": 1215810,
+    "curve_pct_depleted_oob_rate": 0.03620446989608795,
+    "sol_amount_inconsistent_rows": 1136321,
+    "sol_amount_inconsistent_rate_vs_checked": 0.03639522685885434,
+    "checked_consistency_rows": 31221704,
+    "jul3_trade_rows": 0,
+    "day_null_price_rates_sample": {
+      "2026-06-09": 0.3583861981089354,
+      "2026-06-10": 0.44086788522916526,
+      "2026-07-02": 0.0074084760433815915,
+      "2026-07-04": 0.0094092974484446
+    },
+    "known_issues_checks": {
+      "3.1_inconsistency_near_3_38pct": [
+        0.03383744124229325,
+        true
+      ],
+      "3.2_null_price_near_7_03pct": [
+        0.07027805119832146,
+        true
+      ],
+      "3.3_system_program_near_19_92pct": [
+        0.1992420886752081,
+        true
+      ],
+      "3.4_curve_oob_near_3_62pct": [
+        0.03620446989608795,
+        true
+      ],
+      "5.5_jul3_outage_zero_or_near_zero_trades": true
+    }
+  },
+  "snapshots": {
+    "rows": 26934864,
+    "curve_pct_depleted_eob_out_of_0_100": 730670,
+    "curve_pct_depleted_eob_oob_rate": 0.027127294943831905,
+    "known_issues_checks": {
+      "3.4_snapshot_oob_near_2_71pct": [
+        0.027127294943831905,
+        true
+      ]
+    }
+  },
+  "migrations": {
+    "rows": 5701,
+    "unique_mints": 5701,
+    "synthetic_graduation_queue": 1380,
+    "backfilled_from_pumpswap_trade": 69,
+    "synthetic_or_backfilled_rate": 0.2541659358007367,
+    "known_issues_checks": {
+      "4.55_synthetic_near_1380": true,
+      "4.55_backfilled_near_69": true
+    }
+  },
+  "postgard_outcomes": {
+    "rows": 5669,
+    "unique_mints": 5669,
+    "outcome_label_counts": {
+      "dead": 2692,
+      "minor_pump": 320,
+      "slow_bleed": 784,
+      "pump_dump": 1072,
+      "major_pump": 607,
+      "sustained": 194
+    },
+    "has_rug_label_value": false,
+    "rug_detected_true": 181,
+    "known_issues_checks": {
+      "4.5_no_rug_outcome_label": true
+    }
+  },
+  "red_pump": {
+    "launch_rows": 860213,
+    "unique_launch_mints": 860194,
+    "duplicate_launch_mints": 18,
+    "outcome_rows": 833171,
+    "outcome_counts": {
+      "GRADUATED": 1652,
+      "TIMEOUT": 831304,
+      ".6": 1,
+      "ka": 1,
+      "8": 1,
+      "": 75,
+      "30.098749692": 1,
+      "30.000020821": 1,
+      "an": 1,
+      "7": 1,
+      "773": 1,
+      "777": 1,
+      "250$": 1,
+      "30.906406493": 1,
+      "433.": 1,
+      "000": 24,
+      "25": 1,
+      "000 FT": 2,
+      "666": 1,
+      "01": 1,
+      "HELLO": 1,
+      "31.164222038": 1,
+      "30.082540755": 1,
+      "16": 1,
+      "30": 4,
+      "30.71473926": 1,
+      "30.397617661": 1,
+      "30.073392988": 1,
+      "42.562587836": 1,
+      "30.396662335": 1,
+      "14.857804038": 1,
+      "19.922427839": 1,
+      "44.575508075": 1,
+      "368": 1,
+      "m": 1,
+      "IDIOTS": 2,
+      "000X A": 2,
+      "333tokens": 2,
+      "39.708670093": 1,
+      "33.062738281": 1,
+      "30.603105125": 1,
+      "30.397396501": 1,
+      "30.000000001": 3,
+      "REAAAD": 8,
+      "if": 1,
+      "48": 1,
+      "1": 1,
+      "WHAT": 1,
+      "22": 1,
+      "s": 1,
+      "Luna": 1,
+      "30.000000006": 1,
+      "60.342904345": 1,
+      "30.466653682": 1,
+      "i won": 1,
+      "1\u00a3": 1,
+      "30.197500019": 1,
+      "34.535735861": 1,
+      "4tod": 1,
+      "875": 1,
+      "555": 2,
+      "851.04%": 1,
+      "3": 1,
+      "32.233781911": 1,
+      "34.970485327": 1,
+      "33.040400669": 1,
+      "30.009827187": 1,
+      "TW": 1,
+      "600": 1,
+      "37.797192928": 1,
+      "31.387531021": 1,
+      "30.049626559": 1,
+      "30.458886038": 1,
+      "00": 3,
+      "58": 1,
+      "cuc": 1,
+      "42.38681171": 1,
+      "1b BTC": 1,
+      "695.59": 1,
+      "38.483950613": 1,
+      "k": 18,
+      "epw": 1,
+      "619": 1,
+      "EGGPLAN": 1
+    },
+    "nonstandard_or_blank_outcomes": 215,
+    "mints_with_both_graduated_and_timeout": 14,
+    "known_issues_checks": {
+      "dup_launches_near_18": true,
+      "nonstandard_outcomes_near_215": true,
+      "both_grad_timeout_near_14": true
+    }
+  },
+  "known_issues_document_bytes": 14886
+}
