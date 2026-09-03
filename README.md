@@ -12,10 +12,14 @@ cp .env.example .env   # add DUNE_API_KEY for backfill
 ## Validate (no Dune credits)
 
 ```bash
+./scripts/ci.sh
+# or manually:
 uv run ruff check .
 uv run pytest
 uv run trencher dune doctor
 ```
+
+Enable GitHub Actions CI: copy `ci/github-actions-ci.yml.example` to `.github/workflows/ci.yml`.
 
 ## Backfill one day
 
