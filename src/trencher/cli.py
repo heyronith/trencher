@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from datetime import date
@@ -10,6 +11,8 @@ from pathlib import Path
 import click
 
 from trencher import __version__
+from trencher.data.historical import download_historical
+from trencher.data.paths import SOURCES, resolve_external_root, resolve_manifest_root
 from trencher.dune.backfill import backfill_range
 from trencher.dune.client import LiveDuneRunner, MockDuneRunner
 from trencher.dune.config import resolve_data_root
@@ -159,6 +162,55 @@ def dune_backfill(
         f"Done: {len(results)} partitions "
         f"({skipped} skipped, {written} written, {planned} dry-run)"
     )
+
+
+@main.group()
+def data() -> None:
+    """Public historical dataset acquisition and local registration."""
+
+
+@data.command("download-historical")
+@click.option(
+    "--source",
+    "sources",
+    multiple=True,
+    type=click.Choice(sorted(SOURCES)),
+    help="Subset of sources (default: all)",
+)
+@click.option("--force", is_flag=True, help="Re-download even if verified files exist")
+@click.option(
+    "--external-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Download root (default: data/external)",
+)
+@click.option(
+    "--manifest-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Committed manifest root (default: manifests/external)",
+)
+@click.option("--verbose", "-v", is_flag=True)
+def data_download_historical(
+    sources: tuple[str, ...],
+    force: bool,
+    external_root: Path | None,
+    manifest_root: Path | None,
+    verbose: bool,
+) -> None:
+    """Download, verify, inventory, and register finalized public historical datasets."""
+    _configure_logging(verbose)
+    result = download_historical(
+        sources=list(sources) if sources else None,
+        external_root=resolve_external_root(external_root),
+        manifest_root=resolve_manifest_root(manifest_root),
+        force=force,
+    )
+    click.echo(json.dumps(result.registry, indent=2))
+    if not result.ok:
+        for err in result.errors:
+            click.echo(f"ERR {err}", err=True)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

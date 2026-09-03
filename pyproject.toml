@@ -7,9 +7,11 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "click>=8.1",
     "dune-client>=1.7",
+    "huggingface-hub>=1.29.0",
     "pandas>=2.2",
     "pyarrow>=18.0",
     "pyyaml>=6.0",
+    "requests>=2.34.2",
     "tenacity>=9.0",
 ]
 
@@ -41,3 +43,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

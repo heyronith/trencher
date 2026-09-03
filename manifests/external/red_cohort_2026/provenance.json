@@ -1,0 +1,271 @@
+{
+  "source_id": "red_cohort_2026",
+  "source_name": "RED-COHORT-2026-v1: A Catalogue of 1,012 Persistent Wallet Cohorts Detected on the Solana Pump.fun Bonding-Curve Marketplace (June 11-25, 2026)",
+  "kind": "zenodo",
+  "url": "https://zenodo.org/records/21765387",
+  "repo_id": null,
+  "record_id": "21765387",
+  "doi": "10.5281/zenodo.21765387",
+  "version": "1.1.1",
+  "license": "cc-by-4.0",
+  "retrieved_at": "2026-09-03T03:50:26.162028+00:00",
+  "file_count": 28,
+  "total_bytes": 18745000,
+  "files": [
+    {
+      "path": "RED-COHORT-2026-v1_1_1.zip",
+      "url": "https://zenodo.org/api/records/21765387/files/RED-COHORT-2026-v1_1_1.zip/content",
+      "size": 8769673,
+      "sha256": "f908d10f459e52de0e6f0d77af26db262e41a521dfe3872f30bd795e255841d0",
+      "publisher_checksum": {
+        "alg": "md5",
+        "value": "172198eade99f702f1da0bfdd4cf3079"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/DEPOSIT_NOTE.md",
+      "url": null,
+      "size": 9295,
+      "sha256": "e058831feabd086e9ab8e47242b911e82cde9383d876b0a18b8a3dbe0536caaf",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/LICENSE",
+      "url": null,
+      "size": 2843,
+      "sha256": "0a07ea8d3e7541b009d609afc26d24c3d8f63cedcf74aa5062a2f8e82b30ee57",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/README.md",
+      "url": null,
+      "size": 14752,
+      "sha256": "be966684a991d3e269458f6b5ee86c8f9e5e20f69a8ac93de0ddc69315138ee7",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/analyze_sniper_cohorts.py",
+      "url": null,
+      "size": 9921,
+      "sha256": "7e26694aa776d76176858691608b56c6614173f22fc67695fbcd98af65163606",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/appendix_a_ablations.csv",
+      "url": null,
+      "size": 100,
+      "sha256": "fb5619d6c27099c6b6d2a654869dc1b4211f887adf755b854284d133e5930937",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/appendix_b_placebo.txt",
+      "url": null,
+      "size": 780,
+      "sha256": "c1af669aecd789d8804bfed67ddfdcf6d3f14fcd8ef65ec608ff8071eafb5564",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/appendix_b_tier_stratification.txt",
+      "url": null,
+      "size": 294,
+      "sha256": "ca343ff4adb3bbcab3175200aec3f5c23ff97bfd269835b91a6189bb1081c7de",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/appendix_b_top3_exclusion.txt",
+      "url": null,
+      "size": 246,
+      "sha256": "b8c4c169c7e71411c1734f49db563de65b10f0352d504d4c1742731203b93a78",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/appendix_b_v2_placebo_cis.txt",
+      "url": null,
+      "size": 1081,
+      "sha256": "685bd8f0fee0ed1623202de85c12f5fa63c528f19175cf95b4aaa76047e322dc",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/fig1_size_distribution_v2.svg",
+      "url": null,
+      "size": 3659,
+      "sha256": "deca059fa89f5962c53a9bb0cb12bf473d51a2feb01a77e0e4ab2b3a75827b15",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/fig2_lorenz_curve_v2.svg",
+      "url": null,
+      "size": 2780,
+      "sha256": "1651a84d1b2e578fe6da0f6ab4b0311617154d734e35bb3e7f784bbf22093122",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/fig3_score_vs_launches_v2.svg",
+      "url": null,
+      "size": 77790,
+      "sha256": "7722f24094e54cfaa21332fb16191ad3f2ecc6cdef623238276783ce94e64283",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/gen_p7_artifacts.py",
+      "url": null,
+      "size": 13804,
+      "sha256": "b7c7314a8af2c78667e168c9456f3855dfd4d2baf211ffa580b62a35037befa5",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/paper7_v3_psm.py",
+      "url": null,
+      "size": 17960,
+      "sha256": "39ebe0540739b93e6d77f31e85335f4d72f412be4ad7243b67fe5ded172e6287",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/paper7_v3_psm_nocohort_zerofill.py",
+      "url": null,
+      "size": 18262,
+      "sha256": "68109b776116cced941bedf0aab6483d50c3f00d7d6bdd4373d44ccca7e0e0ea",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/placebo_bootstrap_v3.py",
+      "url": null,
+      "size": 11361,
+      "sha256": "4e964bab2e63f441b1010146701eb31dbec556964b239b73ff75458de495a2de",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/placebo_stability_100seeds.json",
+      "url": null,
+      "size": 72366,
+      "sha256": "a1fa630381678db23472a022ac53b17f08dcd2879dab21ddce82717d3ec9b478",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/psm_results.json",
+      "url": null,
+      "size": 2864,
+      "sha256": "975571d63f81e66235fcdca74098fcc76f8d19765989f3ce7f3af40d96ffcd36",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/psm_results_nocohort_zerofill.json",
+      "url": null,
+      "size": 2985,
+      "sha256": "ce7c9eae5a497c5a7fb3b71b8369694aaf64ea2a8be83bc7c0a0d64982021936",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/psm_run.log",
+      "url": null,
+      "size": 4463,
+      "sha256": "e2cae9552b150a503e29af2a3853936ce5914d30e75563d18b278448c6c42454",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/psm_run_nocohort_zerofill.log",
+      "url": null,
+      "size": 4680,
+      "sha256": "9c44132c5d019b1db3a93d58eaa43e5e698d5b5747d3e4d7f2eed2c2b2b907da",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/sniper_cohorts.jsonl",
+      "url": null,
+      "size": 1472854,
+      "sha256": "184dcdc652ed4ea5f02d76d78c3e8a37b0043b85e3fb04181f14d9f18fa8ba41",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/sniper_cohorts_intra.jsonl.gz",
+      "url": null,
+      "size": 8223434,
+      "sha256": "f6f3138846683724947c6b1887dfbda2a7e94da7eb17bc332d61ecb535a6ba71",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/sniper_cohorts_report.md",
+      "url": null,
+      "size": 5322,
+      "sha256": "186f13f9987251315f4b57a890cb4ac9eeeec4e4d94ee799356ba272aee3ed47",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/table1_top10_cohorts.csv",
+      "url": null,
+      "size": 869,
+      "sha256": "9d73538823537c80807bd7c57664507ecdd0e09d14af7bea07b444fcb2da611d",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/table2_size_distribution.csv",
+      "url": null,
+      "size": 156,
+      "sha256": "c9c8296ea1fd5f821ea8f1b7d33d06cfa51954d35540c7cead22ff651f1d8785",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    },
+    {
+      "path": "extracted/RED-COHORT-2026-v1/table3_descriptive_stats.csv",
+      "url": null,
+      "size": 406,
+      "sha256": "16cfb23e3296aac75048256359b44919b9be6fd72e008e22d15e595f16b47223",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "extracted"
+    }
+  ]
+}

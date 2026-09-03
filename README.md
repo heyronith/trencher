@@ -50,6 +50,21 @@ Dry-run (no API calls):
 uv run trencher dune backfill --dataset trades_events --start 2025-01-01 --end 2025-01-01 --dry-run
 ```
 
+## Historical public datasets
+
+```bash
+uv run trencher data download-historical
+```
+
+Downloads finalized public corpora into `data/external/` (gitignored), verifies
+publisher checksums when available, and writes provenance/inventory/registry
+metadata under `manifests/external/` (committed). Sources:
+
+- Hugging Face `Slinky21/Pumpfun_Memecoin_Corpus`
+- Zenodo RED-PUMP-2026 (`21383616`)
+- Zenodo RED-COHORT-2026 (`21765387`) archive + extracted tree
+- Hugging Face `solarchive/solarchive` README/schemas/indexes only (no full chain)
+
 ## Architecture
 
 | Layer | Role |
@@ -57,7 +72,10 @@ uv run trencher dune backfill --dataset trades_events --start 2025-01-01 --end 2
 | `src/trencher/schemas/` | Versioned PyArrow canonical schemas (v1.1) |
 | `src/trencher/queries/` | Parameterized Dune SQL + `datasets.yaml` registry |
 | `src/trencher/dune/` | Client, backfill engine, preflight, manifests, checkpoints |
-| `data/raw/dune/` | Immutable Parquet output (gitignored) |
+| `src/trencher/data/` | Public historical dataset download, verify, inventory, registry |
+| `data/raw/dune/` | Immutable Dune Parquet output (gitignored) |
+| `data/external/` | Downloaded public corpora (gitignored) |
+| `manifests/external/` | Provenance + inventory metadata (committed) |
 
 **Datasets:** `token_lifecycle`, `trades_events`, `dex_trades`, `transaction_microstructure`, `token_transfers`, `wallet_funding`, `wallet_graph`, `market_context`, `execution_liquidity`
 

@@ -1,0 +1,136 @@
+{
+  "source_id": "red_pump_2026",
+  "source_name": "RED-PUMP-2026-v1: A public benchmark of 860,213 pump.fun token launches with survival outcomes (May\u2013June 2026 regime)",
+  "kind": "zenodo",
+  "url": "https://zenodo.org/records/21383616",
+  "repo_id": null,
+  "record_id": "21383616",
+  "doi": "10.5281/zenodo.21383616",
+  "version": "1.2",
+  "license": "cc-by-4.0",
+  "retrieved_at": "2026-09-03T03:50:19.343275+00:00",
+  "file_count": 10,
+  "total_bytes": 91584201,
+  "files": [
+    {
+      "path": "LICENSE",
+      "url": "https://zenodo.org/api/records/21383616/files/LICENSE/content",
+      "size": 574,
+      "sha256": "845909a30a88ec989482ab006ce0335d148aee80707c4b20598d870ac2ba2888",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "845909a30a88ec989482ab006ce0335d148aee80707c4b20598d870ac2ba2888"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "results.json",
+      "url": "https://zenodo.org/api/records/21383616/files/results.json/content",
+      "size": 13575,
+      "sha256": "3dca041da7c08661a0bf2a25467c8a6d469ea50b60b2d03d1d22be4d555ebb39",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "3dca041da7c08661a0bf2a25467c8a6d469ea50b60b2d03d1d22be4d555ebb39"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "CITATION.cff",
+      "url": "https://zenodo.org/api/records/21383616/files/CITATION.cff/content",
+      "size": 670,
+      "sha256": "794292e46831b7dfdd30a386b4deb1a8f2d887ccb08b81f66d7f7b996f497e28",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "794292e46831b7dfdd30a386b4deb1a8f2d887ccb08b81f66d7f7b996f497e28"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "km_figures.py",
+      "url": "https://zenodo.org/api/records/21383616/files/km_figures.py/content",
+      "size": 10259,
+      "sha256": "c430f2fbc927a07dc7c4da08045129edaf7c952d624d565a8c11d26c9ad66db9",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "c430f2fbc927a07dc7c4da08045129edaf7c952d624d565a8c11d26c9ad66db9"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "km_full.py",
+      "url": "https://zenodo.org/api/records/21383616/files/km_full.py/content",
+      "size": 13779,
+      "sha256": "475803a22be166af31dac1b246ee426404c233bc1caa5c59eb655c6df39eb06a",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "475803a22be166af31dac1b246ee426404c233bc1caa5c59eb655c6df39eb06a"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "red_pump_2026_v1_outcomes.csv.gz",
+      "url": "https://zenodo.org/api/records/21383616/files/red_pump_2026_v1_outcomes.csv.gz/content",
+      "size": 43624372,
+      "sha256": "c0a327ea442d91c6f970b2bad9a2a9b778e163d8c3eb38f71eccd3e92209a974",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "c0a327ea442d91c6f970b2bad9a2a9b778e163d8c3eb38f71eccd3e92209a974"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "SCHEMA.md",
+      "url": "https://zenodo.org/api/records/21383616/files/SCHEMA.md/content",
+      "size": 5301,
+      "sha256": "05d68af1f85903f72967f538984200e40c02fbd3b173e2f1b9da1ae5edf47a6b",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "05d68af1f85903f72967f538984200e40c02fbd3b173e2f1b9da1ae5edf47a6b"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "red_pump_2026_v1_launches.jsonl.gz",
+      "url": "https://zenodo.org/api/records/21383616/files/red_pump_2026_v1_launches.jsonl.gz/content",
+      "size": 47910391,
+      "sha256": "042940379e8c897ac97403e6b25a5b302fb32b6902a8fc0cef4ab70ac11e8f84",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "042940379e8c897ac97403e6b25a5b302fb32b6902a8fc0cef4ab70ac11e8f84"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "README.md",
+      "url": "https://zenodo.org/api/records/21383616/files/README.md/content",
+      "size": 4539,
+      "sha256": "a8e8fcda0d727fd9f1bf2e2fd161316b14fb6303c27ef46def92b78c66920da5",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "a8e8fcda0d727fd9f1bf2e2fd161316b14fb6303c27ef46def92b78c66920da5"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "SHA256SUMS",
+      "url": "https://zenodo.org/api/records/21383616/files/SHA256SUMS/content",
+      "size": 741,
+      "sha256": "09941ae5bfeea7a2419cb65cfbcfe1cedc0353c2dc687e3198388c7d0d14453c",
+      "publisher_checksum": {
+        "alg": "md5",
+        "value": "63738a47d38cc9cfa47f45ec2fd80372"
+      },
+      "verified": true,
+      "status": "downloaded"
+    }
+  ]
+}

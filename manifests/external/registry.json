@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-09-03T03:53:48.545519+00:00",
+  "external_root": "data/external",
+  "manifest_root": "manifests/external",
+  "datasets": [
+    {
+      "source_id": "pumpfun_memecoin_corpus",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus",
+      "license": "mit",
+      "data_dir": "data/external/pumpfun_memecoin_corpus",
+      "file_count": 28,
+      "total_bytes": 6695461295,
+      "status": "registered"
+    },
+    {
+      "source_id": "red_pump_2026",
+      "url": "https://zenodo.org/records/21383616",
+      "license": "cc-by-4.0",
+      "data_dir": "data/external/red_pump_2026",
+      "file_count": 10,
+      "total_bytes": 91584201,
+      "status": "registered"
+    },
+    {
+      "source_id": "red_cohort_2026",
+      "url": "https://zenodo.org/records/21765387",
+      "license": "cc-by-4.0",
+      "data_dir": "data/external/red_cohort_2026",
+      "file_count": 28,
+      "total_bytes": 18745000,
+      "status": "registered"
+    },
+    {
+      "source_id": "solarchive",
+      "url": "https://huggingface.co/datasets/solarchive/solarchive",
+      "license": "unknown",
+      "data_dir": "data/external/solarchive",
+      "file_count": 603,
+      "total_bytes": 5857006,
+      "status": "registered"
+    }
+  ],
+  "ok": true,
+  "errors": []
+}

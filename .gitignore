@@ -14,8 +14,11 @@ htmlcov/
 .env
 .env.local
 
-# Data (never commit raw extracts)
-data/
+# Data (never commit raw extracts or downloaded corpora)
+/data/
+
+# Committed provenance/inventory live under manifests/
+
 
 # IDE
 .idea/

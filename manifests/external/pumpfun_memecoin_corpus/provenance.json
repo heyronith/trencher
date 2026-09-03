@@ -1,0 +1,340 @@
+{
+  "source_id": "pumpfun_memecoin_corpus",
+  "source_name": "Pumpfun Memecoin Corpus",
+  "kind": "huggingface",
+  "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus",
+  "repo_id": "Slinky21/Pumpfun_Memecoin_Corpus",
+  "record_id": null,
+  "doi": null,
+  "version": null,
+  "license": "mit",
+  "retrieved_at": "2026-09-03T03:49:44.302570+00:00",
+  "file_count": 28,
+  "total_bytes": 6695461295,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/.gitattributes",
+      "size": 2504,
+      "sha256": "9e75dd981de037ec3769f24f790e126bc5a160b6871f510214e68dc70649aeeb",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "downloaded"
+    },
+    {
+      "path": "KNOWN_ISSUES.md",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/KNOWN_ISSUES.md",
+      "size": 14974,
+      "sha256": "82534ee226e1447e5ab0c0eb4b1b5453f0241aa5426d561b8f4b00314d1da299",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "downloaded"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/README.md",
+      "size": 8253,
+      "sha256": "0cd64ffd8c20b6aee2ecb70c956d47fa7a24e786f44c7c84f85b4c4fffbc7639",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "downloaded"
+    },
+    {
+      "path": "migrations.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/migrations.parquet",
+      "size": 480591,
+      "sha256": "ef5d5141fd94acbcd121bed50e39e525cf7777d25338fc9852a67fd8a085105d",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "ef5d5141fd94acbcd121bed50e39e525cf7777d25338fc9852a67fd8a085105d"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "postgard_outcomes.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/postgard_outcomes.parquet",
+      "size": 984653,
+      "sha256": "00a9980cb97630e9ea89574742f0e134d448e5566c5d7bda461f59bb02de022b",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "00a9980cb97630e9ea89574742f0e134d448e5566c5d7bda461f59bb02de022b"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "postgard_snapshots.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/postgard_snapshots.parquet",
+      "size": 89336038,
+      "sha256": "34a63b8333a41b3cc84d05461febe725cf37842fa0e21d6ea00472dcdcfa1e72",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "34a63b8333a41b3cc84d05461febe725cf37842fa0e21d6ea00472dcdcfa1e72"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "quickstart.py",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/quickstart.py",
+      "size": 24188,
+      "sha256": "68e6584536a9051e49a289b06b74a811546a62ccdb42a3b393409c2cc0e5e30b",
+      "publisher_checksum": null,
+      "verified": false,
+      "status": "downloaded"
+    },
+    {
+      "path": "snapshots.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/snapshots.parquet",
+      "size": 570740794,
+      "sha256": "41b6a221dca6ea01d68fac2129c3c5cd3966a27839f267e0f6aa4e980b6fc7d8",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "41b6a221dca6ea01d68fac2129c3c5cd3966a27839f267e0f6aa4e980b6fc7d8"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "tokens.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/tokens.parquet",
+      "size": 214405469,
+      "sha256": "c005d86d424013e5c78701161b025f3d8c3d472afb61466e0ad6fd5afe9e8ea6",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "c005d86d424013e5c78701161b025f3d8c3d472afb61466e0ad6fd5afe9e8ea6"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00000.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00000.parquet",
+      "size": 309225003,
+      "sha256": "646f56bba13514a7aa2cdbaf5ac37499175d4e0a6d5bee07f7f7f96c7e481154",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "646f56bba13514a7aa2cdbaf5ac37499175d4e0a6d5bee07f7f7f96c7e481154"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00001.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00001.parquet",
+      "size": 302131922,
+      "sha256": "93da769636d25d5541301b98f1f7039282556de00dbcd6e3ea7ef736c2b8bde0",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "93da769636d25d5541301b98f1f7039282556de00dbcd6e3ea7ef736c2b8bde0"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00002.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00002.parquet",
+      "size": 315910019,
+      "sha256": "2e2d91f9c73fb247e53cbc368fb9c52e93bd113febe10aef3a30a8add0dca3cb",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "2e2d91f9c73fb247e53cbc368fb9c52e93bd113febe10aef3a30a8add0dca3cb"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00003.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00003.parquet",
+      "size": 326023114,
+      "sha256": "14450a575d5896ddf8b6f9ce8e9f601b87d0ab9042ff2cb46445c1bdf6db9070",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "14450a575d5896ddf8b6f9ce8e9f601b87d0ab9042ff2cb46445c1bdf6db9070"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00004.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00004.parquet",
+      "size": 337238994,
+      "sha256": "39e39b93691e124c801335e1ed454ed0c7bc1ace6e24456570af8d7a4c7fae47",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "39e39b93691e124c801335e1ed454ed0c7bc1ace6e24456570af8d7a4c7fae47"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00005.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00005.parquet",
+      "size": 336200197,
+      "sha256": "e171c5121d1ca56df35289abac57e1bdf8c53761b00abdac6be084517046c387",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "e171c5121d1ca56df35289abac57e1bdf8c53761b00abdac6be084517046c387"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00006.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00006.parquet",
+      "size": 327678601,
+      "sha256": "77627cdcd584e0bf97e6e62e3e9bccd2825cccfef0b7316371eedd2fa67705a0",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "77627cdcd584e0bf97e6e62e3e9bccd2825cccfef0b7316371eedd2fa67705a0"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00007.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00007.parquet",
+      "size": 340582742,
+      "sha256": "c265053ef06620601ad6b2160177e0affba8423da70aeba13fecea2cc842d4c5",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "c265053ef06620601ad6b2160177e0affba8423da70aeba13fecea2cc842d4c5"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00008.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00008.parquet",
+      "size": 345035909,
+      "sha256": "414500a26f1cf781f89f7a8430e77bfacfb279a974685abb67f7ff769cbec847",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "414500a26f1cf781f89f7a8430e77bfacfb279a974685abb67f7ff769cbec847"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00009.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00009.parquet",
+      "size": 348188211,
+      "sha256": "a74896ca0de21cfaf489542dbb7fd95d3a222d8e808da163be1f2b6a5b4f48ea",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "a74896ca0de21cfaf489542dbb7fd95d3a222d8e808da163be1f2b6a5b4f48ea"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00010.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00010.parquet",
+      "size": 346867313,
+      "sha256": "28c66eec063058a59fbb8844cc599096f6e51ba7111471bda01b7b3288b450ae",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "28c66eec063058a59fbb8844cc599096f6e51ba7111471bda01b7b3288b450ae"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00011.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00011.parquet",
+      "size": 344056976,
+      "sha256": "ec51848bd92dcf21617055728ce615aafd004b25b20d14c11e67857b9022e6a8",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "ec51848bd92dcf21617055728ce615aafd004b25b20d14c11e67857b9022e6a8"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00012.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00012.parquet",
+      "size": 344549132,
+      "sha256": "4652bbebdff44cbe785d5eddd46b1164f4ee572f79ce00879f20e978e2f4afa0",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "4652bbebdff44cbe785d5eddd46b1164f4ee572f79ce00879f20e978e2f4afa0"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00013.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00013.parquet",
+      "size": 348336049,
+      "sha256": "c84e1ddc6f3898024fda0b779ef87ab58d93f13d50c1e2424a38a33dfdf843d2",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "c84e1ddc6f3898024fda0b779ef87ab58d93f13d50c1e2424a38a33dfdf843d2"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00014.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00014.parquet",
+      "size": 349075509,
+      "sha256": "7e177f81732948ff8adcf07c6c762710fb39c154644f18834ec52ec925b51dd9",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "7e177f81732948ff8adcf07c6c762710fb39c154644f18834ec52ec925b51dd9"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00015.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00015.parquet",
+      "size": 347986099,
+      "sha256": "d3b144b5cfea6046bfb9be5b940500406f0a05524af630365bd9523149f2238d",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "d3b144b5cfea6046bfb9be5b940500406f0a05524af630365bd9523149f2238d"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00016.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00016.parquet",
+      "size": 344312587,
+      "sha256": "db90859dbd371141a6e8c2f673d478462ef79da2ace6a1bcfa6fa06e91c2a9a0",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "db90859dbd371141a6e8c2f673d478462ef79da2ace6a1bcfa6fa06e91c2a9a0"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "trades/trades-00017.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/trades/trades-00017.parquet",
+      "size": 27991939,
+      "sha256": "3e48808f2ee97c7238af48446ef1ee2028b93fed58f11715dce6ef5a15fbe580",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "3e48808f2ee97c7238af48446ef1ee2028b93fed58f11715dce6ef5a15fbe580"
+      },
+      "verified": true,
+      "status": "downloaded"
+    },
+    {
+      "path": "wallet_stats.parquet",
+      "url": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus/resolve/main/wallet_stats.parquet",
+      "size": 78073515,
+      "sha256": "4750101ddd335caa606e287be793df97b92daedee647b282d972fd3daf309a80",
+      "publisher_checksum": {
+        "alg": "sha256",
+        "value": "4750101ddd335caa606e287be793df97b92daedee647b282d972fd3daf309a80"
+      },
+      "verified": true,
+      "status": "downloaded"
+    }
+  ]
+}
