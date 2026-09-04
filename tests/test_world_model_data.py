@@ -26,20 +26,23 @@ def _write_mini_corpus(external: Path) -> None:
     trades.mkdir(parents=True)
     tokens = pa.table(
         {
-            "mint": ["m1", "m2", "m3"],
+            "mint": ["m1", "m2", "m3", "m_outage"],
             "detected_at": [
                 datetime(2026, 6, 5, tzinfo=UTC),
                 datetime(2026, 6, 6, tzinfo=UTC),
                 datetime(2026, 6, 7, tzinfo=UTC),
+                datetime(2026, 7, 3, tzinfo=UTC),
             ],
-            "creator": ["c1", "c2", "c1"],
-            "graduated_at": [datetime(2026, 6, 8, tzinfo=UTC), None, None],
-            "is_mayhem_mode": [False, False, True],
-            "top10_pct_suspect": [False, False, False],
-            "initial_top10_pct_corrected": [10.0, 20.0, 30.0],
-            "dev_buy_pct_corrected": [1.0, 2.0, 3.0],
-            "supply_bug_corrected": [False, False, True],
-            "is_training_ready": [True, True, True],
+            "creator": ["c1", "c2", "c1", "c3"],
+            "graduated_at": [datetime(2026, 6, 8, tzinfo=UTC), None, None, None],
+            "is_mayhem_mode": [False, False, True, False],
+            "top10_pct_suspect": [False, False, False, False],
+            "initial_top10_pct_corrected": [10.0, 20.0, 30.0, 40.0],
+            "dev_buy_pct_corrected": [1.0, 2.0, 3.0, 4.0],
+            "supply_bug_corrected": [False, False, True, False],
+            "is_training_ready": [True, True, True, True],
+            "initial_holder_count": [4, 8, 20, 5],
+            "initial_buy_sol": [0.1, 0.5, 2.0, 0.2],
         }
     )
     pq.write_table(tokens, pump / "tokens.parquet")
@@ -60,21 +63,22 @@ def _write_mini_corpus(external: Path) -> None:
     pq.write_table(
         pa.table(
             {
-                "mint": ["m1", "m1", "m2"],
-                "tx_signature": ["sigA", "sigB", "sigC"],
+                "mint": ["m1", "m1", "m2", "m2"],
+                "tx_signature": ["sigA", "sigB", "sigC", "sigD"],
                 "event_time": [
                     datetime(2026, 6, 5, 1, tzinfo=UTC),
                     datetime(2026, 6, 5, 2, tzinfo=UTC),
                     datetime(2026, 6, 6, 1, tzinfo=UTC),
+                    datetime(2026, 6, 6, 3, tzinfo=UTC),
                 ],
-                "user_wallet": ["w1", "w2", SYSTEM_PROGRAM_WALLET],
-                "is_buy": [True, True, True],
-                "sol_amount": [1.0, 2.0, 3.0],
-                "token_amount": [10.0, 20.0, 30.0],
-                "price_sol": [0.1, 0.2, 0.3],
-                "v_sol_bonding_curve": [30.0, 31.0, 32.0],
-                "v_tokens_bonding_curve": [1e9, 9e8, 8e8],
-                "curve_pct_depleted": [1.0, 2.0, 3.0],
+                "user_wallet": ["w1", "w2", SYSTEM_PROGRAM_WALLET, "w3"],
+                "is_buy": [True, False, True, False],
+                "sol_amount": [1.0, 2.0, 3.0, 0.4],
+                "token_amount": [10.0, 20.0, 30.0, 5.0],
+                "price_sol": [0.1, 0.2, 0.3, 0.05],
+                "v_sol_bonding_curve": [30.0, 31.0, 32.0, 33.0],
+                "v_tokens_bonding_curve": [1e9, 9e8, 8e8, 7e8],
+                "curve_pct_depleted": [1.0, 2.0, 3.0, 10.0],
             }
         ),
         trades / "trades-00000.parquet",
@@ -173,6 +177,9 @@ def test_local_acquisition_and_pipeline_skip_live(tmp_path: Path) -> None:
     assert (manifests / "source_probe.json").exists()
     assert (manifests / "extraction_plan.json").exists()
     assert (manifests / "WORLD_MODEL_DATA.md").exists()
+    md = (manifests / "WORLD_MODEL_DATA.md").read_text(encoding="utf-8")
+    assert "Genuine wallet funding" not in md
+    assert "native-SOL" in md or "True native-SOL" in md
     assert (world / "graph" / "edges_wallet_token.parquet").exists()
     local = run_local_acquisition(
         external_root=external,
@@ -181,7 +188,15 @@ def test_local_acquisition_and_pipeline_skip_live(tmp_path: Path) -> None:
         rpc_max_signatures=10,
         max_trade_batches=1,
     )
-    assert local["layers"]["rich_subset"]["mint_count"] == 1
+    assert local["layers"]["rich_subset"]["mint_count"] == 3
+    assert local["layers"]["rich_subset"]["quality_flag"] == "outcome_independent_stratified"
+    proof = local["layers"]["rich_subset"]["bias_proof"]
+    assert proof["jul3_included"] is False
+    assert proof["subset_non_graduated"] >= 1
+    assert proof["selection_is_not_graduation_proxy"] is True
+    sigs = pq.read_table(world / "again" / "microstructure" / "signature_targets.parquet")
+    mints = set(sigs.column("mint").to_pylist())
+    assert "m1" in mints and "m2" in mints
 
 
 def test_gecko_and_rpc_mocked(tmp_path: Path) -> None:
@@ -222,7 +237,7 @@ def test_gecko_and_rpc_mocked(tmp_path: Path) -> None:
 
     rpc_client = SolanaRpc(min_interval=0)
 
-    def fake_call(method: str, params: list):
+    def fake_tx(_method: str, _params: list):
         return {
             "slot": 1,
             "blockTime": 1,
@@ -242,9 +257,78 @@ def test_gecko_and_rpc_mocked(tmp_path: Path) -> None:
             },
         }
 
-    with patch.object(rpc_client, "call", side_effect=fake_call):
+    def fake_call_batch(calls):
+        return [fake_tx(method, params) for method, params in calls]
+
+    with (
+        patch.object(rpc_client, "call", side_effect=fake_tx),
+        patch.object(rpc_client, "call_batch", side_effect=fake_call_batch),
+    ):
         rpc = run_rpc_acquisition(
             world_root=world, max_signatures=5, rpc=rpc_client, skip_live=False
         )
     assert rpc["found"] == 1
     assert rpc["signature_match_rate"] == 1.0
+
+
+def test_native_sol_parser_ignores_post_t_and_spl() -> None:
+    from trencher.data.world_model.acquire.funding import parse_system_sol_transfers
+    from trencher.data.world_model.constants import SYSTEM_PROGRAM_ID
+
+    t = 1_000.0
+    post = {
+        "blockTime": 1_001,
+        "slot": 9,
+        "transaction": {
+            "message": {
+                "instructions": [
+                    {
+                        "program": "system",
+                        "programId": SYSTEM_PROGRAM_ID,
+                        "parsed": {
+                            "type": "transfer",
+                            "info": {
+                                "source": "aaa",
+                                "destination": "bbb",
+                                "lamports": 5,
+                            },
+                        },
+                    }
+                ]
+            }
+        },
+        "meta": {"innerInstructions": []},
+    }
+    assert parse_system_sol_transfers("sig", post, max_block_time=t) == []
+
+    pre = dict(post)
+    pre["blockTime"] = 999
+    edges = parse_system_sol_transfers("sig", pre, max_block_time=t)
+    assert len(edges) == 1
+    assert edges[0]["edge_type"] == "system_sol_transfer"
+    assert edges[0]["lamports"] == 5
+
+    spl_only = {
+        "blockTime": 999,
+        "slot": 9,
+        "transaction": {
+            "message": {
+                "instructions": [
+                    {
+                        "program": "spl-token",
+                        "parsed": {
+                            "type": "transfer",
+                            "info": {
+                                "source": "aaa",
+                                "destination": "bbb",
+                                "amount": "1",
+                            },
+                        },
+                    }
+                ]
+            }
+        },
+        "meta": {"innerInstructions": []},
+    }
+    assert parse_system_sol_transfers("sig", spl_only, max_block_time=t) == []
+

@@ -26,7 +26,7 @@ def build_extraction_plan(
     *,
     external_root: Path,
     probe: dict[str, Any],
-    rich_subset_max_mints: int = 2721,
+    rich_subset_max_mints: int = 4000,
     rpc_max_signatures: int = 25_000,
     gecko_max_pools: int = 2721,
 ) -> dict[str, Any]:
@@ -68,8 +68,8 @@ def build_extraction_plan(
                 "fallback": ["rpc_getTransaction", "pumpfun.trades.tx_signature"],
                 "solarchive": sol_decision,
                 "scope": (
-                    f"rich multimodal subset up to {rpc_max_signatures} signatures "
-                    "prioritized by graduated+real-pool mints"
+                    f"unbiased rich subset, stratified per-token signatures "
+                    f"up to {rpc_max_signatures}"
                 ),
                 "fields": [
                     "signature",
@@ -108,7 +108,7 @@ def build_extraction_plan(
                     "creator_token_edges",
                     "co_buy_edges_rich_subset",
                     "cohort_membership_edges",
-                    "funding_edges_from_rpc_balance_changes",
+                    "funding_edges_from_system_program_pre_T",
                 ],
             },
             "global_market_network_context": {
@@ -143,13 +143,14 @@ def build_extraction_plan(
         },
         "rich_subset_policy": {
             "definition": (
-                "Graduated tokens with real migration pool_address, "
-                f"capped at {rich_subset_max_mints} mints"
+                "Outcome-independent stratified sample using only launch-time fields "
+                f"(detected_at, mayhem, initial_holder_count, initial_buy_sol), "
+                f"capped at {rich_subset_max_mints} mints; Jul 3 outage excluded"
             ),
             "rpc_max_signatures": rpc_max_signatures,
             "rationale": (
-                "Broad event/curve corpus remains full PumpFun population; "
-                "microstructure/graph funding enrichment concentrates on richest multimodal slice."
+                "Fusion training population must not be selected on graduation or "
+                "future returns. Graduated real-pool mints remain a separate Gecko/postgrad list."
             ),
         },
         "source_decisions": {

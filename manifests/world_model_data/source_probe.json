@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T18:33:12.720063+00:00",
+  "generated_at": "2026-09-03T19:52:07.493067+00:00",
   "corpus_window": {
     "start": "2026-06-05",
     "end": "2026-07-14"
@@ -96,8 +96,8 @@
             "mode": "REPEATED"
           }
         ],
-        "num_rows": 570031267402,
-        "num_bytes": 958371306644750
+        "num_rows": 570050684748,
+        "num_bytes": 958420397166333
       },
       "Token Transfers": {
         "requested": "Token Transfers",
@@ -179,8 +179,8 @@
             "mode": "NULLABLE"
           }
         ],
-        "num_rows": 147554023483,
-        "num_bytes": 44465932066945
+        "num_rows": 147560311103,
+        "num_bytes": 44467585711216
       },
       "Blocks": {
         "requested": "Blocks",
@@ -227,8 +227,8 @@
             "mode": "NULLABLE"
           }
         ],
-        "num_rows": 421988481,
-        "num_bytes": 75105463508
+        "num_rows": 422003458,
+        "num_bytes": 75108245265
       },
       "Accounts": {
         "requested": "Accounts",
@@ -380,8 +380,8 @@
             "mode": "REPEATED"
           }
         ],
-        "num_rows": 166615685,
-        "num_bytes": 144367733647
+        "num_rows": 166625728,
+        "num_bytes": 144376111905
       },
       "Rewards": {
         "requested": "Rewards",
@@ -405,7 +405,7 @@
       },
       "blocks_day_counts": {
         "status": "dry_run_ok",
-        "estimated_bytes": 138394688
+        "estimated_bytes": 138514504
       }
     },
     "dry_runs": [
@@ -428,13 +428,13 @@
       {
         "name": "blocks_day_counts",
         "dry_run": true,
-        "estimated_bytes": 138394688,
-        "estimated_gib": 0.1289,
+        "estimated_bytes": 138514504,
+        "estimated_gib": 0.129,
         "within_abort_threshold": true,
         "sql_sha16": "65f5b1a8c0dc5b14"
       }
     ],
-    "bytes_estimated_total": 115225344168,
+    "bytes_estimated_total": 115225463984,
     "decision": "usable_with_partition_filters",
     "notes": []
   },
@@ -525,7 +525,7 @@
       "pool_lookup": {
         "status_code": 200,
         "ok": true,
-        "pool": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE"
+        "pool": "2jiXG5LCNTM7J5DKC3RonFn7hrocSSqyh1TYKWyBExbn"
       }
     },
     "notes": []

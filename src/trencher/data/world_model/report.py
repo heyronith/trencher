@@ -16,14 +16,17 @@ def _rows(path: Path) -> int:
     return int(pq.ParquetFile(path).metadata.num_rows)
 
 
-def _unique_count(path: Path, column: str) -> int:
+def _mint_set(path: Path, column: str = "mint") -> set[str]:
     if not path.exists() or _rows(path) == 0:
-        return 0
+        return set()
     try:
-        col = pq.read_table(path, columns=[column]).column(0)
-        return len(set(col.to_pylist()) - {None})
+        return set(pq.read_table(path, columns=[column]).column(0).to_pylist()) - {None}
     except Exception:  # noqa: BLE001
-        return 0
+        return set()
+
+
+def _unique_count(path: Path, column: str) -> int:
+    return len(_mint_set(path, column))
 
 
 def build_coverage_report(
@@ -45,8 +48,10 @@ def build_coverage_report(
     cobuy = local.get("layers", {}).get("wallet_graph", {}).get("cobuy_edges", 0)
     cohort = local.get("layers", {}).get("wallet_graph", {}).get("cohort_member_edges", 0)
     rpc_funding = _rows(graph / "edges_funding_rpc.parquet")
-    spl_funding = _rows(graph / "edges_funding_spl.parquet")
+    spl_transfers = _rows(graph / "edges_funding_spl.parquet")
+    native_sol = _rows(graph / "edges_funding_native_sol.parquet")
     shared_funder = _rows(graph / "edges_shared_funder.parquet")
+    shared_native = _rows(graph / "edges_shared_native_funder.parquet")
     creator_own = _rows(graph / "edges_creator_ownership_transfers.parquet")
     wallets = local.get("layers", {}).get("wallet_graph", {}).get(
         "unique_wallets_in_wallet_token", 0
@@ -60,7 +65,17 @@ def build_coverage_report(
     gecko_pools = gecko.get("graduated_pools", {}) if not gecko.get("skipped") else {}
     match_rate = rpc.get("signature_match_rate")
     rpc_found = int(rpc.get("found") or 0)
-    micro_tokens = int(
+    rpc_tx_path = world_root / "microstructure" / "rpc_transactions.parquet"
+    micro_mints = set()
+    if rpc_tx_path.exists() and _rows(rpc_tx_path):
+        try:
+            rt = pq.read_table(rpc_tx_path, columns=["mint", "found"])
+            mints = rt.column("mint").to_pylist()
+            founds = rt.column("found").to_pylist()
+            micro_mints = {m for m, f in zip(mints, founds, strict=True) if m and f}
+        except Exception:  # noqa: BLE001
+            micro_mints = _mint_set(rpc_tx_path, "mint")
+    micro_tokens = len(micro_mints) or int(
         local.get("layers", {}).get("signature_targets", {}).get("unique_mints") or 0
     )
     bq_bytes = int(bq.get("bytes_processed_actual") or 0)
@@ -68,10 +83,13 @@ def build_coverage_report(
     sol_bytes = 0
 
     tt_path = bq_dir / "token_transfers_rich.parquet"
+    tt_unbiased_path = bq_dir / "token_transfers_unbiased_days.parquet"
     accounts_path = bq_dir / "accounts_rich.parquet"
     blocks_path = bq_dir / "blocks_daily.parquet"
     true_spl_rows = _rows(tt_path)
     true_spl_mints = _unique_count(tt_path, "mint")
+    unbiased_spl_mints = _unique_count(tt_unbiased_path, "mint") or true_spl_mints
+    unbiased_spl_rows = _rows(tt_unbiased_path) or true_spl_rows
     true_spl_wallets = 0
     if true_spl_rows:
         try:
@@ -91,17 +109,70 @@ def build_coverage_report(
     accounts_mints = _unique_count(accounts_path, "mint")
     blocks_rows = _rows(blocks_path)
 
-    funding_wallets = 0
-    if spl_funding and (graph / "edges_funding_spl.parquet").exists():
+    spl_wallets = 0
+    if spl_transfers and (graph / "edges_funding_spl.parquet").exists():
         ft = pq.read_table(graph / "edges_funding_spl.parquet", columns=["src", "dst"])
-        funding_wallets = len(
+        spl_wallets = len(
             set(ft.column("src").to_pylist()) | set(ft.column("dst").to_pylist()) - {None}
         )
-    elif rpc_funding and (graph / "edges_funding_rpc.parquet").exists():
-        ft = pq.read_table(graph / "edges_funding_rpc.parquet", columns=["src", "dst"])
-        funding_wallets = len(
-            set(ft.column("src").to_pylist()) | set(ft.column("dst").to_pylist()) - {None}
+    native_wallets = 0
+    if native_sol and (graph / "edges_funding_native_sol.parquet").exists():
+        nt = pq.read_table(graph / "edges_funding_native_sol.parquet", columns=["src", "dst"])
+        native_wallets = len(
+            set(nt.column("src").to_pylist()) | set(nt.column("dst").to_pylist()) - {None}
         )
+
+    subset_path = world_root / "universe" / "rich_subset_mints.parquet"
+    subset_mints = _mint_set(subset_path)
+    subset_grad = 0
+    subset_nongrad = 0
+    bias_proof = local.get("layers", {}).get("rich_subset", {}).get("bias_proof") or {}
+    if subset_path.exists() and _rows(subset_path):
+        try:
+            st = pq.read_table(subset_path)
+            if "graduated" in st.column_names:
+                flags = st.column("graduated").to_pylist()
+                subset_grad = sum(1 for g in flags if g)
+                subset_nongrad = len(flags) - subset_grad
+        except Exception:  # noqa: BLE001
+            pass
+    if not bias_proof:
+        proof_path = world_root / "universe" / "unbiased_subset_bias_proof.json"
+        if proof_path.exists():
+            from trencher.data.world_model.io import read_json
+
+            bias_proof = read_json(proof_path)
+
+    wt_path = graph / "edges_wallet_token.parquet"
+    graph_mints = _mint_set(wt_path, "dst")
+    ownership_mints = _mint_set(tt_unbiased_path, "mint") or _mint_set(tt_path, "mint")
+    ownership_mints &= subset_mints
+    exec_path = world_root / "execution" / "execution_curve_states.parquet"
+    event_mints = _mint_set(exec_path, "mint") or subset_mints
+    market_ok = global_days >= 20
+    fusion_overlap = subset_mints
+    if event_mints:
+        fusion_overlap &= event_mints
+    if graph_mints:
+        fusion_overlap &= graph_mints
+    if ownership_mints:
+        fusion_overlap &= ownership_mints
+    if micro_mints:
+        fusion_overlap &= micro_mints
+    if not market_ok:
+        fusion_overlap = set()
+    overlap_n = len(fusion_overlap)
+    overlap_grad = 0
+    if subset_path.exists() and "graduated" in (
+        pq.read_schema(subset_path).names if subset_path.exists() else []
+    ):
+        st = pq.read_table(subset_path, columns=["mint", "graduated"])
+        gmap = dict(
+            zip(st.column("mint").to_pylist(), st.column("graduated").to_pylist(), strict=True)
+        )
+        overlap_grad = sum(1 for m in fusion_overlap if gmap.get(m))
+    overlap_nongrad = overlap_n - overlap_grad
+    not_grad_proxy = bool(bias_proof.get("selection_is_not_graduation_proxy"))
 
     layers = [
         {
@@ -122,8 +193,8 @@ def build_coverage_report(
             "tokens": true_spl_mints or 0,
             "wallets": true_spl_wallets or 0,
             "rows_edges": true_spl_rows,
-            "date_coverage": "2026-06-05..2026-07-14",
-            "source": "bigquery.Token Transfers (rich mints)"
+            "date_coverage": "representative corpus days (partition-pruned)",
+            "source": "bigquery.Token Transfers (unbiased rich mints)"
             if true_spl_rows
             else "pumpfun.trades (trade-derived only)",
             "quality": "ledger" if true_spl_rows else "trade_derived_only",
@@ -137,15 +208,19 @@ def build_coverage_report(
                 + creator_edges
                 + cobuy
                 + cohort
-                + spl_funding
+                + spl_transfers
                 + rpc_funding
+                + native_sol
                 + shared_funder
+                + shared_native
             ),
             "date_coverage": "corpus window",
-            "source": "pumpfun + red_cohort + bq SPL transfers + rpc proxies",
+            "source": "pumpfun + red_cohort + bq SPL + native SOL system transfers",
             "quality": (
-                "strong_with_spl_funding"
-                if spl_funding > 100_000
+                "strong_with_spl_and_native_sol"
+                if native_sol > 0 and spl_transfers > 100_000
+                else "strong_with_spl_transfers"
+                if spl_transfers > 100_000
                 else "participation_strong_funding_partial"
             ),
         },
@@ -163,7 +238,7 @@ def build_coverage_report(
             "tokens": post.get("outcomes_rows") or 0,
             "wallets": None,
             "rows_edges": post.get("snapshots_rows") or 0,
-            "date_coverage": "graduated subset",
+            "date_coverage": "graduated subset (label, not fusion inclusion)",
             "source": "pumpfun.postgard_* (+ gecko pool OHLCV)",
             "quality": "high_local_postgard",
         },
@@ -172,7 +247,7 @@ def build_coverage_report(
             "tokens": exec_mints,
             "wallets": None,
             "rows_edges": exec_rows,
-            "date_coverage": "rich subset pre-grad",
+            "date_coverage": "unbiased rich subset",
             "source": "pumpfun.trades curve reserves",
             "quality": "curve_observed_subset",
         },
@@ -185,21 +260,29 @@ def build_coverage_report(
             "source": "bigquery.Accounts",
             "quality": "ledger_snapshots" if accounts_rows else "missing",
         },
+        {
+            "layer": "native_sol_funding",
+            "tokens": _unique_count(graph / "edges_funding_native_sol.parquet", "mint")
+            if native_sol
+            else 0,
+            "wallets": native_wallets,
+            "rows_edges": native_sol,
+            "date_coverage": "pre-T wallet history",
+            "source": "solana_rpc.getSignaturesForAddress + parsed System Program transfer",
+            "quality": "native_sol" if native_sol else "missing",
+        },
     ]
 
-    # Strict readiness: enough real historical coverage to meaningfully train.
     trade_rows = int(plan.get("anchor_universe", {}).get("trade_rows") or 0)
     event_status = "READY" if trade_rows >= 10_000_000 else "PARTIAL"
 
-    # Wallet/Graph needs broad participation AND genuine funding topology
-    if wallets >= 100_000 and wt_edges >= 1_000_000 and spl_funding >= 100_000:
+    if wallets >= 100_000 and wt_edges >= 1_000_000 and spl_transfers >= 100_000:
         wallet_status = "READY"
     elif wallets >= 10_000 and wt_edges >= 100_000:
         wallet_status = "PARTIAL"
     else:
         wallet_status = "BLOCKED"
 
-    # Token/Ownership/Curve needs genuine transfer ledger + curve states
     if true_spl_mints >= 1_000 and true_spl_rows >= 100_000 and exec_mints >= 500:
         token_status = "READY"
     elif exec_mints >= 100 or true_spl_rows > 0:
@@ -214,18 +297,20 @@ def build_coverage_report(
     )
 
     postgrad_ok = (post.get("outcomes_rows") or 0) >= 1000
-    # Fusion requires multimodal overlap across event + ownership/curve + global + graph
-    if (
-        event_status == "READY"
-        and token_status in {"READY", "PARTIAL"}
+    fusion_trainable = (
+        overlap_n >= 2_000
+        and overlap_nongrad >= 500
+        and overlap_grad >= 1
+        and not_grad_proxy
+        and native_sol > 0
+        and micro_tokens >= 2_000
+        and event_status == "READY"
+        and token_status == "READY"
         and wallet_status in {"READY", "PARTIAL"}
         and global_status == "READY"
-        and postgrad_ok
-        and true_spl_rows > 0
-        and rpc_found >= 1000
-    ):
-        # Still PARTIAL if microstructure token coverage is tiny relative to universe
-        fusion_status = "READY" if micro_tokens >= 500 and token_status == "READY" else "PARTIAL"
+    )
+    if fusion_trainable:
+        fusion_status = "READY"
     elif event_status == "READY" and postgrad_ok:
         fusion_status = "PARTIAL"
     else:
@@ -244,8 +329,8 @@ def build_coverage_report(
 
     irrecoverable = [
         (
-            "Native SOL system-program transfer ledger "
-            "(Instructions SELECT ~7.7 TiB for corpus window; cost-aborted)"
+            "Full-universe native SOL Instructions table "
+            "(SELECT ~7.7 TiB; recovered only via RPC System Program parses on subset)"
         ),
         (
             "Full Transactions table scans for microstructure "
@@ -255,8 +340,8 @@ def build_coverage_report(
         "Real pool addresses for synthetic/null migrations without discovery",
         "Row-level Pump fee bps history (protocol metadata only)",
         (
-            f"Transaction microstructure still covers only {micro_tokens} tokens "
-            f"/ {rpc_found} enriched txs — not the full 798k universe"
+            f"Complete fusion population is the multimodal overlap "
+            f"({overlap_n} tokens), not the full 798k universe"
         ),
     ]
 
@@ -277,10 +362,15 @@ def build_coverage_report(
             "transaction_signature_match_rate": match_rate,
             "true_spl_transfer_count": true_spl_rows,
             "mints_with_genuine_ownership_histories": true_spl_mints,
+            "unbiased_day_spl_transfer_count": unbiased_spl_rows,
+            "unbiased_day_spl_mints": unbiased_spl_mints,
             "wallets_with_prior_history": wallets,
-            "wallets_with_genuine_funding_edges": funding_wallets,
-            "genuine_wallet_funding_edges": spl_funding,
+            "spl_transfer_edges": spl_transfers,
+            "wallets_in_spl_transfers": spl_wallets,
+            "true_native_sol_funding_edges": native_sol,
+            "wallets_with_native_sol_funding": native_wallets,
             "shared_funder_graph_edges": shared_funder,
+            "shared_native_funder_edges": shared_native,
             "creator_ownership_transfer_rows": creator_own,
             "transaction_microstructure_tokens": micro_tokens,
             "transaction_microstructure_txs": rpc_found,
@@ -300,12 +390,30 @@ def build_coverage_report(
                 "creator_token": creator_edges,
                 "cobuy": cobuy,
                 "cohort_member": cohort,
-                "spl_transfer": spl_funding,
+                "spl_transfer": spl_transfers,
                 "sol_balance_delta_proxy": rpc_funding,
+                "system_sol_transfer": native_sol,
                 "shared_funder": shared_funder,
+                "shared_native_funder": shared_native,
                 "creator_related_transfer": creator_own,
             },
-            "rich_subset_mints": rich_mints,
+            "unbiased_rich_subset_mints": rich_mints or len(subset_mints),
+            "unbiased_subset_graduated": subset_grad,
+            "unbiased_subset_non_graduated": subset_nongrad,
+            "fusion_overlap_tokens": overlap_n,
+            "fusion_overlap_graduated": overlap_grad,
+            "fusion_overlap_non_graduated": overlap_nongrad,
+            "selection_is_not_graduation_proxy": not_grad_proxy,
+        },
+        "bias_proof": bias_proof,
+        "fusion_trainability": {
+            "overlap_definition": (
+                "tokens in unbiased subset with event (curve/trades) + graph "
+                "+ SPL ownership + microstructure + global market context"
+            ),
+            "overlap_n": overlap_n,
+            "ready_threshold": 2000,
+            "status": fusion_status,
         },
         "source_probe_decisions": {
             "bigquery": probe.get("bigquery", {}).get("decision"),
@@ -318,10 +426,8 @@ def build_coverage_report(
         and encoders["Fusion/world-state model"] in {"READY", "PARTIAL"},
         "readiness_notes": [
             "READY requires meaningful trainability, not merely non-empty tables.",
-            (
-                "Prior e84fdef overstated readiness with 82-token microstructure "
-                "and trade-derived ownership."
-            ),
+            "Fusion READY requires a large unbiased multimodal overlap, not graduated-only tokens.",
+            "SPL transfers are labeled spl_transfer, not genuine native-SOL funding.",
         ],
     }
     return report
@@ -355,11 +461,20 @@ def render_world_model_md(report: dict[str, Any]) -> str:
             f"- True SPL transfer count: {m.get('true_spl_transfer_count')}",
             f"- Mints with genuine ownership histories: "
             f"{m.get('mints_with_genuine_ownership_histories')}",
+            f"- Unbiased rich subset: {m.get('unbiased_rich_subset_mints')} "
+            f"(graduated={m.get('unbiased_subset_graduated')}, "
+            f"non-graduated={m.get('unbiased_subset_non_graduated')})",
+            f"- Fusion multimodal overlap: {m.get('fusion_overlap_tokens')} "
+            f"(graduated={m.get('fusion_overlap_graduated')}, "
+            f"non-graduated={m.get('fusion_overlap_non_graduated')})",
+            f"- Selection is not a graduation proxy: "
+            f"{m.get('selection_is_not_graduation_proxy')}",
             f"- Wallets with prior history: {m.get('wallets_with_prior_history')}",
-            f"- Genuine wallet funding edges: {m.get('genuine_wallet_funding_edges')}",
-            f"- Wallets with genuine funding edges: "
-            f"{m.get('wallets_with_genuine_funding_edges')}",
-            f"- Shared-funder graph edges: {m.get('shared_funder_graph_edges')}",
+            f"- SPL transfer edges (not native SOL funding): {m.get('spl_transfer_edges')}",
+            f"- True native-SOL funding edges: {m.get('true_native_sol_funding_edges')}",
+            f"- Wallets with native-SOL funding: {m.get('wallets_with_native_sol_funding')}",
+            f"- Shared-funder graph edges (SPL): {m.get('shared_funder_graph_edges')}",
+            f"- Shared native funder edges: {m.get('shared_native_funder_edges')}",
             f"- Creator ownership transfer rows: {m.get('creator_ownership_transfer_rows')}",
             f"- Transaction microstructure: {m.get('transaction_microstructure_tokens')} tokens / "
             f"{m.get('transaction_microstructure_txs')} txs "

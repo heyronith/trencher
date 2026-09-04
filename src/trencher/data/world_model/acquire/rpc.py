@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -11,28 +13,56 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
 
-from trencher.data.world_model.constants import DEFAULT_RPC_URL, RPC_MIN_INTERVAL_SEC
-from trencher.data.world_model.io import ensure_dir, file_provenance, read_json, utc_now, write_json
+from trencher.data.world_model.constants import (
+    DEFAULT_RPC_URL,
+    HELIUS_RPC_TEMPLATE,
+    RPC_BATCH_SIZE,
+    RPC_MIN_INTERVAL_SEC,
+)
+from trencher.data.world_model.io import ensure_dir, file_provenance, utc_now, write_json
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_rpc_url() -> str:
+    """Optional Helius URL/key; otherwise public Solana RPC. No paid Helius APIs."""
+    url = os.environ.get("SOLANA_RPC_URL") or os.environ.get("HELIUS_RPC_URL")
+    if url:
+        return url
+    key = os.environ.get("HELIUS_API_KEY")
+    if key:
+        return HELIUS_RPC_TEMPLATE.format(key=key)
+    return DEFAULT_RPC_URL
 
 
 class SolanaRpc:
     def __init__(
         self,
-        url: str = DEFAULT_RPC_URL,
+        url: str | None = None,
         *,
         min_interval: float = RPC_MIN_INTERVAL_SEC,
         session: requests.Session | None = None,
+        provider: str | None = None,
     ) -> None:
-        self.url = url
+        self.url = url or resolve_rpc_url()
         self.min_interval = min_interval
         self.session = session or requests.Session()
         self._last = 0.0
         self.calls = 0
+        if provider:
+            self.provider = provider
+        elif "helius" in self.url:
+            self.provider = "helius"
+        elif "mainnet-beta.solana.com" in self.url:
+            self.provider = "solana_rpc"
+            if min_interval == RPC_MIN_INTERVAL_SEC:
+                self.min_interval = max(min_interval, 0.85)
+        else:
+            self.provider = "alt_rpc"
+            if min_interval == RPC_MIN_INTERVAL_SEC:
+                self.min_interval = 0.12
 
-    def call(self, method: str, params: list[Any]) -> Any:
-        payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+    def _post(self, payload: Any) -> Any:
         last_error: Exception | None = None
         for attempt in range(8):
             elapsed = time.monotonic() - self._last
@@ -51,10 +81,7 @@ class SolanaRpc:
                     logger.warning("RPC 429; backing off (attempt %s)", attempt + 1)
                     continue
                 resp.raise_for_status()
-                body = resp.json()
-                if body.get("error"):
-                    return {"_rpc_error": body["error"]}
-                return body.get("result")
+                return resp.json()
             except requests.HTTPError as exc:
                 last_error = exc
                 if exc.response is not None and exc.response.status_code == 429:
@@ -62,7 +89,35 @@ class SolanaRpc:
                 raise
         if last_error:
             raise last_error
-        return {"_rpc_error": {"message": "rate_limited"}}
+        return {"error": {"message": "rate_limited"}}
+
+    def call(self, method: str, params: list[Any]) -> Any:
+        body = self._post({"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+        if isinstance(body, dict) and body.get("error"):
+            return {"_rpc_error": body["error"]}
+        return body.get("result") if isinstance(body, dict) else None
+
+    def call_batch(self, calls: list[tuple[str, list[Any]]]) -> list[Any]:
+        if not calls:
+            return []
+        payload = [
+            {"jsonrpc": "2.0", "id": i, "method": method, "params": params}
+            for i, (method, params) in enumerate(calls)
+        ]
+        body = self._post(payload)
+        if isinstance(body, dict) and body.get("error"):
+            return [{"_rpc_error": body["error"]} for _ in calls]
+        if not isinstance(body, list):
+            return [{"_rpc_error": {"message": "unexpected_batch_response"}} for _ in calls]
+        by_id = {item.get("id"): item for item in body if isinstance(item, dict)}
+        out = []
+        for i in range(len(calls)):
+            item = by_id.get(i, {})
+            if item.get("error"):
+                out.append({"_rpc_error": item["error"]})
+            else:
+                out.append(item.get("result"))
+        return out
 
 
 def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
@@ -85,7 +140,6 @@ def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
     tx = result.get("transaction") or {}
     message = tx.get("message") or {}
     account_keys = message.get("accountKeys") or []
-    # versioned tx may encode keys differently
     if account_keys and isinstance(account_keys[0], dict):
         keys = [a.get("pubkey") for a in account_keys]
     else:
@@ -100,7 +154,6 @@ def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
         if delta:
             balance_changes.append({"account": key, "delta_lamports": delta})
 
-    # Priority fee / tip heuristic: fee beyond base signature fee when available.
     fee = meta.get("fee")
     cu = meta.get("computeUnitsConsumed")
     return {
@@ -124,13 +177,17 @@ def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
 
 
 def extract_funding_edges(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Derive SOL funding-like edges from non-zero balance deltas in enriched txs."""
+    """SOL balance-delta proxy. Not genuine System Program funding."""
     edges = []
     for row in rows:
         if not row.get("found"):
             continue
         changes = row.get("balance_changes") or []
-        # Pair largest debit with largest credit as a weak funding edge proxy.
+        if isinstance(changes, str):
+            try:
+                changes = json.loads(changes)
+            except json.JSONDecodeError:
+                changes = []
         debits = sorted(
             [c for c in changes if (c.get("delta_lamports") or 0) < 0],
             key=lambda c: c["delta_lamports"],
@@ -160,12 +217,32 @@ def extract_funding_edges(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return edges
 
 
+def _flush_rpc_rows(out_path: Path, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        pq.write_table(pa.table({"tx_signature": pa.array([], pa.string())}), out_path)
+        return
+    flat = []
+    for r in rows:
+        item = dict(r)
+        item["account_keys"] = item.get("account_keys") or []
+        if "balance_changes" in item:
+            changes = item.pop("balance_changes")
+            item["balance_changes_json"] = (
+                changes if isinstance(changes, str) else json.dumps(changes or [])
+            )
+        elif "balance_changes_json" not in item:
+            item["balance_changes_json"] = "[]"
+        flat.append(item)
+    pq.write_table(pa.Table.from_pylist(flat), out_path)
+
+
 def run_rpc_acquisition(
     *,
     world_root: Path,
     max_signatures: int = 5_000,
     rpc: SolanaRpc | None = None,
     skip_live: bool = False,
+    batch_size: int = RPC_BATCH_SIZE,
 ) -> dict[str, Any]:
     out_dir = ensure_dir(world_root / "microstructure")
     targets_path = out_dir / "signature_targets.parquet"
@@ -185,67 +262,73 @@ def run_rpc_acquisition(
         return payload
 
     targets = pq.read_table(targets_path, columns=["mint", "tx_signature"]).to_pylist()
-    done: set[str] = set()
-    if checkpoint.exists():
-        done = set(read_json(checkpoint).get("completed_signatures", []))
-
     existing_rows: list[dict[str, Any]] = []
     if out_path.exists():
         existing_rows = pq.read_table(out_path).to_pylist()
-        done.update(r["tx_signature"] for r in existing_rows if r.get("tx_signature"))
+    done: set[str] = {
+        r["tx_signature"] for r in existing_rows if r.get("tx_signature")
+    }
 
     rpc = rpc or SolanaRpc()
+    if rpc.provider == "solana_rpc":
+        batch_size = 1
+    pending = [
+        row
+        for row in targets
+        if row.get("tx_signature") and row["tx_signature"] not in done
+    ]
+    pending = pending[: max(0, max_signatures - len(done))]
     new_rows: list[dict[str, Any]] = []
     matched = sum(1 for r in existing_rows if r.get("found"))
     attempted = 0
     interrupted = None
+    tx_opts = {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}
     try:
-        for row in targets:
-            sig = row.get("tx_signature")
-            if not sig or sig in done:
-                continue
-            if len(done) >= max_signatures:
-                break
-            result = rpc.call(
-                "getTransaction",
-                [sig, {"encoding": "json", "maxSupportedTransactionVersion": 0}],
-            )
-            parsed = _parse_tx(sig, row.get("mint") or "", result)
-            new_rows.append(parsed)
-            done.add(sig)
-            attempted += 1
-            if parsed.get("found"):
-                matched += 1
-            if attempted % 25 == 0:
+        for i in range(0, len(pending), batch_size):
+            chunk = pending[i : i + batch_size]
+            if batch_size == 1:
+                results = [
+                    rpc.call("getTransaction", [row["tx_signature"], tx_opts])
+                    for row in chunk
+                ]
+            else:
+                results = rpc.call_batch(
+                    [
+                        ("getTransaction", [row["tx_signature"], tx_opts])
+                        for row in chunk
+                    ]
+                )
+                if len(results) != len(chunk):
+                    results = [
+                        rpc.call("getTransaction", [row["tx_signature"], tx_opts])
+                        for row in chunk
+                    ]
+            for row, result in zip(chunk, results, strict=True):
+                sig = row["tx_signature"]
+                parsed = _parse_tx(sig, row.get("mint") or "", result)
+                new_rows.append(parsed)
+                done.add(sig)
+                attempted += 1
+                if parsed.get("found"):
+                    matched += 1
+            if attempted and attempted % 200 < batch_size:
                 write_json(
                     checkpoint,
                     {
-                        "completed_signatures": sorted(done)[-max_signatures:],
+                        "n_done": len(done),
                         "updated_at": utc_now(),
                         "attempted_session": attempted,
                     },
                 )
+                _flush_rpc_rows(out_path, existing_rows + new_rows)
     except Exception as exc:  # noqa: BLE001
         interrupted = str(exc)
         logger.exception("RPC acquisition interrupted; persisting partial results")
 
     all_rows = existing_rows + new_rows
-    # de-dupe by signature keeping last
     by_sig = {r["tx_signature"]: r for r in all_rows if r.get("tx_signature")}
     final_rows = list(by_sig.values())
-    if final_rows:
-        # Nested columns: store balance_changes as JSON string for parquet simplicity
-        flat = []
-        for r in final_rows:
-            item = dict(r)
-            item["account_keys"] = item.get("account_keys") or []
-            item["balance_changes_json"] = __import__("json").dumps(
-                item.pop("balance_changes", [])
-            )
-            flat.append(item)
-        pq.write_table(pa.Table.from_pylist(flat), out_path)
-    else:
-        pq.write_table(pa.table({"tx_signature": pa.array([], pa.string())}), out_path)
+    _flush_rpc_rows(out_path, final_rows)
 
     funding = extract_funding_edges(final_rows)
     if funding:
@@ -261,13 +344,17 @@ def run_rpc_acquisition(
         "found": found,
         "signature_match_rate": (found / len(final_rows)) if final_rows else None,
         "rpc_calls": rpc.calls,
+        "rpc_provider": rpc.provider,
+        "rpc_url_host": rpc.url.split("?")[0],
         "funding_edges": len(funding),
         "path": file_provenance(out_path, source="solana_rpc.getTransaction"),
-        "funding_path": file_provenance(funding_path, source="solana_rpc.balance_changes"),
+        "funding_path": file_provenance(
+            funding_path, source="solana_rpc.balance_changes_proxy_not_native_funding"
+        ),
         "max_signatures": max_signatures,
         "interrupted": interrupted,
         "quality_flag": "partial" if interrupted else "ok",
     }
-    write_json(checkpoint, {"completed_signatures": sorted(done), "updated_at": utc_now()})
+    write_json(checkpoint, {"n_done": len(done), "updated_at": utc_now()})
     write_json(out_dir / "rpc_manifest.json", payload)
     return payload

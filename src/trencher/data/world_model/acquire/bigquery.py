@@ -15,11 +15,14 @@ import pyarrow.parquet as pq
 from trencher.data.world_model.constants import (
     BQ_DATASET,
     BQ_DRY_RUN_ABORT_BYTES,
+    BQ_FREE_TIER_BYTES,
+    BQ_HEADROOM_RESERVE_BYTES,
     BQ_PROJECT_ENV,
     BQ_SESSION_BUDGET_BYTES,
     BQ_TT_ABORT_BYTES,
     CORPUS_END,
     CORPUS_START,
+    REPRESENTATIVE_BQ_DAYS,
 )
 from trencher.data.world_model.io import ensure_dir, file_provenance, utc_now, write_json
 
@@ -34,6 +37,43 @@ def _client(project: str | None):
 
     project = project or os.environ.get(BQ_PROJECT_ENV) or os.environ.get("GCP_PROJECT")
     return bigquery.Client(project=project, location=BQ_LOCATION), bigquery
+
+
+def _prior_billed_bytes(out_dir: Path) -> int:
+    from trencher.data.world_model.io import read_json
+
+    path = out_dir / "bigquery_manifest.json"
+    if not path.exists():
+        return 0
+    try:
+        prev = read_json(path)
+    except Exception:  # noqa: BLE001
+        return 0
+    return int(prev.get("lifetime_bytes_billed") or prev.get("bytes_billed_actual") or 0)
+
+
+def _tt_day_sql(mint_table: str, day: str) -> str:
+    from datetime import date, timedelta
+
+    d0 = date.fromisoformat(day)
+    d1 = d0 + timedelta(days=1)
+    return f"""
+            SELECT
+              t.block_timestamp,
+              t.block_slot,
+              t.tx_signature,
+              t.source,
+              t.destination,
+              t.authority,
+              t.value,
+              t.decimals,
+              t.mint,
+              t.transfer_type
+            FROM `{BQ_DATASET}.Token Transfers` t
+            INNER JOIN `{mint_table}` m USING (mint)
+            WHERE t.block_timestamp >= TIMESTAMP('{d0.isoformat()} 00:00:00')
+              AND t.block_timestamp < TIMESTAMP('{d1.isoformat()} 00:00:00')
+            """
 
 
 def _sha16(sql: str) -> str:
@@ -288,6 +328,7 @@ def run_bigquery_acquisition(
     }
     if skip_live:
         payload["decision"] = "skipped_for_ci"
+        payload["lifetime_bytes_billed"] = _prior_billed_bytes(out_dir)
         write_json(out_dir / "bigquery_manifest.json", payload)
         return payload
 
@@ -344,6 +385,7 @@ def run_bigquery_acquisition(
                 rec = {"name": name, "error": str(exc)}
             payload["queries"].append(rec)
         payload["decision"] = "dry_run_only_ready"
+        payload["lifetime_bytes_billed"] = _prior_billed_bytes(out_dir)
         write_json(out_dir / "bigquery_manifest.json", payload)
         return payload
 
@@ -356,38 +398,45 @@ def run_bigquery_acquisition(
         return payload
     mints = [m for m in pq.read_table(rich_path, columns=["mint"]).column(0).to_pylist() if m]
     mint_table = _upload_mints(client, bigquery, mints)
-    payload["notes"].append(f"uploaded {len(mints)} rich mints to {mint_table}")
+    payload["notes"].append(f"uploaded {len(mints)} unbiased rich mints to {mint_table}")
+
+    lifetime_billed = _prior_billed_bytes(out_dir)
+    remaining = BQ_FREE_TIER_BYTES - lifetime_billed - BQ_HEADROOM_RESERVE_BYTES
+    payload["bq_free_tier_bytes"] = BQ_FREE_TIER_BYTES
+    payload["lifetime_bytes_billed_before"] = lifetime_billed
+    payload["remaining_headroom_bytes"] = remaining
+    payload["remaining_headroom_gib"] = round(remaining / (1024**3), 2)
+    if remaining <= 0:
+        payload["decision"] = "aborted_no_free_tier_headroom"
+        payload["notes"].append(
+            f"Conservative remaining headroom {remaining} bytes; refusing execute."
+        )
+        write_json(out_dir / "bigquery_manifest.json", payload)
+        return payload
 
     session_used = 0
-    start = f"{CORPUS_START.isoformat()} 00:00:00"
-    end_excl = f"{(CORPUS_END + timedelta(days=1)).isoformat()} 00:00:00"
 
-    queries_plan = [
-        (
-            "token_transfers_rich",
-            f"""
-            SELECT
-              t.block_timestamp,
-              t.block_slot,
-              t.tx_signature,
-              t.source,
-              t.destination,
-              t.authority,
-              t.value,
-              t.decimals,
-              t.mint,
-              t.transfer_type
-            FROM `{BQ_DATASET}.Token Transfers` t
-            INNER JOIN `{mint_table}` m USING (mint)
-            WHERE t.block_timestamp >= TIMESTAMP('{start}')
-              AND t.block_timestamp < TIMESTAMP('{end_excl}')
-            """,
-            f"{client.project}.{TMP_DATASET}.token_transfers_rich",
-            650 * 1024**3,
-        ),
-        (
-            "accounts_rich_jun_jul",
-            f"""
+    queries_plan: list[tuple[str, str, str, int]] = []
+    for day in REPRESENTATIVE_BQ_DAYS:
+        part = out_dir / f"token_transfers_{day}.parquet"
+        if part.exists():
+            payload["notes"].append(f"skip existing day extract {day}")
+            continue
+        queries_plan.append(
+            (
+                f"token_transfers_{day}",
+                _tt_day_sql(mint_table, day),
+                f"{client.project}.{TMP_DATASET}.token_transfers_{day.replace('-', '')}",
+                80 * 1024**3,
+            )
+        )
+    accounts_path = out_dir / "accounts_rich.parquet"
+    blocks_path = out_dir / "blocks_daily.parquet"
+    if not accounts_path.exists():
+        queries_plan.append(
+            (
+                "accounts_rich_jun_jul",
+                f"""
             SELECT
               block_timestamp,
               block_slot,
@@ -404,12 +453,15 @@ def run_bigquery_acquisition(
               AND block_timestamp < TIMESTAMP('2026-08-01')
               AND mint IN (SELECT mint FROM `{mint_table}`)
             """,
-            f"{client.project}.{TMP_DATASET}.accounts_rich",
-            25 * 1024**3,
-        ),
-        (
-            "blocks_daily",
-            """
+                f"{client.project}.{TMP_DATASET}.accounts_rich",
+                25 * 1024**3,
+            )
+        )
+    if not blocks_path.exists():
+        queries_plan.append(
+            (
+                "blocks_daily",
+                """
             SELECT
               DATE(block_timestamp) AS day,
               COUNT(*) AS block_count,
@@ -421,13 +473,49 @@ def run_bigquery_acquisition(
             GROUP BY 1
             ORDER BY 1
             """,
-            f"{client.project}.{TMP_DATASET}.blocks_daily",
-            5 * 1024**3,
-        ),
-    ]
+                f"{client.project}.{TMP_DATASET}.blocks_daily",
+                5 * 1024**3,
+            )
+        )
+
+    if not queries_plan:
+        payload["notes"].append("no new BQ day queries; rebuilding local TT artifacts")
+        # Fall through to merge existing day parts below without executing.
+        projected = 0
+        dry_by_name = {}
+    else:
+        # Dry-run all first; abort the session if cumulative projected usage exceeds headroom.
+        projected = 0
+        dry_by_name = {}
+        for name, sql, _dest, billed_cap in queries_plan:
+            dry = _dry_run(client, bigquery, sql, max_bytes_billed=billed_cap)
+            dry_by_name[name] = dry
+            projected += int(dry.get("estimated_bytes") or 0)
+    payload["projected_bytes"] = projected
+    payload["projected_gib"] = round(projected / (1024**3), 2)
+    if queries_plan and (projected > remaining or projected > session_budget):
+        payload["decision"] = "aborted_projected_over_headroom"
+        payload["notes"].append(
+            f"Projected {projected} bytes exceeds remaining {remaining} "
+            f"or session budget {session_budget}; no query executed."
+        )
+        for name, sql, dest, _billed_cap in queries_plan:
+            payload["queries"].append(
+                {
+                    "name": name,
+                    "dest_table": dest,
+                    "sql": sql.strip(),
+                    **dry_by_name[name],
+                    "executed": False,
+                    "aborted": True,
+                    "error": "cumulative_projected_usage_exceeds_safe_allowance",
+                }
+            )
+        write_json(out_dir / "bigquery_manifest.json", payload)
+        return payload
 
     for name, sql, dest, billed_cap in queries_plan:
-        dry = _dry_run(client, bigquery, sql, max_bytes_billed=billed_cap)
+        dry = dry_by_name[name]
         rec = {
             "name": name,
             "dest_table": dest,
@@ -447,9 +535,9 @@ def run_bigquery_acquisition(
             rec["error"] = "dry_run_exceeded_threshold"
             payload["queries"].append(rec)
             continue
-        if session_used + dry["estimated_bytes"] > session_budget:
+        if session_used + dry["estimated_bytes"] > min(session_budget, remaining):
             rec["aborted"] = True
-            rec["error"] = "session_budget_exceeded"
+            rec["error"] = "session_or_headroom_exceeded"
             payload["queries"].append(rec)
             continue
         try:
@@ -472,22 +560,30 @@ def run_bigquery_acquisition(
             rec["error"] = str(exc)
             rec["aborted"] = True
         payload["queries"].append(rec)
-        write_json(out_dir / "bigquery_manifest.json", payload)  # checkpoint
+        write_json(out_dir / "bigquery_manifest.json", payload)
 
-    # Download executed tables
-    mapping = {
-        "token_transfers_rich": out_dir / "token_transfers_rich.parquet",
+    mapping: dict[str, Path] = {
         "accounts_rich_jun_jul": out_dir / "accounts_rich.parquet",
         "blocks_daily": out_dir / "blocks_daily.parquet",
     }
+    day_parts: list[Path] = []
     for rec in payload["queries"]:
         if not rec.get("executed"):
             continue
         name = rec["name"]
+        if name.startswith("token_transfers_20"):
+            part = out_dir / f"{name}.parquet"
+            try:
+                payload["artifacts"][name] = _download_table(
+                    client, rec["dest_table"], part
+                )
+                day_parts.append(part)
+            except Exception as exc:  # noqa: BLE001
+                payload["artifacts"][name] = {"error": str(exc)}
+            continue
         if name not in mapping:
             continue
         try:
-            # Fresh download path
             if mapping[name].exists():
                 mapping[name].unlink()
             payload["artifacts"][name] = _download_table(
@@ -495,6 +591,36 @@ def run_bigquery_acquisition(
             )
         except Exception as exc:  # noqa: BLE001
             payload["artifacts"][name] = {"error": str(exc)}
+
+    transfers_local = out_dir / "token_transfers_rich.parquet"
+    all_day_parts = sorted(out_dir.glob("token_transfers_20*.parquet"))
+    if day_parts or all_day_parts:
+        tables = [pq.read_table(p) for p in (day_parts or all_day_parts)]
+        try:
+            merged = pa.concat_tables(tables, promote_options="default")
+        except TypeError:
+            merged = pa.concat_tables(tables, promote=True)
+        pq.write_table(merged, out_dir / "token_transfers_unbiased_days.parquet")
+        legacy = out_dir / "token_transfers_rich_graduated_legacy.parquet"
+        if legacy.exists():
+            try:
+                combined = pa.concat_tables(
+                    [merged, pq.read_table(legacy)], promote_options="default"
+                )
+            except TypeError:
+                combined = pa.concat_tables([merged, pq.read_table(legacy)], promote=True)
+            pq.write_table(combined, transfers_local)
+            payload["notes"].append(
+                "token_transfers_rich.parquet unions unbiased day extracts with "
+                "prior graduated-window ledger; fusion audit uses subset intersection."
+            )
+        else:
+            pq.write_table(merged, transfers_local)
+        payload["artifacts"]["token_transfers_rich"] = {
+            "path": file_provenance(transfers_local, source="bigquery.Token Transfers.days"),
+            "rows": pq.ParquetFile(transfers_local).metadata.num_rows,
+            "day_parts": [str(p) for p in (day_parts or all_day_parts)],
+        }
 
     # Derive funding / shared-funder / creator ownership from genuine TT ledger
     creators: set[str] = set()
@@ -505,22 +631,27 @@ def run_bigquery_acquisition(
             for c in pq.read_table(cpath, columns=["creator"]).column(0).to_pylist()
             if c
         }
-    transfers_local = mapping["token_transfers_rich"]
+    transfers_local = out_dir / "token_transfers_rich.parquet"
     graph_dir = world_root / "graph"
     payload["artifacts"]["transfer_derived_graph"] = _build_funding_and_shared(
         transfers_local, graph_dir, creators=creators
     )
 
-    # Explicit note: native SOL system transfers not extracted (Instructions SELECT ~7TB)
     payload["notes"].append(
-        "Native SOL system-program transfer ledger not extracted: "
-        "Instructions SELECT dry-run ~7.7 TiB for corpus window; aborted by cost controls."
+        "edges_funding_spl.parquet is SPL token transfers, not native SOL funding."
+    )
+    payload["notes"].append(
+        "Native SOL funding is recovered via archival RPC System Program parses, "
+        "not BigQuery Instructions (full-window SELECT ~7.7 TiB)."
     )
     payload["notes"].append(
         "Transactions full-day scans aborted: signature-only one day ~370 GiB; "
         "microstructure continues via RPC getTransaction enrichment."
     )
     payload["session_bytes_processed"] = session_used
+    payload["lifetime_bytes_billed"] = lifetime_billed + int(
+        payload.get("bytes_billed_actual") or 0
+    )
     payload["decision"] = (
         "executed"
         if any(q.get("executed") for q in payload["queries"])

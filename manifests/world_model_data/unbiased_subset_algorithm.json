@@ -1,0 +1,56 @@
+{
+  "version": "trencher-unbiased-v1",
+  "features_used": [
+    "mint",
+    "detected_at",
+    "is_mayhem_mode",
+    "initial_holder_count",
+    "initial_buy_sol"
+  ],
+  "forbidden_fields": [
+    "graduated_at",
+    "seconds_to_graduation",
+    "peak_market_cap_sol",
+    "peak_market_cap_at",
+    "entry_price_usd",
+    "entry_price_20s_usd",
+    "entry_price_30s_usd",
+    "entry_price_1m_usd",
+    "trade_count",
+    "is_zombie",
+    "is_training_ready",
+    "pool_address",
+    "migrated_at"
+  ],
+  "outage_day_excluded": "2026-07-03",
+  "representative_launch_days": [
+    "2026-06-05",
+    "2026-06-06",
+    "2026-06-07",
+    "2026-06-08",
+    "2026-06-09",
+    "2026-06-10",
+    "2026-06-12",
+    "2026-06-15",
+    "2026-06-18",
+    "2026-06-22",
+    "2026-06-26",
+    "2026-06-29",
+    "2026-07-01",
+    "2026-07-02",
+    "2026-07-04",
+    "2026-07-07",
+    "2026-07-10",
+    "2026-07-12",
+    "2026-07-14"
+  ],
+  "inclusion_days": "representative corpus days spanning regimes (Jul 3 excluded)",
+  "strata": "launch_day x is_mayhem_mode x holder_tertile x buy_sol_tertile",
+  "ranking": "sha256(salt:mint) lexicographic within stratum",
+  "observation_time_t": "token.detected_at (first observation)",
+  "notes": [
+    "Graduation/migration/postgrad/future returns are not selection inputs.",
+    "graduated flag is attached post-hoc for composition audit only.",
+    "Representative days span corpus start/end and documented regime breaks."
+  ]
+}

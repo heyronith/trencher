@@ -333,9 +333,9 @@ def data_probe_world_model_sources(
 @click.option("--skip-live", is_flag=True, help="CI-safe: no live BQ/Gecko/RPC")
 @click.option("--bq-project", default=None)
 @click.option("--bq-execute", is_flag=True, help="Execute BQ after successful dry-run")
-@click.option("--rpc-max-signatures", type=int, default=5000)
+@click.option("--rpc-max-signatures", type=int, default=24000)
 @click.option("--gecko-max-pools", type=int, default=200)
-@click.option("--rich-subset-max-mints", type=int, default=2721)
+@click.option("--rich-subset-max-mints", type=int, default=4000)
 @click.option(
     "--max-trade-batches",
     type=int,

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T04:32:17.082376+00:00",
+  "generated_at": "2026-09-03T19:52:07.497557+00:00",
   "anchor_universe": {
     "source": "pumpfun_memecoin_corpus.tokens",
     "token_rows": 798430,
@@ -12,13 +12,13 @@
   },
   "layers": {
     "transaction_microstructure": {
-      "primary": "rpc_getTransaction",
+      "primary": "bigquery_Transactions",
       "fallback": [
         "rpc_getTransaction",
         "pumpfun.trades.tx_signature"
       ],
       "solarchive": "skip_no_corpus_coverage",
-      "scope": "rich multimodal subset up to 2500 signatures prioritized by graduated+real-pool mints",
+      "scope": "unbiased rich subset, stratified per-token signatures up to 24000",
       "fields": [
         "signature",
         "slot",
@@ -35,11 +35,11 @@
       ],
       "actions": [
         "extract_signature_universe_from_pump_trades",
-        "rpc_enrich_rich_subset"
+        "bq_enrich_by_signature"
       ]
     },
     "token_ownership_transfers": {
-      "primary": "derived_from_pump_trades",
+      "primary": "bigquery_Token_Transfers",
       "fallback": [
         "pumpfun.trades token/sol amounts",
         "tokens concentration corrected"
@@ -48,7 +48,7 @@
       "actions": [
         "build_wallet_mint_flow_from_trades",
         "export_creator_holdings_from_tokens",
-        "flag_bq_unavailable"
+        "bq_token_transfers_for_rich_mints"
       ]
     },
     "wallet_history_graph": {
@@ -59,12 +59,12 @@
         "creator_token_edges",
         "co_buy_edges_rich_subset",
         "cohort_membership_edges",
-        "funding_edges_from_rpc_balance_changes"
+        "funding_edges_from_system_program_pre_T"
       ]
     },
     "global_market_network_context": {
       "primary": "pumpfun_aggregates + geckoterminal_sol_usdc",
-      "bq_blocks": false,
+      "bq_blocks": true,
       "actions": [
         "daily_launch_trade_graduation_aggregates",
         "gecko_ohlcv_sol_usdc:Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
@@ -76,7 +76,7 @@
       "supplement": "geckoterminal_pool_ohlcv",
       "real_pools": 2721,
       "synthetic_or_null_pools": 2980,
-      "gecko_max_pools": 150,
+      "gecko_max_pools": 2,
       "actions": [
         "register_postgard_as_authoritative_postgrad",
         "gecko_ohlcv_for_real_pools",
@@ -93,14 +93,14 @@
     }
   },
   "rich_subset_policy": {
-    "definition": "Graduated tokens with real migration pool_address, capped at 2721 mints",
-    "rpc_max_signatures": 2500,
-    "rationale": "Broad event/curve corpus remains full PumpFun population; microstructure/graph funding enrichment concentrates on richest multimodal slice."
+    "definition": "Outcome-independent stratified sample using only launch-time fields (detected_at, mayhem, initial_holder_count, initial_buy_sol), capped at 4000 mints; Jul 3 outage excluded",
+    "rpc_max_signatures": 24000,
+    "rationale": "Fusion training population must not be selected on graduation or future returns. Graduated real-pool mints remain a separate Gecko/postgrad list."
   },
   "source_decisions": {
-    "bigquery": "auth_missing",
+    "bigquery": "usable_with_partition_filters",
     "solarchive": "skip_no_corpus_coverage",
-    "geckoterminal": "degraded_or_rate_limited",
+    "geckoterminal": "usable",
     "geckoterminal_planned": true
   },
   "do_not": [

@@ -15,6 +15,8 @@ from trencher.data.world_model.acquire import (
     run_local_acquisition,
     run_rpc_acquisition,
 )
+from trencher.data.world_model.acquire.funding import run_native_sol_funding_acquisition
+from trencher.data.world_model.acquire.rpc import SolanaRpc
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
@@ -40,8 +42,8 @@ def run_world_model_pipeline(
     skip_live: bool = False,
     bq_project: str | None = None,
     bq_execute: bool = False,
-    rich_subset_max_mints: int = 2721,
-    rpc_max_signatures: int = 5_000,
+    rich_subset_max_mints: int = 4000,
+    rpc_max_signatures: int = 24_000,
     gecko_max_pools: int = 200,
     max_trade_batches: int | None = None,
     stages: list[str] | None = None,
@@ -110,13 +112,19 @@ def run_world_model_pipeline(
             rpc_max_signatures=max(rpc_max_signatures, 1),
             max_trade_batches=max_trade_batches,
         )
-        pools_path = world_root / "universe" / "rich_subset_mints.parquet"
+        pools_path = world_root / "universe" / "graduated_real_pool_mints.parquet"
         pools: list[str] = []
         if pools_path.exists():
-            pools = (
-                pq.read_table(pools_path, columns=["pool_address"]).column(0).to_pylist()
-            )
-            pools = [p for p in pools if p]
+            try:
+                pools = [
+                    p
+                    for p in pq.read_table(pools_path, columns=["pool_address"])
+                    .column(0)
+                    .to_pylist()
+                    if p
+                ]
+            except Exception:  # noqa: BLE001
+                pools = []
         logger.info("Acquiring GeckoTerminal data")
         gecko = run_gecko_acquisition(
             world_root=world_root,
@@ -125,9 +133,17 @@ def run_world_model_pipeline(
             skip_live=skip_live,
         )
         logger.info("Acquiring RPC microstructure")
+        rpc_client = None if skip_live else SolanaRpc()
         rpc = run_rpc_acquisition(
             world_root=world_root,
             max_signatures=rpc_max_signatures,
+            rpc=rpc_client,
+            skip_live=skip_live,
+        )
+        logger.info("Acquiring native SOL funding (pre-T System Program transfers)")
+        funding = run_native_sol_funding_acquisition(
+            world_root=world_root,
+            rpc=rpc_client or SolanaRpc(min_interval=0),
             skip_live=skip_live,
         )
         logger.info("BigQuery acquisition (dry-run unless enabled)")
@@ -141,6 +157,7 @@ def run_world_model_pipeline(
             "local_ok": bool(local),
             "gecko": gecko.get("skipped") or gecko.get("api_calls"),
             "rpc_found": rpc.get("found"),
+            "native_sol_edges": funding.get("native_sol_edges"),
             "bq": bq.get("decision"),
         }
 

@@ -83,8 +83,11 @@ uv run trencher data recover-world-model-data -v
 
 Recovers microstructure, ownership/graph, global context, post-grad, and execution
 layers into `data/external/world_model/` with manifests under
-`manifests/world_model_data/`. BigQuery requires ADC/`GOOGLE_CLOUD_PROJECT`
-(e.g. `trencher1`) and is invoked with `--bq-execute` after dry-runs.
+`manifests/world_model_data/`. The fusion training population is an
+outcome-independent stratified subset (not graduated-only). BigQuery uses
+partition-pruned Token Transfers on representative days and requires
+ADC/`GOOGLE_CLOUD_PROJECT` (e.g. `trencher1`) plus `--bq-execute` after dry-runs.
+Optional `SOLANA_RPC_URL` or `HELIUS_API_KEY` for archival `getTransaction`.
 CI must pass `--skip-live` (no paid/external bulk queries).
 
 ## Architecture

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from collections import Counter, defaultdict
@@ -17,6 +18,10 @@ import pyarrow.parquet as pq
 from trencher.data.feasibility.concepts import SYSTEM_PROGRAM_WALLET
 from trencher.data.world_model.constants import CORPUS_END, CORPUS_START, SYNTHETIC_POOLS
 from trencher.data.world_model.io import ensure_dir, file_provenance, utc_now, write_json
+from trencher.data.world_model.subset import (
+    select_unbiased_rich_subset,
+    write_unbiased_subset,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +68,10 @@ def export_universe(pump_root: Path, out_dir: Path) -> dict[str, Any]:
     }
 
 
-def build_rich_subset(pump_root: Path, out_dir: Path, *, max_mints: int) -> dict[str, Any]:
+def build_graduated_real_pool_subset(
+    pump_root: Path, out_dir: Path, *, max_mints: int
+) -> dict[str, Any]:
+    """Keep graduated+real-pool list for postgrad/Gecko only — not fusion population."""
     ensure_dir(out_dir)
     migrations = pq.read_table(pump_root / "migrations.parquet")
     mints = migrations.column("mint").to_pylist()
@@ -76,16 +84,96 @@ def build_rich_subset(pump_root: Path, out_dir: Path, *, max_mints: int) -> dict
         rows.append({"mint": mint, "pool_address": pool, "migrated_at": when})
         if len(rows) >= max_mints:
             break
-    table = pa.Table.from_pylist(rows) if rows else pa.table(
-        {"mint": pa.array([], type=pa.string()), "pool_address": pa.array([], type=pa.string())}
+    table = (
+        pa.Table.from_pylist(rows)
+        if rows
+        else pa.table(
+            {
+                "mint": pa.array([], type=pa.string()),
+                "pool_address": pa.array([], type=pa.string()),
+            }
+        )
     )
-    path = out_dir / "rich_subset_mints.parquet"
+    path = out_dir / "graduated_real_pool_mints.parquet"
     pq.write_table(table, path)
     return {
         "path": file_provenance(path, source="pumpfun.migrations.real_pools"),
         "mint_count": table.num_rows,
-        "quality_flag": "real_pool_address_only",
+        "quality_flag": "outcome_selected_not_fusion_population",
     }
+
+
+def build_rich_subset(pump_root: Path, out_dir: Path, *, max_mints: int) -> dict[str, Any]:
+    """Outcome-independent fusion population. Writes rich_subset_mints.parquet."""
+    ensure_dir(out_dir)
+    selected = select_unbiased_rich_subset(
+        pump_root / "tokens.parquet", max_mints=max_mints
+    )
+    written = write_unbiased_subset(selected, out_dir)
+    graduated = build_graduated_real_pool_subset(
+        pump_root, out_dir, max_mints=max_mints
+    )
+    written["graduated_real_pool"] = graduated
+    return written
+
+
+def _event_sort_key(ts: Any) -> float:
+    if ts is None:
+        return 0.0
+    if isinstance(ts, datetime):
+        return ts.timestamp()
+    try:
+        return float(ts)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def select_stratified_trades_for_mint(
+    trades: list[dict[str, Any]], *, cap: int
+) -> list[dict[str, Any]]:
+    """Pick earliest/buy/sell/size/curve/temporal trades. Deterministic."""
+    if not trades or cap <= 0:
+        return []
+    ordered = sorted(
+        trades,
+        key=lambda t: (_event_sort_key(t.get("event_time")), t.get("tx_signature") or ""),
+    )
+    picks: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(row: dict[str, Any] | None) -> None:
+        if row is None or len(picks) >= cap:
+            return
+        sig = row.get("tx_signature")
+        if not sig or sig in seen:
+            return
+        seen.add(sig)
+        picks.append(row)
+
+    add(ordered[0])
+    add(ordered[-1])
+    buys = [t for t in ordered if t.get("is_buy")]
+    sells = [t for t in ordered if not t.get("is_buy")]
+    if buys:
+        add(buys[len(buys) // 2])
+    if sells:
+        add(sells[len(sells) // 2])
+    by_size = sorted(ordered, key=lambda t: float(t.get("sol_amount") or 0.0))
+    add(by_size[0])
+    add(by_size[-1])
+    by_curve = sorted(
+        ordered, key=lambda t: float(t.get("curve_pct_depleted") or 0.0)
+    )
+    add(by_curve[0])
+    add(by_curve[-1])
+    n = len(ordered)
+    slots = max(cap, 4)
+    for i in range(slots):
+        idx = 0 if slots <= 1 else round(i * (n - 1) / (slots - 1))
+        add(ordered[idx])
+        if len(picks) >= cap:
+            break
+    return picks[:cap]
 
 
 def extract_signature_targets(
@@ -94,56 +182,97 @@ def extract_signature_targets(
     out_dir: Path,
     *,
     max_signatures: int,
-    per_mint_cap: int = 40,
+    per_mint_cap: int | None = None,
+    reservoir_per_mint: int = 80,
 ) -> dict[str, Any]:
-    """Collect trade signatures for rich-subset mints (capped)."""
+    """Stratified per-token signatures. Not first-N globally."""
     ensure_dir(out_dir)
+    n_mints = max(len(rich_mints), 1)
+    cap = per_mint_cap or max(4, min(16, max_signatures // n_mints or 4))
     dataset = ds.dataset(pump_root / "trades", format="parquet")
-    per_mint: dict[str, int] = defaultdict(int)
-    rows: list[dict[str, Any]] = []
+    reservoirs: dict[str, list[dict[str, Any]]] = defaultdict(list)
     scanner = dataset.scanner(
-        columns=["mint", "tx_signature", "event_time", "user_wallet", "is_buy"],
+        columns=[
+            "mint",
+            "tx_signature",
+            "event_time",
+            "user_wallet",
+            "is_buy",
+            "sol_amount",
+            "curve_pct_depleted",
+        ],
         batch_size=256_000,
     )
     for batch in scanner.to_batches():
-        for mint, sig, ts, wallet, is_buy in zip(
+        for mint, sig, ts, wallet, is_buy, sol, curve in zip(
             batch.column("mint").to_pylist(),
             batch.column("tx_signature").to_pylist(),
             batch.column("event_time").to_pylist(),
             batch.column("user_wallet").to_pylist(),
             batch.column("is_buy").to_pylist(),
+            batch.column("sol_amount").to_pylist(),
+            batch.column("curve_pct_depleted").to_pylist(),
             strict=True,
         ):
             if mint not in rich_mints or not sig:
                 continue
-            if per_mint[mint] >= per_mint_cap:
+            bucket = reservoirs[mint]
+            row = {
+                "mint": mint,
+                "tx_signature": sig,
+                "event_time": ts,
+                "user_wallet": wallet,
+                "is_buy": is_buy,
+                "sol_amount": sol,
+                "curve_pct_depleted": curve,
+            }
+            if len(bucket) < reservoir_per_mint:
+                bucket.append(row)
                 continue
-            per_mint[mint] += 1
-            rows.append(
-                {
-                    "mint": mint,
-                    "tx_signature": sig,
-                    "event_time": ts,
-                    "user_wallet": wallet,
-                    "is_buy": is_buy,
-                }
-            )
+            rank = int(hashlib.sha256(sig.encode()).hexdigest()[:8], 16)
+            idx = rank % reservoir_per_mint
+            if rank % 17 == 0:
+                bucket[idx] = row
+
+    selected_by_mint: dict[str, list[dict[str, Any]]] = {}
+    for mint in sorted(rich_mints):
+        selected_by_mint[mint] = select_stratified_trades_for_mint(
+            reservoirs.get(mint, []), cap=cap
+        )
+    rows = []
+    depth = 0
+    while len(rows) < max_signatures:
+        added = False
+        for mint in sorted(rich_mints):
+            picks = selected_by_mint.get(mint) or []
+            if depth < len(picks):
+                rows.append(picks[depth])
+                added = True
             if len(rows) >= max_signatures:
                 break
-        if len(rows) >= max_signatures:
+        if not added:
             break
+        depth += 1
+    per_mint: dict[str, int] = defaultdict(int)
+    for row in rows:
+        per_mint[row["mint"]] += 1
 
-    table = pa.Table.from_pylist(rows) if rows else pa.table(
-        {"mint": pa.array([], pa.string()), "tx_signature": pa.array([], pa.string())}
+    table = (
+        pa.Table.from_pylist(rows)
+        if rows
+        else pa.table(
+            {"mint": pa.array([], pa.string()), "tx_signature": pa.array([], pa.string())}
+        )
     )
     path = out_dir / "signature_targets.parquet"
     pq.write_table(table, path)
     return {
-        "path": file_provenance(path, source="pumpfun.trades.tx_signature"),
+        "path": file_provenance(path, source="pumpfun.trades.tx_signature.stratified"),
         "rows": table.num_rows,
-        "unique_mints": len(per_mint),
-        "per_mint_cap": per_mint_cap,
+        "unique_mints": sum(1 for n in per_mint.values() if n),
+        "per_mint_cap": cap,
         "max_signatures": max_signatures,
+        "sampling": "stratified_per_token_lifecycle",
     }
 
 
@@ -153,6 +282,7 @@ def build_wallet_graph(
     *,
     rich_mints: set[str] | None = None,
     max_trade_batches: int | None = None,
+    reuse_wallet_token: bool = True,
 ) -> dict[str, Any]:
     """Stream trades into wallet↔token and creator edges; co-buy on rich subset."""
     ensure_dir(out_dir)
@@ -178,78 +308,95 @@ def build_wallet_graph(
     creator_path = out_dir / "edges_creator_token.parquet"
     pq.write_table(pa.Table.from_pylist(creator_rows), creator_path)
 
-    # Wallet-token participation (full scan, aggregated).
-    dataset = ds.dataset(pump_root / "trades", format="parquet")
-    agg: dict[tuple[str, str], dict[str, Any]] = {}
-    scanner = dataset.scanner(
-        columns=["mint", "user_wallet", "event_time", "is_buy", "sol_amount"],
-        batch_size=256_000,
-    )
-    for i, batch in enumerate(scanner.to_batches()):
-        for mint, wallet, ts, is_buy, sol in zip(
-            batch.column("mint").to_pylist(),
-            batch.column("user_wallet").to_pylist(),
-            batch.column("event_time").to_pylist(),
-            batch.column("is_buy").to_pylist(),
-            batch.column("sol_amount").to_pylist(),
-            strict=True,
-        ):
-            if not wallet or wallet == SYSTEM_PROGRAM_WALLET or not mint:
-                continue
-            key = (wallet, mint)
-            slot = agg.get(key)
-            if slot is None:
-                slot = {
-                    "wallet": wallet,
-                    "mint": mint,
-                    "first_t": ts,
-                    "last_t": ts,
-                    "buys": 0,
-                    "sells": 0,
-                    "buy_sol": 0.0,
-                    "sell_sol": 0.0,
-                }
-                agg[key] = slot
-            else:
-                if ts is not None and (slot["first_t"] is None or ts < slot["first_t"]):
-                    slot["first_t"] = ts
-                if ts is not None and (slot["last_t"] is None or ts > slot["last_t"]):
-                    slot["last_t"] = ts
-            if is_buy:
-                slot["buys"] += 1
-                if sol is not None:
-                    slot["buy_sol"] += float(sol)
-            else:
-                slot["sells"] += 1
-                if sol is not None:
-                    slot["sell_sol"] += float(sol)
-        if max_trade_batches is not None and i + 1 >= max_trade_batches:
-            break
-
-    wt_rows = [
-        {
-            "edge_type": "wallet_token",
-            "src": v["wallet"],
-            "dst": v["mint"],
-            "first_t": v["first_t"],
-            "last_t": v["last_t"],
-            "buys": v["buys"],
-            "sells": v["sells"],
-            "buy_sol": v["buy_sol"],
-            "sell_sol": v["sell_sol"],
-            "quality_flag": "derived_from_trades_exclude_system_program",
-        }
-        for v in agg.values()
-    ]
     wt_path = out_dir / "edges_wallet_token.parquet"
-    # Write in chunks if huge.
-    if wt_rows:
-        pq.write_table(pa.Table.from_pylist(wt_rows), wt_path)
-    else:
-        pq.write_table(
-            pa.table({"edge_type": pa.array([], pa.string()), "src": pa.array([], pa.string())}),
-            wt_path,
+    agg: dict[tuple[str, str], dict[str, Any]] = {}
+    reused_wt = reuse_wallet_token and wt_path.exists() and max_trade_batches is None
+    if reused_wt:
+        existing = pq.read_table(
+            wt_path, columns=["src", "dst", "buys", "sells", "first_t", "last_t"]
         )
+        wt_rows = existing.to_pylist()
+        for row in wt_rows:
+            agg[(row["src"], row["dst"])] = {
+                "wallet": row["src"],
+                "mint": row["dst"],
+                "buys": row.get("buys") or 0,
+                "sells": row.get("sells") or 0,
+            }
+    else:
+        dataset = ds.dataset(pump_root / "trades", format="parquet")
+        scanner = dataset.scanner(
+            columns=["mint", "user_wallet", "event_time", "is_buy", "sol_amount"],
+            batch_size=256_000,
+        )
+        for i, batch in enumerate(scanner.to_batches()):
+            for mint, wallet, ts, is_buy, sol in zip(
+                batch.column("mint").to_pylist(),
+                batch.column("user_wallet").to_pylist(),
+                batch.column("event_time").to_pylist(),
+                batch.column("is_buy").to_pylist(),
+                batch.column("sol_amount").to_pylist(),
+                strict=True,
+            ):
+                if not wallet or wallet == SYSTEM_PROGRAM_WALLET or not mint:
+                    continue
+                key = (wallet, mint)
+                slot = agg.get(key)
+                if slot is None:
+                    slot = {
+                        "wallet": wallet,
+                        "mint": mint,
+                        "first_t": ts,
+                        "last_t": ts,
+                        "buys": 0,
+                        "sells": 0,
+                        "buy_sol": 0.0,
+                        "sell_sol": 0.0,
+                    }
+                    agg[key] = slot
+                else:
+                    if ts is not None and (slot["first_t"] is None or ts < slot["first_t"]):
+                        slot["first_t"] = ts
+                    if ts is not None and (slot["last_t"] is None or ts > slot["last_t"]):
+                        slot["last_t"] = ts
+                if is_buy:
+                    slot["buys"] += 1
+                    if sol is not None:
+                        slot["buy_sol"] += float(sol)
+                else:
+                    slot["sells"] += 1
+                    if sol is not None:
+                        slot["sell_sol"] += float(sol)
+            if max_trade_batches is not None and i + 1 >= max_trade_batches:
+                break
+
+        wt_rows = [
+            {
+                "edge_type": "wallet_token",
+                "src": v["wallet"],
+                "dst": v["mint"],
+                "first_t": v["first_t"],
+                "last_t": v["last_t"],
+                "buys": v["buys"],
+                "sells": v["sells"],
+                "buy_sol": v["buy_sol"],
+                "sell_sol": v["sell_sol"],
+                "quality_flag": "derived_from_trades_exclude_system_program",
+            }
+            for v in agg.values()
+        ]
+        if wt_rows:
+            pq.write_table(pa.Table.from_pylist(wt_rows), wt_path)
+        else:
+            pq.write_table(
+                pa.table(
+                    {
+                        "edge_type": pa.array([], pa.string()),
+                        "src": pa.array([], pa.string()),
+                    }
+                ),
+                wt_path,
+            )
 
     # Co-buy edges for rich subset only (same mint buyers).
     co_path = out_dir / "edges_cobuy_rich.parquet"
@@ -329,7 +476,10 @@ def build_wallet_graph(
             "cobuy": file_provenance(co_path, source="pumpfun.trades.rich_subset"),
             "cohort": file_provenance(ch_path, source="red_cohort"),
         },
-        "unique_wallets_in_wallet_token": len({r["src"] for r in wt_rows}),
+        "unique_wallets_in_wallet_token": len(
+            {r.get("src") or r.get("wallet") for r in wt_rows}
+        ),
+        "reused_wallet_token": reused_wt,
         "quality_notes": [
             "wallet_stats aggregates not used",
             "System Program wallet excluded",
@@ -503,7 +653,7 @@ def run_local_acquisition(
     *,
     external_root: Path,
     world_root: Path,
-    rich_subset_max_mints: int = 2721,
+    rich_subset_max_mints: int = 4000,
     rpc_max_signatures: int = 25_000,
     max_trade_batches: int | None = None,
 ) -> dict[str, Any]:
@@ -531,9 +681,18 @@ def run_local_acquisition(
         rich_mints=rich_mints,
         max_trade_batches=max_trade_batches,
     )
-    summary["layers"]["global_context"] = build_global_context(
-        pump, world_root / "global_context"
-    )
+    ctx_path = world_root / "global_context" / "daily_pump_network_context.parquet"
+    if ctx_path.exists():
+        days = pq.ParquetFile(ctx_path).metadata.num_rows
+        summary["layers"]["global_context"] = {
+            "reused": True,
+            "days": days,
+            "corpus_days_present": days,
+        }
+    else:
+        summary["layers"]["global_context"] = build_global_context(
+            pump, world_root / "global_context"
+        )
     summary["layers"]["execution"] = export_execution_state(
         pump, world_root / "execution", rich_mints
     )

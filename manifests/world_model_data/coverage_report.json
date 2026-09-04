@@ -1,32 +1,32 @@
 {
-  "generated_at": "2026-09-03T18:44:31.138241+00:00",
+  "generated_at": "2026-09-04T03:28:30.696355+00:00",
   "layers": [
     {
       "layer": "transaction_microstructure",
-      "tokens": 82,
+      "tokens": 3215,
       "wallets": null,
-      "rows_edges": 2500,
+      "rows_edges": 17741,
       "date_coverage": "2026-06-05..2026-07-14 (enriched subset)",
       "source": "pumpfun.tx_signature + solana_rpc.getTransaction",
       "quality": "high_subset"
     },
     {
       "layer": "token_ownership_transfers",
-      "tokens": 2627,
-      "wallets": 332489,
-      "rows_edges": 559703,
-      "date_coverage": "2026-06-05..2026-07-14",
-      "source": "bigquery.Token Transfers (rich mints)",
+      "tokens": 2936,
+      "wallets": 334012,
+      "rows_edges": 562175,
+      "date_coverage": "representative corpus days (partition-pruned)",
+      "source": "bigquery.Token Transfers (unbiased rich mints)",
       "quality": "ledger"
     },
     {
       "layer": "wallet_history_graph",
-      "tokens": 2721,
+      "tokens": 4000,
       "wallets": 1006640,
-      "rows_edges": 11550229,
+      "rows_edges": 11481707,
       "date_coverage": "corpus window",
-      "source": "pumpfun + red_cohort + bq SPL transfers + rpc proxies",
-      "quality": "strong_with_spl_funding"
+      "source": "pumpfun + red_cohort + bq SPL + native SOL system transfers",
+      "quality": "strong_with_spl_and_native_sol"
     },
     {
       "layer": "global_market_network_context",
@@ -42,16 +42,16 @@
       "tokens": 5669,
       "wallets": null,
       "rows_edges": 1392133,
-      "date_coverage": "graduated subset",
+      "date_coverage": "graduated subset (label, not fusion inclusion)",
       "source": "pumpfun.postgard_* (+ gecko pool OHLCV)",
       "quality": "high_local_postgard"
     },
     {
       "layer": "execution_state",
-      "tokens": 1173,
+      "tokens": 3133,
       "wallets": null,
-      "rows_edges": 182297,
-      "date_coverage": "rich subset pre-grad",
+      "rows_edges": 102164,
+      "date_coverage": "unbiased rich subset",
       "source": "pumpfun.trades curve reserves",
       "quality": "curve_observed_subset"
     },
@@ -63,41 +63,112 @@
       "date_coverage": "2026-06..2026-07",
       "source": "bigquery.Accounts",
       "quality": "ledger_snapshots"
+    },
+    {
+      "layer": "native_sol_funding",
+      "tokens": 84,
+      "wallets": 517,
+      "rows_edges": 716,
+      "date_coverage": "pre-T wallet history",
+      "source": "solana_rpc.getSignaturesForAddress + parsed System Program transfer",
+      "quality": "native_sol"
     }
   ],
   "metrics": {
     "transaction_signature_match_rate": 1.0,
-    "true_spl_transfer_count": 559703,
-    "mints_with_genuine_ownership_histories": 2627,
+    "true_spl_transfer_count": 562175,
+    "mints_with_genuine_ownership_histories": 2936,
+    "unbiased_day_spl_transfer_count": 2472,
+    "unbiased_day_spl_mints": 314,
     "wallets_with_prior_history": 1006640,
-    "wallets_with_genuine_funding_edges": 332442,
-    "genuine_wallet_funding_edges": 523086,
-    "shared_funder_graph_edges": 335850,
-    "creator_ownership_transfer_rows": 107896,
-    "transaction_microstructure_tokens": 82,
-    "transaction_microstructure_txs": 2500,
-    "execution_state_mints": 1173,
-    "execution_state_rows": 182297,
+    "spl_transfer_edges": 525053,
+    "wallets_in_spl_transfers": 333965,
+    "true_native_sol_funding_edges": 716,
+    "wallets_with_native_sol_funding": 517,
+    "shared_funder_graph_edges": 337457,
+    "shared_native_funder_edges": 2115,
+    "creator_ownership_transfer_rows": 108199,
+    "transaction_microstructure_tokens": 3215,
+    "transaction_microstructure_txs": 17741,
+    "execution_state_mints": 3133,
+    "execution_state_rows": 102164,
     "account_snapshot_rows": 222,
     "account_snapshot_mints": 100,
     "network_context_corpus_days": 38,
     "blocks_daily_rows": 61,
     "tokens_with_postgrad_history": 5669,
-    "bigquery_bytes_processed": 656323392556,
-    "bigquery_bytes_billed": 656323641344,
+    "bigquery_bytes_processed": 176934370471,
+    "bigquery_bytes_billed": 176940908544,
     "solarchive_bytes_downloaded": 0,
     "gecko_pools_completed": 150,
     "graph_edge_counts_by_type": {
       "wallet_token": 9644468,
       "creator_token": 798430,
-      "cobuy": 243261,
+      "cobuy": 156730,
       "cohort_member": 2965,
-      "spl_transfer": 523086,
-      "sol_balance_delta_proxy": 2169,
-      "shared_funder": 335850,
-      "creator_related_transfer": 107896
+      "spl_transfer": 525053,
+      "sol_balance_delta_proxy": 13773,
+      "system_sol_transfer": 716,
+      "shared_funder": 337457,
+      "shared_native_funder": 2115,
+      "creator_related_transfer": 108199
     },
-    "rich_subset_mints": 2721
+    "unbiased_rich_subset_mints": 4000,
+    "unbiased_subset_graduated": 20,
+    "unbiased_subset_non_graduated": 3980,
+    "fusion_overlap_tokens": 284,
+    "fusion_overlap_graduated": 8,
+    "fusion_overlap_non_graduated": 276,
+    "selection_is_not_graduation_proxy": true
+  },
+  "bias_proof": {
+    "universe_tokens": 798430,
+    "universe_graduated": 5689,
+    "universe_graduation_rate": 0.00712523327029295,
+    "subset_tokens": 4000,
+    "subset_graduated": 20,
+    "subset_graduation_rate": 0.005,
+    "subset_non_graduated": 3980,
+    "two_proportion_z": {
+      "z": -1.5952378660127207,
+      "p_approx": 0.11065905410435885,
+      "diff": -0.00212523327029295
+    },
+    "selection_is_not_graduation_proxy": true,
+    "mayhem_rate_universe": 0.13722054532019087,
+    "mayhem_rate_subset": 0.12825,
+    "launch_day_counts": {
+      "2026-06-05": 106,
+      "2026-06-06": 119,
+      "2026-06-07": 233,
+      "2026-06-08": 277,
+      "2026-06-09": 307,
+      "2026-06-10": 255,
+      "2026-06-12": 296,
+      "2026-06-15": 300,
+      "2026-06-22": 313,
+      "2026-06-26": 303,
+      "2026-06-29": 302,
+      "2026-07-01": 340,
+      "2026-07-02": 144,
+      "2026-07-04": 41,
+      "2026-07-07": 325,
+      "2026-07-10": 219,
+      "2026-07-14": 120
+    },
+    "launch_regime_counts": {
+      "jun5_8_pre_holdercap": 735,
+      "jun11_jul2_pre_outage": 1998,
+      "jun9_10_holdercap": 562,
+      "jul4_14_post_outage": 705
+    },
+    "jul3_included": false
+  },
+  "fusion_trainability": {
+    "overlap_definition": "tokens in unbiased subset with event (curve/trades) + graph + SPL ownership + microstructure + global market context",
+    "overlap_n": 284,
+    "ready_threshold": 2000,
+    "status": "PARTIAL"
   },
   "source_probe_decisions": {
     "bigquery": "usable_with_partition_filters",
@@ -113,16 +184,17 @@
     "prediction heads": "READY"
   },
   "irrecoverable_fields": [
-    "Native SOL system-program transfer ledger (Instructions SELECT ~7.7 TiB for corpus window; cost-aborted)",
+    "Full-universe native SOL Instructions table (SELECT ~7.7 TiB; recovered only via RPC System Program parses on subset)",
     "Full Transactions table scans for microstructure (~370+ GiB/day for signature column alone; use RPC subset instead)",
     "Solarchive txs/accounts for June\u2013July 2026 (index ends 2025-12-05)",
     "Real pool addresses for synthetic/null migrations without discovery",
     "Row-level Pump fee bps history (protocol metadata only)",
-    "Transaction microstructure still covers only 82 tokens / 2500 enriched txs \u2014 not the full 798k universe"
+    "Complete fusion population is the multimodal overlap (284 tokens), not the full 798k universe"
   ],
   "world_model_dataset_ready": true,
   "readiness_notes": [
     "READY requires meaningful trainability, not merely non-empty tables.",
-    "Prior e84fdef overstated readiness with 82-token microstructure and trade-derived ownership."
+    "Fusion READY requires a large unbiased multimodal overlap, not graduated-only tokens.",
+    "SPL transfers are labeled spl_transfer, not genuine native-SOL funding."
   ]
 }

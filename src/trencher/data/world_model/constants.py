@@ -32,7 +32,33 @@ GECKO_BASE_URL = "https://api.geckoterminal.com/api/v2"
 GECKO_MIN_INTERVAL_SEC = 7.5  # stay under ~8 calls/minute to reduce 429s
 
 DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com"
+HELIUS_RPC_TEMPLATE = "https://mainnet.helius-rpc.com/?api-key={key}"
 RPC_MIN_INTERVAL_SEC = 0.75
+RPC_BATCH_SIZE = 8
+SYSTEM_PROGRAM_ID = "11111111111111111111111111111111"
+BQ_FREE_TIER_BYTES = 1024 * 1024**3  # 1 TiB / month query processing
+BQ_HEADROOM_RESERVE_BYTES = 80 * 1024**3  # keep 80 GiB unused
+REPRESENTATIVE_BQ_DAYS = (
+    "2026-06-05",
+    "2026-06-06",
+    "2026-06-07",
+    "2026-06-08",
+    "2026-06-09",
+    "2026-06-10",
+    "2026-06-12",
+    "2026-06-15",
+    "2026-06-18",
+    "2026-06-22",
+    "2026-06-26",
+    "2026-06-29",
+    "2026-07-01",
+    "2026-07-02",
+    "2026-07-04",
+    "2026-07-07",
+    "2026-07-10",
+    "2026-07-12",
+    "2026-07-14",
+)
 
 SYNTHETIC_POOLS = frozenset(
     {
