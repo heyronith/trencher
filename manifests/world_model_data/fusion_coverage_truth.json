@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T11:58:07.223819+00:00",
+  "generated_at": "2026-09-04T17:20:30.132425+00:00",
   "source_of_truth": "data/external/world_model/universe/fusion_coverage_truth.parquet",
   "definition_version": "fusion_coverage_v3_holder_completeness",
   "prior_disagreement_note": "v2 counted any BQ transfer row as reconstructable (~287). v3 requires documented holder-state completeness; sparse ledgers are transfer_ledger_observed_partial.",
@@ -7,8 +7,8 @@
   "counts": {
     "core_event_graph_micro_exec_market": 3133,
     "core_plus_any_genuine_ownership": 3132,
-    "core_plus_reconstructable_ownership": 13,
-    "core_plus_holder_state_reconstructable": 13,
+    "core_plus_reconstructable_ownership": 6,
+    "core_plus_holder_state_reconstructable": 6,
     "with_true_native_sol_history": 84,
     "core_plus_native_sol": 46
   },
@@ -24,14 +24,14 @@
       "non_graduated": 3116
     },
     "reconstructable_ownership": {
-      "n": 13,
-      "graduated": 2,
-      "non_graduated": 11
+      "n": 6,
+      "graduated": 0,
+      "non_graduated": 6
     }
   },
   "ownership_evidence_counts": {
-    "holder_state_reconstructable": 14,
-    "transfer_ledger_observed_partial": 303,
+    "holder_state_reconstructable": 6,
+    "transfer_ledger_observed_partial": 311,
     "rpc_balance_observed": 2845,
     "trade_derived_proxy": 1,
     "missing": 837
@@ -47,7 +47,7 @@
     ],
     [
       "event+graph+micro+exec+market+own_transfer_ledger_observed_partial",
-      267
+      274
     ],
     [
       "event+graph+micro+exec+market+own_rpc_balance_observed+native_sol",
@@ -59,22 +59,18 @@
     ],
     [
       "graph+market+own_transfer_ledger_observed_partial",
-      29
-    ],
-    [
-      "event+graph+micro+exec+market+own_holder_state_reconstructable",
-      13
+      30
     ],
     [
       "event+graph+micro+exec+market+own_transfer_ledger_observed_partial+native_sol",
       7
     ],
     [
-      "event+graph+micro+exec+market+own_trade_derived_proxy",
-      1
+      "event+graph+micro+exec+market+own_holder_state_reconstructable",
+      6
     ],
     [
-      "graph+market+own_holder_state_reconstructable",
+      "event+graph+micro+exec+market+own_trade_derived_proxy",
       1
     ]
   ],
@@ -98,18 +94,21 @@
       "distinct_tx_signatures >= 10",
       "first_transfer_within_600s_of_detected_at",
       "nonzero_reconstructed_balances >= 3",
-      "mintTo_present OR bq_token_transfer_rows >= 50"
+      "mintTo_present OR bq_token_transfer_rows >= 50",
+      "queried_ledger_day_partitions_cover_launch_through_T"
     ],
     "considers": [
       "coverage from mint/launch (detected_at) through observed transfers",
       "mintTo / spl-transfer / burn balance-changing events",
       "transaction/signature coverage",
       "signed balance reconstruction conservation across accounts",
-      "optional agreement with Pump trade wallets and RPC balance observations"
+      "optional agreement with Pump trade wallets and RPC balance observations",
+      "explicit day-partition acquisition coverage launch\u2192T when available"
     ],
     "explicitly_not_sufficient": [
       "bq_token_transfer_rows > 0 alone",
       "sparse day extracts without launch coverage",
+      "row-density heuristics without partition coverage launch\u2192T",
       "sampled RPC pre/postTokenBalances alone",
       "trade participation proxy"
     ]

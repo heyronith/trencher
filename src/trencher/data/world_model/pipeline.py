@@ -19,7 +19,8 @@ from trencher.data.world_model.acquire.funding import run_native_sol_funding_acq
 from trencher.data.world_model.acquire.rpc import SolanaRpc
 from trencher.data.world_model.freeze import build_data_freeze
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
-from trencher.data.world_model.pit_audit import build_pit_v3_audit
+from trencher.data.world_model.observations import build_observation_dataset_v1
+from trencher.data.world_model.pit_audit import build_pit_v4_audit
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
@@ -169,7 +170,12 @@ def run_world_model_pipeline(
 
     report: dict[str, Any] = {}
     need_report_inputs = "report" in stages
-    if need_report_inputs or "freeze" in stages or "pit" in stages:
+    if (
+        need_report_inputs
+        or "freeze" in stages
+        or "pit" in stages
+        or "observations" in stages
+    ):
         from trencher.data.world_model.io import read_json
 
         if need_report_inputs:
@@ -202,14 +208,14 @@ def run_world_model_pipeline(
             )
 
         if "pit" in stages or "report" in stages:
-            logger.info("Building PIT v3 audit (derived; freeze acquisition unchanged)")
-            audit = build_pit_v3_audit(
+            logger.info("Building PIT v4 audit (derived; freeze acquisition unchanged)")
+            audit = build_pit_v4_audit(
                 world_root=world_root,
                 manifest_dir=manifest_dir,
                 pump_root=external_root / "pumpfun_memecoin_corpus",
                 max_mints=50,
             )
-            summary["pit_v3_audit"] = {
+            summary["pit_v4_audit"] = {
                 "future_labels_absent": audit.get(
                     "future_labels_structurally_absent_from_model_state"
                 ),
@@ -219,11 +225,32 @@ def run_world_model_pipeline(
                 "holder_state_reconstructable_at_t_by_age": audit.get(
                     "holder_state_reconstructable_at_t_by_age"
                 ),
+                "same_second_bucket_ok": (audit.get("leakage_tests") or {}).get(
+                    "includes_same_second_future_trade_bucket"
+                ),
             }
             summary["fusion_coverage"] = audit.get("fusion_coverage")
             summary["ownership_evidence_counts"] = audit.get(
                 "ownership_evidence_counts"
             )
+
+        if "observations" in stages:
+            logger.info(
+                "Building observation dataset v1 (no labels; freeze unchanged)"
+            )
+            obs = build_observation_dataset_v1(
+                world_root=world_root,
+                manifest_dir=manifest_dir,
+                pump_root=external_root / "pumpfun_memecoin_corpus",
+            )
+            summary["observation_dataset_v1"] = {
+                "tokens_n": obs.get("tokens_n"),
+                "observations_n": obs.get("observations_n"),
+                "leakage_all_passed": (obs.get("leakage_tests") or {}).get(
+                    "all_passed"
+                ),
+                "estimated_disk_mb": obs.get("estimated_disk_mb"),
+            }
 
         if "report" in stages:
             report = build_coverage_report(

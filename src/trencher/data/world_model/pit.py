@@ -1,9 +1,10 @@
-"""Point-in-time world-state reconstruction engine v3 (no labels / no training)."""
+"""Point-in-time world-state reconstruction engine v4 (no labels / no training)."""
 
 from __future__ import annotations
 
 import copy
 import json
+import math
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -17,9 +18,13 @@ import pyarrow.parquet as pq
 
 from trencher.data.feasibility.concepts import SYSTEM_PROGRAM_WALLET
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
-from trencher.data.world_model.ownership import classify_ownership_at_t
+from trencher.data.world_model.ownership import (
+    classify_ownership_at_t,
+    load_queried_ledger_days,
+)
 
-PIT_ENGINE_VERSION = "pit_v3"
+PIT_ENGINE_VERSION = "pit_v4"
+GLOBAL_CONTEXT_INDEX_VERSION = "global_context_v4"
 
 PIT_AGE_OFFSETS_SEC = (
     ("launch", 0),
@@ -30,6 +35,8 @@ PIT_AGE_OFFSETS_SEC = (
     ("5m", 300),
     ("10m", 600),
     ("30m", 1800),
+    ("1h", 3600),
+    ("6h", 21600),
 )
 
 GLOBAL_TRAILING_WINDOWS_SEC = (10, 30, 60, 300, 900)
@@ -86,6 +93,18 @@ def _to_unix(ts: Any) -> float | None:
 def _day_start_unix(t: float) -> float:
     dt = datetime.fromtimestamp(t, tz=UTC)
     return datetime(dt.year, dt.month, dt.day, tzinfo=UTC).timestamp()
+
+
+def last_completed_second(observation_time_t: float) -> int:
+    """Latest fully completed unix second strictly before the second containing T.
+
+    Second-level trade buckets aggregate ``int(event_time)`` in [sec, sec+1).
+    At fractional T the current second is incomplete and must be excluded, so
+    global trade context has intentional sub-second latency (<1s).
+    Do not round T upward.
+    """
+    return int(math.floor(observation_time_t)) - 1
+
 
 
 def model_state_bytes(model_state: dict[str, Any]) -> bytes:
@@ -209,19 +228,23 @@ def ensure_global_context_index(
     migrations_path = out_dir / "migrations_timeline.parquet"
     manifest_path = out_dir / "global_context_index_manifest.json"
 
-    if (
-        not force
-        and launches_path.exists()
-        and buckets_path.exists()
-        and migrations_path.exists()
-        and pq.ParquetFile(launches_path).metadata.num_rows
-    ):
-        return {
-            "launches": launches_path,
-            "trade_buckets": buckets_path,
-            "migrations": migrations_path,
-            "manifest": manifest_path,
-        }
+    if not force and manifest_path.exists() and buckets_path.exists():
+        try:
+            prev = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            prev = {}
+        if (
+            prev.get("index_version") == GLOBAL_CONTEXT_INDEX_VERSION
+            and launches_path.exists()
+            and migrations_path.exists()
+            and pq.ParquetFile(launches_path).metadata.num_rows
+        ):
+            return {
+                "launches": launches_path,
+                "trade_buckets": buckets_path,
+                "migrations": migrations_path,
+                "manifest": manifest_path,
+            }
 
     pump = pump_root or Path("data/external/pumpfun_memecoin_corpus")
 
@@ -254,22 +277,34 @@ def ensure_global_context_index(
 
     # Trade second buckets from full local trades corpus (volume/flow only;
     # exact window unique mint/wallet counts omitted for tractability).
+    # Exclude SYSTEM_PROGRAM_WALLET; do not impute malformed rows.
     buckets: dict[int, list[float]] = defaultdict(lambda: [0, 0, 0, 0.0, 0.0])
+    excluded_system_program = 0
+    skipped_missing_time = 0
     trades_dir = pump / "trades"
     if trades_dir.exists():
         dataset = ds.dataset(trades_dir, format="parquet")
         use_cols = [
             c
-            for c in ["event_time", "is_buy", "sol_amount"]
+            for c in ["event_time", "is_buy", "sol_amount", "user_wallet"]
             if c in set(dataset.schema.names)
         ]
         for batch in dataset.scanner(columns=use_cols, batch_size=512_000).to_batches():
             ets = batch.column("event_time").to_pylist()
             buys = batch.column("is_buy").to_pylist()
             sols = batch.column("sol_amount").to_pylist()
-            for et, ib, sol in zip(ets, buys, sols, strict=True):
+            wallets = (
+                batch.column("user_wallet").to_pylist()
+                if "user_wallet" in use_cols
+                else [None] * len(ets)
+            )
+            for et, ib, sol, wallet in zip(ets, buys, sols, wallets, strict=True):
+                if wallet == SYSTEM_PROGRAM_WALLET:
+                    excluded_system_program += 1
+                    continue
                 u = _to_unix(et)
                 if u is None:
+                    skipped_missing_time += 1
                     continue
                 sec = int(u)
                 slot = buckets[sec]
@@ -337,9 +372,21 @@ def ensure_global_context_index(
         manifest_path,
         {
             "generated_at": utc_now(),
+            "index_version": GLOBAL_CONTEXT_INDEX_VERSION,
+            "pit_engine_version": PIT_ENGINE_VERSION,
             "launches_rows": len(launch_rows),
             "trade_second_buckets": len(bucket_rows),
             "migrations_rows": len(mig_rows),
+            "excluded_system_program_wallet_rows": excluded_system_program,
+            "skipped_missing_event_time_rows": skipped_missing_time,
+            "system_program_wallet": SYSTEM_PROGRAM_WALLET,
+            "raw_local_artifacts_unchanged": True,
+            "includes_user_wallet_filter": True,
+            "bucket_policy": (
+                "int(event_time) aggregates; consumers must use only fully "
+                "completed seconds relative to T (last_completed_second); "
+                "global trade context has intentional <1s latency"
+            ),
             "source": "frozen local pumpfun corpus + universe_tokens",
             "external_queries": 0,
         },
@@ -600,6 +647,7 @@ def load_pit_indexes(
         "trade_seconds": trade_seconds,
         "trade_bucket_by_sec": trade_bucket_by_sec,
         "migration_times": migration_times,
+        "queried_ledger_days": load_queried_ledger_days(world_root),
         "lifetime_wallet_token_forbidden": True,
     }
 
@@ -710,6 +758,7 @@ def reconstruct_token_state_at_t(
         trade_participation_before_t=bool(wallet_token_state),
         detected_at=indexes["detected_at_by_mint"].get(mint),
         observation_time_t=observation_time_t,
+        queried_ledger_days=indexes.get("queried_ledger_days"),
     )
 
     native_rows = []
@@ -773,7 +822,8 @@ def reconstruct_token_state_at_t(
     migration_times = indexes.get("migration_times") or []
     trade_seconds = indexes.get("trade_seconds") or []
     trade_bucket_by_sec = indexes.get("trade_bucket_by_sec") or {}
-    end_sec = int(observation_time_t)
+    # Only fully completed seconds — never the incomplete second containing T.
+    end_sec = last_completed_second(observation_time_t)
     for w in GLOBAL_TRAILING_WINDOWS_SEC:
         key = f"trailing_{w}s"
         trailing[key] = {
@@ -782,8 +832,13 @@ def reconstruct_token_state_at_t(
                 migration_times, observation_time_t, w
             ),
             "pump_trades": _sum_buckets(
-                trade_seconds, trade_bucket_by_sec, end_sec - w + 1, end_sec
-            ),
+                trade_seconds,
+                trade_bucket_by_sec,
+                end_sec - w + 1,
+                end_sec,
+            )
+            if end_sec >= 0
+            else _sum_buckets(trade_seconds, trade_bucket_by_sec, 1, 0),
         }
 
     rolling_global = {
@@ -791,6 +846,10 @@ def reconstruct_token_state_at_t(
         "completed_block_context": completed_blocks,
         "trailing_windows": trailing,
         "same_day_partial_daily_aggregates_excluded": True,
+        "global_trade_buckets_last_completed_second": end_sec,
+        "global_trade_bucket_latency_note": (
+            "second_buckets_exclude_incomplete_second_containing_T_lt_1s_latency"
+        ),
         "launches_observed_at_or_before_t": bisect_right(
             launch_times, observation_time_t
         ),
@@ -828,6 +887,7 @@ def reconstruct_token_state_at_t(
         "wallet_graph_from_atomic_trades": True,
         "lifetime_wallet_aggregates_excluded": True,
         "global_excludes_unfinished_day": True,
+        "global_trade_excludes_incomplete_second": True,
         "holder_state_fabricated": False,
         "full_history_ownership_level_excluded_from_inputs": True,
     }
@@ -987,6 +1047,7 @@ def _indexes_for_mutation(indexes: dict[str, Any]) -> dict[str, Any]:
         "blocks_daily",
         "own_level_full_history_audit",
         "detected_at_by_mint",
+        "queried_ledger_days",
         "lifetime_wallet_token_forbidden",
     }
     out: dict[str, Any] = {}
@@ -1225,6 +1286,31 @@ def assert_no_post_t_leakage(
 
     forbidden_hits = find_forbidden_future_fields(before)
     cases["model_state_has_no_forbidden_future_fields"] = not forbidden_hits
+
+    # Same-second future trade must not alter state@T (bucket exclusion).
+    def mutate_same_second_future_trade(idx: dict[str, Any]) -> None:
+        sec = int(__import__("math").floor(observation_time_t))
+        # Future event later in the same incomplete second as T.
+        future_frac = sec + 0.9
+        if future_frac <= observation_time_t:
+            future_frac = observation_time_t + 0.001
+            sec = int(__import__("math").floor(future_frac))
+        idx["trade_seconds"] = sorted(set(list(idx.get("trade_seconds") or []) + [sec]))
+        buckets = dict(idx.get("trade_bucket_by_sec") or {})
+        prev = dict(buckets.get(sec) or {})
+        buckets[sec] = {
+            "second_unix": sec,
+            "trades": int(prev.get("trades") or 0) + 1000,
+            "buys": int(prev.get("buys") or 0) + 1000,
+            "sells": int(prev.get("sells") or 0),
+            "buy_sol": float(prev.get("buy_sol") or 0.0) + 1e6,
+            "sell_sol": float(prev.get("sell_sol") or 0.0),
+            "unique_mints": 0,
+            "unique_wallets": 0,
+        }
+        idx["trade_bucket_by_sec"] = buckets
+
+    _check("post_t_same_second_future_trade_bucket", mutate_same_second_future_trade)
 
     passed = all(cases.values())
     return {

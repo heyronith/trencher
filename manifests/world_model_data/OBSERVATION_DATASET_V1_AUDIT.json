@@ -1,0 +1,680 @@
+{
+  "audit_id": "observation_dataset_v1",
+  "generated_at": "2026-09-04T17:22:10.434680+00:00",
+  "acquisition_freeze_id": "world_model_freeze_v1",
+  "pit_engine_version": "pit_v4",
+  "tokens_n": 4000,
+  "observations_n": 51353,
+  "observations_by_trigger": {
+    "fixed_age": 40000,
+    "event_count": 11353
+  },
+  "observations_by_age_or_event": {
+    "launch": 4000,
+    "event:trades_1": 3133,
+    "event:trades_2": 2607,
+    "event:trades_4": 2078,
+    "10s": 4000,
+    "event:trades_8": 1472,
+    "30s": 4000,
+    "event:trades_16": 918,
+    "1m": 4000,
+    "2m": 4000,
+    "5m": 4000,
+    "10m": 4000,
+    "30m": 4000,
+    "1h": 4000,
+    "6h": 4000,
+    "event:trades_32": 558,
+    "event:trades_64": 307,
+    "event:trades_128": 160,
+    "event:trades_256": 74,
+    "event:trades_512": 46
+  },
+  "observations_per_token": {
+    "min": 10,
+    "p50": 13.0,
+    "p90": 16.0,
+    "p99": 20.0,
+    "max": 20,
+    "mean": 12.83825
+  },
+  "modality_availability_by_age": {
+    "launch": {
+      "global_market": 4000,
+      "native_sol_history": 84,
+      "microstructure": 350,
+      "ownership_any": 338,
+      "ownership_rpc_balance": 314,
+      "ownership_ledger": 24
+    },
+    "event:trades_1": {
+      "event_history": 3133,
+      "event_curve": 3038,
+      "execution": 3038,
+      "wallet_token_dynamic": 3117,
+      "graph": 3117,
+      "microstructure": 2943,
+      "ownership_any": 2735,
+      "ownership_rpc_balance": 2705,
+      "global_market": 3133,
+      "native_sol_history": 46,
+      "ownership_ledger": 30,
+      "ownership_holder_reconstructable_at_t": 4
+    },
+    "event:trades_2": {
+      "event_history": 2607,
+      "event_curve": 2512,
+      "execution": 2512,
+      "wallet_token_dynamic": 2594,
+      "graph": 2594,
+      "microstructure": 2446,
+      "ownership_any": 2266,
+      "ownership_rpc_balance": 2232,
+      "global_market": 2607,
+      "native_sol_history": 36,
+      "ownership_ledger": 34,
+      "ownership_holder_reconstructable_at_t": 7
+    },
+    "event:trades_4": {
+      "event_history": 2078,
+      "event_curve": 1987,
+      "execution": 1987,
+      "wallet_token_dynamic": 2067,
+      "graph": 2067,
+      "microstructure": 1945,
+      "ownership_any": 1780,
+      "ownership_rpc_balance": 1748,
+      "global_market": 2078,
+      "native_sol_history": 26,
+      "ownership_ledger": 32,
+      "ownership_holder_reconstructable_at_t": 9
+    },
+    "10s": {
+      "event_history": 2405,
+      "event_curve": 2328,
+      "execution": 2328,
+      "wallet_token_dynamic": 2071,
+      "graph": 2071,
+      "microstructure": 2390,
+      "ownership_any": 2194,
+      "ownership_rpc_balance": 2146,
+      "global_market": 4000,
+      "ownership_ledger": 48,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 5
+    },
+    "event:trades_8": {
+      "event_history": 1472,
+      "event_curve": 1384,
+      "execution": 1384,
+      "wallet_token_dynamic": 1466,
+      "graph": 1466,
+      "microstructure": 1383,
+      "ownership_any": 1234,
+      "ownership_rpc_balance": 1200,
+      "global_market": 1472,
+      "ownership_ledger": 34,
+      "native_sol_history": 23,
+      "ownership_holder_reconstructable_at_t": 8
+    },
+    "30s": {
+      "event_history": 2737,
+      "event_curve": 2669,
+      "execution": 2669,
+      "wallet_token_dynamic": 2648,
+      "graph": 2648,
+      "microstructure": 2735,
+      "ownership_any": 2559,
+      "ownership_rpc_balance": 2466,
+      "global_market": 4000,
+      "ownership_ledger": 93,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 7
+    },
+    "event:trades_16": {
+      "event_history": 918,
+      "event_curve": 835,
+      "execution": 835,
+      "wallet_token_dynamic": 917,
+      "graph": 917,
+      "microstructure": 870,
+      "ownership_any": 753,
+      "ownership_rpc_balance": 726,
+      "global_market": 918,
+      "native_sol_history": 17,
+      "ownership_ledger": 27,
+      "ownership_holder_reconstructable_at_t": 6
+    },
+    "1m": {
+      "event_history": 2891,
+      "event_curve": 2836,
+      "execution": 2836,
+      "wallet_token_dynamic": 2844,
+      "graph": 2844,
+      "microstructure": 2895,
+      "ownership_any": 2740,
+      "ownership_rpc_balance": 2622,
+      "global_market": 4000,
+      "ownership_ledger": 118,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 5
+    },
+    "2m": {
+      "event_history": 3008,
+      "event_curve": 2966,
+      "execution": 2966,
+      "wallet_token_dynamic": 2977,
+      "graph": 2977,
+      "microstructure": 3003,
+      "ownership_any": 2881,
+      "ownership_rpc_balance": 2724,
+      "global_market": 4000,
+      "ownership_ledger": 157,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 5
+    },
+    "5m": {
+      "event_history": 3077,
+      "event_curve": 3059,
+      "execution": 3059,
+      "wallet_token_dynamic": 3058,
+      "graph": 3058,
+      "microstructure": 3072,
+      "ownership_any": 2986,
+      "ownership_rpc_balance": 2792,
+      "global_market": 4000,
+      "ownership_ledger": 194,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 2
+    },
+    "10m": {
+      "event_history": 3100,
+      "event_curve": 3088,
+      "execution": 3088,
+      "wallet_token_dynamic": 3081,
+      "graph": 3081,
+      "microstructure": 3097,
+      "ownership_any": 3029,
+      "ownership_rpc_balance": 2813,
+      "global_market": 4000,
+      "ownership_ledger": 216,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 3
+    },
+    "30m": {
+      "event_history": 3121,
+      "event_curve": 3115,
+      "execution": 3115,
+      "wallet_token_dynamic": 3103,
+      "graph": 3103,
+      "microstructure": 3119,
+      "ownership_any": 3080,
+      "ownership_rpc_balance": 2834,
+      "global_market": 4000,
+      "ownership_ledger": 246,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 5
+    },
+    "1h": {
+      "event_history": 3129,
+      "event_curve": 3125,
+      "execution": 3125,
+      "wallet_token_dynamic": 3111,
+      "graph": 3111,
+      "microstructure": 3127,
+      "ownership_any": 3104,
+      "ownership_rpc_balance": 2842,
+      "global_market": 4000,
+      "ownership_ledger": 262,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 5
+    },
+    "6h": {
+      "event_history": 3133,
+      "event_curve": 3131,
+      "execution": 3131,
+      "wallet_token_dynamic": 3116,
+      "graph": 3116,
+      "microstructure": 3131,
+      "ownership_any": 3132,
+      "ownership_rpc_balance": 2845,
+      "global_market": 4000,
+      "ownership_ledger": 287,
+      "native_sol_history": 84,
+      "ownership_holder_reconstructable_at_t": 10
+    },
+    "event:trades_32": {
+      "event_history": 558,
+      "event_curve": 484,
+      "execution": 484,
+      "wallet_token_dynamic": 558,
+      "graph": 558,
+      "microstructure": 543,
+      "global_market": 558,
+      "ownership_any": 446,
+      "ownership_rpc_balance": 424,
+      "native_sol_history": 16,
+      "ownership_ledger": 22,
+      "ownership_holder_reconstructable_at_t": 2
+    },
+    "event:trades_64": {
+      "event_history": 307,
+      "event_curve": 243,
+      "execution": 243,
+      "wallet_token_dynamic": 307,
+      "graph": 307,
+      "microstructure": 304,
+      "global_market": 307,
+      "ownership_any": 234,
+      "ownership_rpc_balance": 212,
+      "native_sol_history": 7,
+      "ownership_ledger": 22
+    },
+    "event:trades_128": {
+      "event_history": 160,
+      "event_curve": 103,
+      "execution": 103,
+      "wallet_token_dynamic": 160,
+      "graph": 160,
+      "microstructure": 159,
+      "ownership_any": 121,
+      "ownership_rpc_balance": 98,
+      "native_sol_history": 5,
+      "global_market": 160,
+      "ownership_ledger": 23
+    },
+    "event:trades_256": {
+      "event_history": 74,
+      "wallet_token_dynamic": 74,
+      "graph": 74,
+      "microstructure": 73,
+      "native_sol_history": 3,
+      "global_market": 74,
+      "ownership_any": 57,
+      "ownership_rpc_balance": 39,
+      "event_curve": 29,
+      "execution": 29,
+      "ownership_ledger": 18
+    },
+    "event:trades_512": {
+      "event_history": 46,
+      "wallet_token_dynamic": 46,
+      "graph": 46,
+      "microstructure": 45,
+      "native_sol_history": 3,
+      "global_market": 46,
+      "ownership_any": 36,
+      "ownership_rpc_balance": 26,
+      "event_curve": 12,
+      "execution": 12,
+      "ownership_ledger": 10
+    }
+  },
+  "ownership_evidence_by_age": {
+    "launch": {
+      "missing": 3662,
+      "rpc_balance_observed": 314,
+      "transfer_ledger_observed_partial": 24
+    },
+    "event:trades_1": {
+      "rpc_balance_observed": 2705,
+      "trade_derived_proxy": 396,
+      "transfer_ledger_observed_partial": 26,
+      "holder_state_reconstructable": 4,
+      "missing": 2
+    },
+    "event:trades_2": {
+      "rpc_balance_observed": 2232,
+      "trade_derived_proxy": 339,
+      "transfer_ledger_observed_partial": 27,
+      "holder_state_reconstructable": 7,
+      "missing": 2
+    },
+    "event:trades_4": {
+      "rpc_balance_observed": 1748,
+      "trade_derived_proxy": 296,
+      "holder_state_reconstructable": 9,
+      "transfer_ledger_observed_partial": 23,
+      "missing": 2
+    },
+    "10s": {
+      "rpc_balance_observed": 2146,
+      "transfer_ledger_observed_partial": 43,
+      "missing": 1540,
+      "trade_derived_proxy": 266,
+      "holder_state_reconstructable": 5
+    },
+    "event:trades_8": {
+      "rpc_balance_observed": 1200,
+      "transfer_ledger_observed_partial": 26,
+      "trade_derived_proxy": 236,
+      "holder_state_reconstructable": 8,
+      "missing": 2
+    },
+    "30s": {
+      "rpc_balance_observed": 2466,
+      "transfer_ledger_observed_partial": 86,
+      "missing": 1236,
+      "trade_derived_proxy": 205,
+      "holder_state_reconstructable": 7
+    },
+    "event:trades_16": {
+      "rpc_balance_observed": 726,
+      "trade_derived_proxy": 164,
+      "holder_state_reconstructable": 6,
+      "transfer_ledger_observed_partial": 21,
+      "missing": 1
+    },
+    "1m": {
+      "rpc_balance_observed": 2622,
+      "transfer_ledger_observed_partial": 113,
+      "missing": 1083,
+      "trade_derived_proxy": 177,
+      "holder_state_reconstructable": 5
+    },
+    "2m": {
+      "rpc_balance_observed": 2724,
+      "transfer_ledger_observed_partial": 152,
+      "missing": 974,
+      "trade_derived_proxy": 145,
+      "holder_state_reconstructable": 5
+    },
+    "5m": {
+      "rpc_balance_observed": 2792,
+      "transfer_ledger_observed_partial": 192,
+      "missing": 907,
+      "trade_derived_proxy": 107,
+      "holder_state_reconstructable": 2
+    },
+    "10m": {
+      "rpc_balance_observed": 2813,
+      "transfer_ledger_observed_partial": 213,
+      "missing": 882,
+      "trade_derived_proxy": 89,
+      "holder_state_reconstructable": 3
+    },
+    "30m": {
+      "rpc_balance_observed": 2834,
+      "transfer_ledger_observed_partial": 241,
+      "missing": 859,
+      "trade_derived_proxy": 61,
+      "holder_state_reconstructable": 5
+    },
+    "1h": {
+      "rpc_balance_observed": 2842,
+      "transfer_ledger_observed_partial": 257,
+      "missing": 849,
+      "trade_derived_proxy": 47,
+      "holder_state_reconstructable": 5
+    },
+    "6h": {
+      "rpc_balance_observed": 2845,
+      "transfer_ledger_observed_partial": 277,
+      "missing": 838,
+      "trade_derived_proxy": 30,
+      "holder_state_reconstructable": 10
+    },
+    "event:trades_32": {
+      "trade_derived_proxy": 112,
+      "rpc_balance_observed": 424,
+      "transfer_ledger_observed_partial": 20,
+      "holder_state_reconstructable": 2
+    },
+    "event:trades_64": {
+      "trade_derived_proxy": 73,
+      "rpc_balance_observed": 212,
+      "transfer_ledger_observed_partial": 22
+    },
+    "event:trades_128": {
+      "rpc_balance_observed": 98,
+      "trade_derived_proxy": 39,
+      "transfer_ledger_observed_partial": 23
+    },
+    "event:trades_256": {
+      "trade_derived_proxy": 17,
+      "rpc_balance_observed": 39,
+      "transfer_ledger_observed_partial": 18
+    },
+    "event:trades_512": {
+      "trade_derived_proxy": 10,
+      "rpc_balance_observed": 26,
+      "transfer_ledger_observed_partial": 10
+    }
+  },
+  "date_distribution_tokens": {
+    "2026-06-05": 106,
+    "2026-06-15": 300,
+    "2026-06-26": 303,
+    "2026-06-09": 307,
+    "2026-06-10": 255,
+    "2026-06-06": 119,
+    "2026-06-12": 296,
+    "2026-06-22": 313,
+    "2026-07-10": 219,
+    "2026-07-01": 340,
+    "2026-07-07": 325,
+    "2026-07-02": 144,
+    "2026-06-07": 233,
+    "2026-06-29": 302,
+    "2026-07-14": 120,
+    "2026-06-08": 277,
+    "2026-07-04": 41
+  },
+  "regime_distribution_tokens": {
+    "jun5_8_pre_holdercap": 735,
+    "jun11_jul2_pre_outage": 1998,
+    "jun9_10_holdercap": 562,
+    "jul4_14_post_outage": 705
+  },
+  "duplicate_time_collisions_removed": 0,
+  "duplicate_rate": 0.0,
+  "leakage_tests": {
+    "n_cases": 8,
+    "all_passed": true,
+    "results": [
+      {
+        "observation_id": "96032c4d3b66a2bc60290407",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651850.554795,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "f090bca7b81804ee033dbdf1",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651853.790611,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "2c8d96ed4efe36c3e36817a0",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651854.741258,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "fc8be3946c118830432a87bb",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651858.864875,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "edfe83456d3b15b33a45922e",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651860.554795,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "8570c9f493d2cdf533cf3e05",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651867.15107,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "ad204151d26b12cd3428bc42",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651880.554795,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      },
+      {
+        "observation_id": "c2d76c85ce46ea848a25151e",
+        "mint": "7rJVM5FiBLCHbAkPDVg9Hm5qXb7DdsjyfRKUb3BWpump",
+        "observation_time_t": 1780651889.671199,
+        "passed": true,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        }
+      }
+    ]
+  },
+  "estimated_disk_bytes": 92853970,
+  "estimated_disk_mb": 88.552,
+  "artifacts": {
+    "observation_index_v1": "data/external/world_model/observations/observation_dataset_v1/observation_index_v1.parquet",
+    "observation_model_states_v1": "data/external/world_model/observations/observation_dataset_v1/observation_model_states_v1.parquet"
+  },
+  "fixed_ages_sec": {
+    "launch": 0,
+    "10s": 10,
+    "30s": 30,
+    "1m": 60,
+    "2m": 120,
+    "5m": 300,
+    "10m": 600,
+    "30m": 1800,
+    "1h": 3600,
+    "6h": 21600
+  },
+  "event_trade_counts": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "event_trade_count_cap": 512,
+  "labels": "not_generated",
+  "targets": "not_generated",
+  "chronological_splits": "not_generated",
+  "training": "not_started",
+  "known_limitations": [
+    "Model states store JSON payloads; wallet graphs can be large for high-activity mints.",
+    "Event-driven points use atomic Pump trades (curve fallback only if atomic trades absent).",
+    "Global trade context lags by <1 completed second by design.",
+    "Ownership reconstructable remains rare under partition-coverage rules.",
+    "No prediction labels or outcome fields are attached."
+  ]
+}

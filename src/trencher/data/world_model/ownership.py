@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -39,6 +39,61 @@ HOLDER_STATE_MIN_TRANSFER_ROWS = 20
 HOLDER_STATE_MIN_DISTINCT_TXS = 10
 HOLDER_STATE_LAUNCH_WINDOW_SEC = 600
 HOLDER_STATE_MIN_NONZERO_BALANCES = 3
+
+
+def load_queried_ledger_days(world_root: Path) -> set[str]:
+    """Calendar days with explicit Token Transfers day-partition extracts."""
+    days: set[str] = set()
+    bq = world_root / "bigquery"
+    if not bq.exists():
+        return days
+    for path in bq.glob("token_transfers_20*.parquet"):
+        # token_transfers_2026-06-05.parquet
+        suffix = path.stem.removeprefix("token_transfers_")
+        if len(suffix) == 10 and suffix[4] == "-" and suffix[7] == "-":
+            days.add(suffix)
+    return days
+
+
+def calendar_days_inclusive(start_unix: float, end_unix: float) -> list[str]:
+    """UTC calendar dates from start through end inclusive."""
+    start = datetime.fromtimestamp(start_unix, tz=UTC).date()
+    end = datetime.fromtimestamp(end_unix, tz=UTC).date()
+    if end < start:
+        return []
+    out: list[str] = []
+    cur = start
+    while cur <= end:
+        out.append(cur.isoformat())
+        cur += timedelta(days=1)
+    return out
+
+
+def ledger_partition_covers_launch_to_t(
+    *,
+    queried_days: set[str],
+    detected_at: Any,
+    observation_time_t: float,
+) -> dict[str, Any]:
+    """True only when every UTC day from launch through T was queried."""
+    launch = _to_unix(detected_at)
+    if launch is None:
+        return {
+            "covers": False,
+            "reason": "missing_detected_at",
+            "required_days": [],
+            "missing_days": [],
+            "queried_days_n": len(queried_days),
+        }
+    required = calendar_days_inclusive(launch, observation_time_t)
+    missing = [d for d in required if d not in queried_days]
+    return {
+        "covers": not missing and bool(required),
+        "reason": None if not missing and required else "missing_queried_day_partitions",
+        "required_days": required,
+        "missing_days": missing,
+        "queried_days_n": len(queried_days),
+    }
 
 
 def _to_unix(ts: Any) -> float | None:
@@ -81,6 +136,7 @@ def holder_state_completeness_spec() -> dict[str, Any]:
             f"first_transfer_within_{HOLDER_STATE_LAUNCH_WINDOW_SEC}s_of_detected_at",
             f"nonzero_reconstructed_balances >= {HOLDER_STATE_MIN_NONZERO_BALANCES}",
             "mintTo_present OR bq_token_transfer_rows >= 50",
+            "queried_ledger_day_partitions_cover_launch_through_T",
         ],
         "considers": [
             "coverage from mint/launch (detected_at) through observed transfers",
@@ -88,10 +144,12 @@ def holder_state_completeness_spec() -> dict[str, Any]:
             "transaction/signature coverage",
             "signed balance reconstruction conservation across accounts",
             "optional agreement with Pump trade wallets and RPC balance observations",
+            "explicit day-partition acquisition coverage launch→T when available",
         ],
         "explicitly_not_sufficient": [
             "bq_token_transfer_rows > 0 alone",
             "sparse day extracts without launch coverage",
+            "row-density heuristics without partition coverage launch→T",
             "sampled RPC pre/postTokenBalances alone",
             "trade participation proxy",
         ],
@@ -105,6 +163,7 @@ def evaluate_holder_state_completeness_at_t(
     observation_time_t: float,
     trade_wallets: set[str] | None = None,
     rpc_owners: set[str] | None = None,
+    queried_ledger_days: set[str] | None = None,
 ) -> dict[str, Any]:
     """Completeness using only transfers with block_timestamp <= T."""
     eligible = []
@@ -117,6 +176,8 @@ def evaluate_holder_state_completeness_at_t(
         detected_at=detected_at,
         trade_wallets=trade_wallets,
         rpc_owners=rpc_owners,
+        queried_ledger_days=queried_ledger_days,
+        observation_time_t=observation_time_t,
     )
     result["observation_time_t"] = observation_time_t
     result["transfers_at_or_before_t"] = len(eligible)
@@ -130,6 +191,7 @@ def classify_ownership_at_t(
     trade_participation_before_t: bool,
     detected_at: Any,
     observation_time_t: float,
+    queried_ledger_days: set[str] | None = None,
 ) -> dict[str, Any]:
     """Strongest ownership evidence knowable strictly from records at/before T."""
     transfers_at_t = []
@@ -156,6 +218,7 @@ def classify_ownership_at_t(
             detected_at=detected_at,
             observation_time_t=observation_time_t,
             rpc_owners=rpc_owners,
+            queried_ledger_days=queried_ledger_days,
         )
         if completeness["holder_state_reconstructable"]:
             level: OwnershipLevel = "holder_state_reconstructable"
@@ -183,6 +246,8 @@ def evaluate_holder_state_completeness(
     detected_at: Any,
     trade_wallets: set[str] | None = None,
     rpc_owners: set[str] | None = None,
+    queried_ledger_days: set[str] | None = None,
+    observation_time_t: float | None = None,
 ) -> dict[str, Any]:
     """Run the documented completeness test on BQ transfer rows for one mint."""
     n = len(transfer_rows)
@@ -234,12 +299,29 @@ def evaluate_holder_state_completeness(
     )
 
     mint_or_dense = has_mint or n >= 50
+    as_of_t = observation_time_t if observation_time_t is not None else last_ts
+    partition = (
+        ledger_partition_covers_launch_to_t(
+            queried_days=queried_ledger_days or set(),
+            detected_at=detected_at,
+            observation_time_t=float(as_of_t) if as_of_t is not None else 0.0,
+        )
+        if queried_ledger_days is not None and as_of_t is not None
+        else {
+            "covers": False,
+            "reason": "queried_ledger_days_unknown",
+            "required_days": [],
+            "missing_days": [],
+            "queried_days_n": 0,
+        }
+    )
     checks = {
         "min_transfer_rows": n >= HOLDER_STATE_MIN_TRANSFER_ROWS,
         "min_distinct_txs": len(sigs) >= HOLDER_STATE_MIN_DISTINCT_TXS,
         "launch_coverage": bool(near_launch),
         "min_nonzero_balances": nonzero >= HOLDER_STATE_MIN_NONZERO_BALANCES,
         "mint_or_dense_ledger": mint_or_dense,
+        "ledger_partition_covers_launch_to_t": bool(partition.get("covers")),
     }
     reconstructable = all(checks.values())
     return {
@@ -257,6 +339,7 @@ def evaluate_holder_state_completeness(
         "nonzero_reconstructed_balances": nonzero,
         "trade_wallet_agreement": trade_agree,
         "rpc_owner_agreement": rpc_agree,
+        "partition_coverage": partition,
         "failed_checks": [k for k, ok in checks.items() if not ok],
     }
 
@@ -326,6 +409,8 @@ def classify_ownership_evidence(world_root: Path) -> dict[str, Any]:
     if atomic.exists() and pq.ParquetFile(atomic).metadata.num_rows:
         trade_proxy |= _mint_set(atomic, "mint")
 
+    queried_ledger_days = load_queried_ledger_days(world_root)
+
     rows = []
     for i, mint in enumerate(mints):
         transfers = transfers_by_mint.get(mint, [])
@@ -341,6 +426,7 @@ def classify_ownership_evidence(world_root: Path) -> dict[str, Any]:
                 detected_at=detected.get(mint),
                 trade_wallets=trade_wallets.get(mint),
                 rpc_owners=rpc_owners.get(mint),
+                queried_ledger_days=queried_ledger_days,
             )
             if completeness["holder_state_reconstructable"]:
                 level: OwnershipLevel = "holder_state_reconstructable"
@@ -426,12 +512,15 @@ def classify_ownership_evidence(world_root: Path) -> dict[str, Any]:
         "generated_at": utc_now(),
         "path": str(path),
         "subset_n": len(rows),
-        "definition_version": "ownership_evidence_v2",
+        "definition_version": "ownership_evidence_v3",
+        "queried_ledger_days_n": len(queried_ledger_days),
         "counts_by_level": {k: counts.get(k, 0) for k in OWNERSHIP_LEVEL_ORDER},
         "completeness_spec": holder_state_completeness_spec(),
         "notes": [
             "holder_state_reconstructable requires passing the documented "
             "completeness test — not merely bq_token_transfer_rows > 0.",
+            "holder_state_reconstructable also requires queried Token Transfers "
+            "day partitions covering launch through last observed transfer.",
             "transfer_ledger_observed_partial is genuine BQ transfer evidence that "
             "is sparse or fails launch/conservation/coverage checks.",
             "rpc_balance_observed is genuine on-chain meta for sampled txs only.",

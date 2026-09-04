@@ -1,0 +1,609 @@
+{
+  "audit_id": "pit_v4",
+  "generated_at": "2026-09-04T17:20:38.257720+00:00",
+  "acquisition_freeze_id": "world_model_freeze_v1",
+  "acquisition_freeze_policy": "unchanged_append_only_no_new_external_data",
+  "pit_engine_version": "pit_v4",
+  "global_context_index_version": "global_context_v4",
+  "fusion_status": "MASKED",
+  "same_second_global_trade_policy": {
+    "last_completed_second_rule": true,
+    "example_T": 1000.2,
+    "last_completed_second_at_example": 999,
+    "intentional_latency": "<1s",
+    "does_not_round_T_upward": true
+  },
+  "global_trade_stream_cleaning": {
+    "includes_user_wallet": true,
+    "excludes_system_program_wallet": true,
+    "excluded_system_program_wallet_rows": 6690901,
+    "skipped_missing_event_time_rows": 0,
+    "raw_local_artifacts_unchanged": true
+  },
+  "queried_ledger_days_n": 19,
+  "queried_ledger_days_sample": [
+    "2026-06-05",
+    "2026-06-06",
+    "2026-06-07",
+    "2026-06-08",
+    "2026-06-09",
+    "2026-06-10",
+    "2026-06-12",
+    "2026-06-15",
+    "2026-06-18",
+    "2026-06-22",
+    "2026-06-26",
+    "2026-06-29",
+    "2026-07-01",
+    "2026-07-02",
+    "2026-07-04",
+    "2026-07-07",
+    "2026-07-10",
+    "2026-07-12",
+    "2026-07-14"
+  ],
+  "ownership_evidence_counts_full_history_qa": {
+    "holder_state_reconstructable": 6,
+    "transfer_ledger_observed_partial": 311,
+    "rpc_balance_observed": 2845,
+    "trade_derived_proxy": 1,
+    "missing": 837
+  },
+  "as_of_t_ownership_level_distribution_by_age": {
+    "launch": {
+      "transfer_ledger_observed_partial": 2,
+      "missing": 37,
+      "rpc_balance_observed": 11
+    },
+    "10s": {
+      "holder_state_reconstructable": 2,
+      "trade_derived_proxy": 7,
+      "transfer_ledger_observed_partial": 1,
+      "rpc_balance_observed": 34,
+      "missing": 6
+    },
+    "30s": {
+      "holder_state_reconstructable": 2,
+      "trade_derived_proxy": 5,
+      "transfer_ledger_observed_partial": 2,
+      "rpc_balance_observed": 36,
+      "missing": 5
+    },
+    "1m": {
+      "holder_state_reconstructable": 2,
+      "trade_derived_proxy": 4,
+      "transfer_ledger_observed_partial": 3,
+      "rpc_balance_observed": 36,
+      "missing": 5
+    },
+    "2m": {
+      "holder_state_reconstructable": 2,
+      "trade_derived_proxy": 4,
+      "transfer_ledger_observed_partial": 3,
+      "rpc_balance_observed": 36,
+      "missing": 5
+    },
+    "5m": {
+      "holder_state_reconstructable": 2,
+      "transfer_ledger_observed_partial": 4,
+      "rpc_balance_observed": 37,
+      "missing": 4,
+      "trade_derived_proxy": 3
+    },
+    "10m": {
+      "holder_state_reconstructable": 3,
+      "transfer_ledger_observed_partial": 3,
+      "rpc_balance_observed": 38,
+      "missing": 3,
+      "trade_derived_proxy": 3
+    },
+    "30m": {
+      "holder_state_reconstructable": 3,
+      "transfer_ledger_observed_partial": 3,
+      "rpc_balance_observed": 38,
+      "missing": 3,
+      "trade_derived_proxy": 3
+    },
+    "1h": {
+      "holder_state_reconstructable": 3,
+      "transfer_ledger_observed_partial": 3,
+      "rpc_balance_observed": 38,
+      "missing": 3,
+      "trade_derived_proxy": 3
+    },
+    "6h": {
+      "holder_state_reconstructable": 6,
+      "rpc_balance_observed": 38,
+      "missing": 3,
+      "trade_derived_proxy": 2,
+      "transfer_ledger_observed_partial": 1
+    }
+  },
+  "holder_state_reconstructable_at_t_by_age": {
+    "launch": 0,
+    "10s": 2,
+    "30s": 2,
+    "1m": 2,
+    "2m": 2,
+    "5m": 2,
+    "10m": 3,
+    "30m": 3,
+    "1h": 3,
+    "6h": 6
+  },
+  "global_context_coverage_by_age": {
+    "launch": 50,
+    "10s": 50,
+    "30s": 50,
+    "1m": 50,
+    "2m": 50,
+    "5m": 50,
+    "10m": 50,
+    "30m": 50,
+    "1h": 50,
+    "6h": 50
+  },
+  "core_plus_any_genuine_ownership": 3132,
+  "core_plus_holder_state_reconstructable_full_history_qa": 6,
+  "completeness_spec": {
+    "version": "ownership_completeness_v2",
+    "required_all": [
+      "bq_token_transfer_rows >= 20",
+      "distinct_tx_signatures >= 10",
+      "first_transfer_within_600s_of_detected_at",
+      "nonzero_reconstructed_balances >= 3",
+      "mintTo_present OR bq_token_transfer_rows >= 50",
+      "queried_ledger_day_partitions_cover_launch_through_T"
+    ],
+    "considers": [
+      "coverage from mint/launch (detected_at) through observed transfers",
+      "mintTo / spl-transfer / burn balance-changing events",
+      "transaction/signature coverage",
+      "signed balance reconstruction conservation across accounts",
+      "optional agreement with Pump trade wallets and RPC balance observations",
+      "explicit day-partition acquisition coverage launch\u2192T when available"
+    ],
+    "explicitly_not_sufficient": [
+      "bq_token_transfer_rows > 0 alone",
+      "sparse day extracts without launch coverage",
+      "row-density heuristics without partition coverage launch\u2192T",
+      "sampled RPC pre/postTokenBalances alone",
+      "trade participation proxy"
+    ]
+  },
+  "arbitrary_t_reconstruction": {
+    "engine_version": "pit_v4",
+    "mints_materialized": 50,
+    "rows_materialized": 500,
+    "age_offsets_sec": {
+      "launch": 0,
+      "10s": 10,
+      "30s": 30,
+      "1m": 60,
+      "2m": 120,
+      "5m": 300,
+      "10m": 600,
+      "30m": 1800,
+      "1h": 3600,
+      "6h": 21600
+    },
+    "coverage_mints_with_any_modality": {
+      "launch": 50,
+      "10s": 50,
+      "30s": 50,
+      "1m": 50,
+      "2m": 50,
+      "5m": 50,
+      "10m": 50,
+      "30m": 50,
+      "1h": 50,
+      "6h": 50
+    },
+    "path": "data/external/world_model/pit/pit_states_sample.parquet"
+  },
+  "leakage_tests": {
+    "n_cases": 15,
+    "all_passed": true,
+    "includes_same_second_future_trade_bucket": true,
+    "results": [
+      {
+        "age": "launch",
+        "mint": "6njLQ5ReB5bkYvQEoq6Qao1CPMmaZZFQNKNWutA1pump",
+        "observation_time_t": 1783411282.332045,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "cce9bd5a8f0a1238a8ca3de04aca7dd70cac5a82ad5ba47772969fb22b74f1eb"
+      },
+      {
+        "age": "1m",
+        "mint": "6njLQ5ReB5bkYvQEoq6Qao1CPMmaZZFQNKNWutA1pump",
+        "observation_time_t": 1783411342.332045,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "33f6bd900b70f504da996398f9238a0e9391a9e8cc0e01672cd53be7c07da266"
+      },
+      {
+        "age": "5m",
+        "mint": "6njLQ5ReB5bkYvQEoq6Qao1CPMmaZZFQNKNWutA1pump",
+        "observation_time_t": 1783411582.332045,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "87068b3aa8af43a5fd3729dce0fc79cf994535b8186b97d2e6a588f0518a9344"
+      },
+      {
+        "age": "launch",
+        "mint": "GaiDXC88iuugb7TiDdP9hZwN2Qp8xnoq46gagQ8Npump",
+        "observation_time_t": 1780992260.404206,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "40eabbf9d283745e4cc0c3e2b118d02556316ef0ccc7e38d245bcd5e8481ccfe"
+      },
+      {
+        "age": "1m",
+        "mint": "GaiDXC88iuugb7TiDdP9hZwN2Qp8xnoq46gagQ8Npump",
+        "observation_time_t": 1780992320.404206,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "5f1265c57141782ae2c0752c42acb27815b7ca87fc3517603215fe2e870eb61b"
+      },
+      {
+        "age": "5m",
+        "mint": "GaiDXC88iuugb7TiDdP9hZwN2Qp8xnoq46gagQ8Npump",
+        "observation_time_t": 1780992560.404206,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "5b8216a4a8075ef285dba85077455da7d37d96da6ffbae8d1faa780e5b4366b8"
+      },
+      {
+        "age": "launch",
+        "mint": "12RXdXJgup4HXPQhFbnurbCFSE6gVU5L9Nhmq5v2pump",
+        "observation_time_t": 1782119135.211022,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "c84c0ad14e572ff3c0fabc5016512bb293db0004760affb16fa760d678296a4d"
+      },
+      {
+        "age": "1m",
+        "mint": "12RXdXJgup4HXPQhFbnurbCFSE6gVU5L9Nhmq5v2pump",
+        "observation_time_t": 1782119195.211022,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "26f274124ad3b60e2a2ae2132ebc995de3aac11d2c21c2e4bde5e4394828c3ab"
+      },
+      {
+        "age": "5m",
+        "mint": "12RXdXJgup4HXPQhFbnurbCFSE6gVU5L9Nhmq5v2pump",
+        "observation_time_t": 1782119435.211022,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "2c05765f18d1ae4f686218513e7316dca1a8dc020be855e52e473b400405c2c7"
+      },
+      {
+        "age": "launch",
+        "mint": "12Tu2RdMn5fjxjATqcuzTXNHoqijzEjMkNTMptpzpump",
+        "observation_time_t": 1782942089.897906,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "dfa3812d6582483d44b96efbcab374fc9c1c38278283b3cb64d2ef3933a82434"
+      },
+      {
+        "age": "1m",
+        "mint": "12Tu2RdMn5fjxjATqcuzTXNHoqijzEjMkNTMptpzpump",
+        "observation_time_t": 1782942149.897906,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "c77c511c6022c0c1e7baf16588a4e1ef5c48ebf6b0ee49ee86071528f9b26124"
+      },
+      {
+        "age": "5m",
+        "mint": "12Tu2RdMn5fjxjATqcuzTXNHoqijzEjMkNTMptpzpump",
+        "observation_time_t": 1782942389.897906,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "4d376a7ea066152f5c0c6e1378b6808419795e891d07642e524af1c58f7fd6a7"
+      },
+      {
+        "age": "launch",
+        "mint": "12U4iEz9VyVtSD6EwuiKHCtAu2UFrMAv1CJC9VX9pump",
+        "observation_time_t": 1780785697.069348,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "b8b7b9cab24c6e19915dbca2bd730d9c170d87b8f04d2d484addee333608415c"
+      },
+      {
+        "age": "1m",
+        "mint": "12U4iEz9VyVtSD6EwuiKHCtAu2UFrMAv1CJC9VX9pump",
+        "observation_time_t": 1780785757.069348,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "65dde2eba629ea202d9ada2e9156c5a7ec240459f2922bd2f5c92d68ce60efe3"
+      },
+      {
+        "age": "5m",
+        "mint": "12U4iEz9VyVtSD6EwuiKHCtAu2UFrMAv1CJC9VX9pump",
+        "observation_time_t": 1780785997.069348,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_native_sol_history": true,
+          "post_t_launches_global_trades_migrations": true,
+          "post_t_graduation_migration_outcomes_ignored": true,
+          "post_t_ledger_density_does_not_upgrade_ownership_at_t": true,
+          "model_state_has_no_forbidden_future_fields": true,
+          "post_t_same_second_future_trade_bucket": true
+        },
+        "forbidden_field_hits": [],
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "f9e192840722be35985deb94f42be226193efd666a254e115ade99133067ca11"
+      }
+    ]
+  },
+  "full_history_vs_as_of_t_ownership": [
+    {
+      "mint": "6njLQ5ReB5bkYvQEoq6Qao1CPMmaZZFQNKNWutA1pump",
+      "full_history_level": "holder_state_reconstructable",
+      "ownership_level_at_launch": "transfer_ledger_observed_partial",
+      "holder_state_reconstructable_at_launch": false,
+      "ok_no_retroactive_upgrade": true
+    },
+    {
+      "mint": "GaiDXC88iuugb7TiDdP9hZwN2Qp8xnoq46gagQ8Npump",
+      "full_history_level": "holder_state_reconstructable",
+      "ownership_level_at_launch": "missing",
+      "holder_state_reconstructable_at_launch": false,
+      "ok_no_retroactive_upgrade": true
+    },
+    {
+      "mint": "12RXdXJgup4HXPQhFbnurbCFSE6gVU5L9Nhmq5v2pump",
+      "full_history_level": "rpc_balance_observed",
+      "ownership_level_at_launch": "missing",
+      "holder_state_reconstructable_at_launch": false,
+      "ok_no_retroactive_upgrade": true
+    },
+    {
+      "mint": "12Tu2RdMn5fjxjATqcuzTXNHoqijzEjMkNTMptpzpump",
+      "full_history_level": "rpc_balance_observed",
+      "ownership_level_at_launch": "missing",
+      "holder_state_reconstructable_at_launch": false,
+      "ok_no_retroactive_upgrade": true
+    },
+    {
+      "mint": "12U4iEz9VyVtSD6EwuiKHCtAu2UFrMAv1CJC9VX9pump",
+      "full_history_level": "rpc_balance_observed",
+      "ownership_level_at_launch": "missing",
+      "holder_state_reconstructable_at_launch": false,
+      "ok_no_retroactive_upgrade": true
+    }
+  ],
+  "future_labels_structurally_absent_from_model_state": true,
+  "forbidden_field_hits_in_sample_model_state": [],
+  "model_state_excludes_provenance_generated_at": true,
+  "known_remaining_limitations": [
+    "holder_state_reconstructable requires continuous queried day partitions launch\u2192T; sparse day extracts usually force partial.",
+    "Global Pump trade context intentionally lags by <1 completed second.",
+    "Window unique mint/wallet counts are not materialized in second buckets (volume/flow only).",
+    "RPC ownership remains sampled-tx evidence.",
+    "Native SOL funding covers a wallet subset only.",
+    "Fusion remains MASKED; do not claim full ownership coverage.",
+    "No supervised labels, splits, or models in this audit."
+  ],
+  "labels": "not_generated",
+  "targets": "not_generated",
+  "training": "not_started",
+  "pit_complete_pending_observation_dataset": true
+}

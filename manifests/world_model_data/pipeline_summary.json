@@ -1,33 +1,12 @@
 {
-  "generated_at": "2026-09-04T11:58:04.634187+00:00",
+  "generated_at": "2026-09-04T17:21:03.559825+00:00",
   "stages": [
-    "report",
-    "pit"
+    "observations"
   ],
-  "pit_v3_audit": {
-    "future_labels_absent": true,
+  "observation_dataset_v1": {
+    "tokens_n": 4000,
+    "observations_n": 51353,
     "leakage_all_passed": true,
-    "holder_state_reconstructable_at_t_by_age": {
-      "launch": 0,
-      "10s": 2,
-      "30s": 2,
-      "1m": 2,
-      "2m": 2,
-      "5m": 2,
-      "10m": 3,
-      "30m": 5
-    }
-  },
-  "fusion_coverage": null,
-  "ownership_evidence_counts": null,
-  "encoders": {
-    "Event Encoder": "READY",
-    "Wallet/Graph Encoder": "READY",
-    "Token/Ownership/Curve Encoder": "READY",
-    "Global Market Encoder": "READY",
-    "Fusion/world-state model": "MASKED",
-    "prediction heads": "READY"
-  },
-  "world_model_dataset_ready": true,
-  "fusion_holder_state_reconstructable": 13
+    "estimated_disk_mb": 88.552
+  }
 }

@@ -1,4 +1,4 @@
-"""PIT v3 audit: as-of-T ownership, global context, full-payload leakage."""
+"""PIT v4 audit: same-second safety, partition coverage, full-payload leakage."""
 
 from __future__ import annotations
 
@@ -9,12 +9,16 @@ from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 from trencher.data.world_model.ownership import (
     build_fusion_coverage_truth,
     holder_state_completeness_spec,
+    load_queried_ledger_days,
 )
 from trencher.data.world_model.pit import (
+    GLOBAL_CONTEXT_INDEX_VERSION,
+    PIT_ENGINE_VERSION,
     assert_no_post_t_leakage,
     ensure_atomic_trades_index,
     ensure_global_context_index,
     find_forbidden_future_fields,
+    last_completed_second,
     load_launch_times,
     load_pit_indexes,
     materialize_pit_states_for_subset,
@@ -22,7 +26,7 @@ from trencher.data.world_model.pit import (
 )
 
 
-def build_pit_v3_audit(
+def build_pit_v4_audit(
     *,
     world_root: Path,
     manifest_dir: Path,
@@ -30,10 +34,13 @@ def build_pit_v3_audit(
     max_mints: int = 50,
     freeze_id: str = "world_model_freeze_v1",
 ) -> dict[str, Any]:
-    """Derived PIT v3 audit; does not mutate acquisition freeze artifacts."""
+    """Derived PIT v4 audit; does not mutate acquisition freeze artifacts."""
     ensure_atomic_trades_index(world_root=world_root, pump_root=pump_root, force=False)
-    ensure_global_context_index(world_root=world_root, pump_root=pump_root, force=False)
+    global_paths = ensure_global_context_index(
+        world_root=world_root, pump_root=pump_root, force=False
+    )
     coverage = build_fusion_coverage_truth(world_root, manifest_dir=manifest_dir)
+    queried_days = sorted(load_queried_ledger_days(world_root))
 
     launches = load_launch_times(world_root)
     recon_mints: list[str] = []
@@ -73,7 +80,6 @@ def build_pit_v3_audit(
                 mint=mint, observation_time_t=t, indexes=indexes
             )
             leakage_results.append({"age": age_name, **leak})
-        # Full-history reconstructable must not appear at launch unless as-of-T passes.
         full = indexes.get("own_level_full_history_audit", {}).get(mint)
         state0 = reconstruct_token_state_at_t(
             mint=mint, observation_time_t=launches[mint], indexes=indexes
@@ -94,7 +100,6 @@ def build_pit_v3_audit(
             }
         )
 
-    # Structural absence of future fields on a sample state.
     sample_state = reconstruct_token_state_at_t(
         mint=sample_mints[0],
         observation_time_t=launches[sample_mints[0]] + 60,
@@ -102,15 +107,46 @@ def build_pit_v3_audit(
     )
     forbidden = find_forbidden_future_fields(sample_state["model_state"])
 
+    global_manifest: dict[str, Any] = {}
+    gman = global_paths.get("manifest")
+    if gman is not None and Path(gman).exists():
+        import json
+
+        global_manifest = json.loads(Path(gman).read_text(encoding="utf-8"))
+
     truth = coverage["truth"]
     counts = truth.get("counts") or {}
     own_counts = truth.get("ownership_evidence_counts") or {}
     audit = {
-        "audit_id": "pit_v3",
+        "audit_id": "pit_v4",
         "generated_at": utc_now(),
         "acquisition_freeze_id": freeze_id,
         "acquisition_freeze_policy": "unchanged_append_only_no_new_external_data",
+        "pit_engine_version": PIT_ENGINE_VERSION,
+        "global_context_index_version": GLOBAL_CONTEXT_INDEX_VERSION,
         "fusion_status": "MASKED",
+        "same_second_global_trade_policy": {
+            "last_completed_second_rule": True,
+            "example_T": 1000.200,
+            "last_completed_second_at_example": last_completed_second(1000.200),
+            "intentional_latency": "<1s",
+            "does_not_round_T_upward": True,
+        },
+        "global_trade_stream_cleaning": {
+            "includes_user_wallet": True,
+            "excludes_system_program_wallet": True,
+            "excluded_system_program_wallet_rows": global_manifest.get(
+                "excluded_system_program_wallet_rows"
+            ),
+            "skipped_missing_event_time_rows": global_manifest.get(
+                "skipped_missing_event_time_rows"
+            ),
+            "raw_local_artifacts_unchanged": global_manifest.get(
+                "raw_local_artifacts_unchanged", True
+            ),
+        },
+        "queried_ledger_days_n": len(queried_days),
+        "queried_ledger_days_sample": queried_days[:20],
         "ownership_evidence_counts_full_history_qa": own_counts,
         "as_of_t_ownership_level_distribution_by_age": pit_manifest.get(
             "ownership_level_at_t_by_age"
@@ -141,6 +177,10 @@ def build_pit_v3_audit(
         "leakage_tests": {
             "n_cases": len(leakage_results),
             "all_passed": all(r.get("passed") for r in leakage_results),
+            "includes_same_second_future_trade_bucket": all(
+                (r.get("cases") or {}).get("post_t_same_second_future_trade_bucket")
+                for r in leakage_results
+            ),
             "results": leakage_results,
         },
         "full_history_vs_as_of_t_ownership": ownership_at_t_vs_full,
@@ -151,10 +191,11 @@ def build_pit_v3_audit(
             and "generated_at" in sample_state.get("provenance", {})
         ),
         "known_remaining_limitations": [
-            "Full-history holder_state_reconstructable remains rare; as-of-T is "
-            "usually lower.",
-            "Window unique mint/wallet counts are not materialized in v3 "
-            "second buckets (volume/flow only).",
+            "holder_state_reconstructable requires continuous queried day "
+            "partitions launch→T; sparse day extracts usually force partial.",
+            "Global Pump trade context intentionally lags by <1 completed second.",
+            "Window unique mint/wallet counts are not materialized in second "
+            "buckets (volume/flow only).",
             "RPC ownership remains sampled-tx evidence.",
             "Native SOL funding covers a wallet subset only.",
             "Fusion remains MASKED; do not claim full ownership coverage.",
@@ -163,23 +204,33 @@ def build_pit_v3_audit(
         "labels": "not_generated",
         "targets": "not_generated",
         "training": "not_started",
+        "pit_complete_pending_observation_dataset": True,
     }
     ensure_dir(manifest_dir)
-    write_json(manifest_dir / "PIT_V3_AUDIT.json", audit)
-    write_json(world_root / "pit" / "PIT_V3_AUDIT.json", audit)
-    (manifest_dir / "PIT_V3_AUDIT.md").write_text(
-        render_pit_v3_audit_md(audit), encoding="utf-8"
+    write_json(manifest_dir / "PIT_V4_AUDIT.json", audit)
+    write_json(world_root / "pit" / "PIT_V4_AUDIT.json", audit)
+    (manifest_dir / "PIT_V4_AUDIT.md").write_text(
+        render_pit_v4_audit_md(audit), encoding="utf-8"
     )
     return audit
 
 
-def render_pit_v3_audit_md(audit: dict[str, Any]) -> str:
+def render_pit_v4_audit_md(audit: dict[str, Any]) -> str:
     lines = [
-        f"# PIT v3 Audit (`{audit['audit_id']}`)",
+        f"# PIT v4 Audit (`{audit['audit_id']}`)",
         "",
         f"Generated at: `{audit['generated_at']}`",
         f"Acquisition freeze: `{audit['acquisition_freeze_id']}` (unchanged)",
+        f"PIT engine: `{audit.get('pit_engine_version')}`",
         f"Fusion status: `{audit.get('fusion_status')}`",
+        "",
+        "## Same-second global trade policy",
+        "",
+        f"- Rule: last completed second only (`{audit.get('same_second_global_trade_policy')}`)",
+        "",
+        "## Global trade stream cleaning",
+        "",
+        f"- `{audit.get('global_trade_stream_cleaning')}`",
         "",
         "## As-of-T ownership by age",
         "",
@@ -198,21 +249,31 @@ def render_pit_v3_audit_md(audit: dict[str, Any]) -> str:
             "",
             "## Leakage / structural checks",
             "",
-            f"- Leakage all passed: **{leak.get('all_passed')}**",
-            f"- Future labels absent from model_state: "
-            f"**{audit.get('future_labels_structurally_absent_from_model_state')}**",
-            f"- generated_at only in provenance: "
-            f"**{audit.get('model_state_excludes_provenance_generated_at')}**",
+            f"- cases: {leak.get('n_cases')}",
+            f"- all_passed: **{leak.get('all_passed')}**",
+            (
+                "- same_second_bucket_case: **"
+                f"{leak.get('includes_same_second_future_trade_bucket')}**"
+            ),
+            (
+                "- future fields absent: **"
+                f"{audit.get('future_labels_structurally_absent_from_model_state')}**"
+            ),
             "",
-            "## Known remaining limitations",
+            "## Known limitations",
             "",
         ]
     )
-    lines.extend(f"- {x}" for x in audit.get("known_remaining_limitations") or [])
+    for item in audit.get("known_remaining_limitations") or []:
+        lines.append(f"- {item}")
     lines.append("")
     return "\n".join(lines)
 
 
-# Keep v2 name as alias for pipeline compatibility during transition.
+def build_pit_v3_audit(**kwargs: Any) -> dict[str, Any]:
+    """Back-compat alias → PIT v4."""
+    return build_pit_v4_audit(**kwargs)
+
+
 def build_pit_v2_audit(**kwargs: Any) -> dict[str, Any]:
-    return build_pit_v3_audit(**kwargs)
+    return build_pit_v4_audit(**kwargs)
