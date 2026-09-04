@@ -1,0 +1,90 @@
+{
+  "manifest_version": "target_source_coverage_v1",
+  "generated_at": "2026-09-04T23:55:40.728290+00:00",
+  "corpus_window_unix": {
+    "start": 1780646400.0,
+    "end": 1784073600.0
+  },
+  "outage_window_unix": {
+    "start": 1783036800.0,
+    "end": 1783123200.0,
+    "day": "2026-07-03"
+  },
+  "sources": {
+    "pump_trades": {
+      "source_id": "pumpfun_trades",
+      "intervals": [
+        {
+          "start": 1780650748.0,
+          "end": 1783036800.0
+        },
+        {
+          "start": 1783123200.0,
+          "end": 1784041375.0
+        }
+      ],
+      "known_gaps": [
+        {
+          "start": 1783036800.0,
+          "end": 1783123200.0
+        }
+      ],
+      "notes": "Pump trade corpus coverage from frozen second buckets / corpus window. Jul 3 2026 is a known collection outage (zero trades)."
+    },
+    "migrations": {
+      "source_id": "migrations",
+      "intervals": [
+        {
+          "start": 1781010518.921759,
+          "end": 1783036800.0
+        },
+        {
+          "start": 1783123200.0,
+          "end": 1784042552.622963
+        }
+      ],
+      "known_gaps": [
+        {
+          "start": 1783036800.0,
+          "end": 1783123200.0
+        }
+      ],
+      "notes": "Migration-event source coverage from frozen migrations timeline. Graduation negatives require migration source covering through T+H, not the token's own trade activity."
+    },
+    "postgrad_snapshots": {
+      "source_id": "postgard_snapshots",
+      "intervals": [
+        {
+          "start": 1781010532.504717,
+          "end": 1783036800.0
+        },
+        {
+          "start": 1783123200.0,
+          "end": 1784042866.443891
+        }
+      ],
+      "known_gaps": [
+        {
+          "start": 1783036800.0,
+          "end": 1783123200.0
+        }
+      ],
+      "notes": "Genuine post-grad snapshot coverage only; not fabricated continuity."
+    },
+    "ownership": {
+      "source_id": "ownership_evidence",
+      "intervals": [],
+      "known_gaps": [
+        {
+          "start": 1783036800.0,
+          "end": 1783123200.0
+        }
+      ],
+      "notes": "Ownership targets remain sparse; no continuous holder ledger path for most mints in the freeze."
+    }
+  },
+  "policy": {
+    "absence_targets_use_source_coverage_not_mint_last_event": true,
+    "jul3_outage_never_creates_death_or_graduation_negative": true
+  }
+}

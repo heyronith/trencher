@@ -25,7 +25,7 @@ from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
 from trencher.data.world_model.sequences import build_sequence_dataset_v2
-from trencher.data.world_model.targets import build_target_dataset_v1
+from trencher.data.world_model.targets import build_target_dataset_v2
 
 logger = logging.getLogger(__name__)
 
@@ -277,19 +277,22 @@ def run_world_model_pipeline(
 
         if "targets" in stages:
             logger.info(
-                "Building label-only target dataset v1 (post-T; freeze/inputs unchanged)"
+                "Building label-only target dataset v2 (post-T; freeze/inputs unchanged)"
             )
-            tgt = build_target_dataset_v1(
+            tgt = build_target_dataset_v2(
                 world_root=world_root,
                 manifest_dir=manifest_dir,
                 pump_root=external_root / "pumpfun_memecoin_corpus",
             )
-            summary["target_dataset_v1"] = {
+            summary["target_dataset_v2"] = {
                 "observations_processed": tgt.get("observations_processed"),
                 "unique_tokens": tgt.get("unique_tokens"),
                 "reference_price_coverage": tgt.get("reference_price_coverage"),
                 "explosion_events": (tgt.get("explosion_audit") or {}).get(
                     "independent_explosion_events"
+                ),
+                "survival_monotonic": tgt.get(
+                    "survival_positive_counts_monotonic_nonincreasing"
                 ),
                 "isolation_ok": (tgt.get("isolation_proof") or {}).get("ok"),
                 "estimated_disk_mb": tgt.get("estimated_disk_mb"),

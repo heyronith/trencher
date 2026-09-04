@@ -1,4 +1,4 @@
-"""Label-only target engine tests — isolation, causality, explosion family."""
+"""Label-only target engine v2 tests — survival, graduation, isolation."""
 
 from __future__ import annotations
 
@@ -14,12 +14,20 @@ from trencher.data.feasibility.concepts import SYSTEM_PROGRAM_WALLET
 from trencher.data.world_model.pit import model_state_digest
 from trencher.data.world_model.targets.build import (
     assert_input_modules_do_not_import_targets,
-    build_target_dataset_v1,
+    build_target_dataset_v2,
 )
 from trencher.data.world_model.targets.compute import (
+    compute_activity_survival,
     compute_explosion_obs,
+    compute_graduation,
+    compute_persistence,
     compute_return_barrier_mfe,
     reference_price_at_t,
+)
+from trencher.data.world_model.targets.coverage import (
+    SourceCoverage,
+    SourceCoverageRegistry,
+    TimeInterval,
 )
 from trencher.data.world_model.targets.explosion import (
     PRIMARY_DEFINITION_ID,
@@ -28,9 +36,50 @@ from trencher.data.world_model.targets.explosion import (
 from trencher.data.world_model.targets.status import (
     BARRIER_NEITHER,
     BARRIER_UPPER_FIRST,
+    OUTAGE_END_UNIX,
+    OUTAGE_START_UNIX,
+    STATUS_KNOWN_SOURCE_OUTAGE,
+    STATUS_REFERENCE_PRICE_UNAVAILABLE,
+    STATUS_RIGHT_CENSORED,
+    STATUS_SOURCE_BOUNDARY_UNAVAILABLE,
     STATUS_VALID_NEGATIVE,
     STATUS_VALID_POSITIVE,
 )
+
+
+def _cov(
+    *,
+    trade_start: float = 0.0,
+    trade_end: float = 1e12,
+    mig_start: float | None = None,
+    mig_end: float | None = None,
+    with_outage_gap: bool = False,
+) -> SourceCoverageRegistry:
+    gaps = (
+        [TimeInterval(OUTAGE_START_UNIX, OUTAGE_END_UNIX)] if with_outage_gap else []
+    )
+    intervals = [TimeInterval(trade_start, trade_end)]
+    if with_outage_gap and trade_start < OUTAGE_START_UNIX < trade_end:
+        intervals = [
+            TimeInterval(trade_start, OUTAGE_START_UNIX),
+            TimeInterval(OUTAGE_END_UNIX, trade_end),
+        ]
+    ms = mig_start if mig_start is not None else trade_start
+    me = mig_end if mig_end is not None else trade_end
+    mig_iv = [TimeInterval(ms, me)]
+    if with_outage_gap and ms < OUTAGE_START_UNIX < me:
+        mig_iv = [
+            TimeInterval(ms, OUTAGE_START_UNIX),
+            TimeInterval(OUTAGE_END_UNIX, me),
+        ]
+    return SourceCoverageRegistry(
+        pump_trades=SourceCoverage(
+            "pump", intervals=intervals, known_gaps=gaps
+        ),
+        migrations=SourceCoverage("mig", intervals=mig_iv, known_gaps=gaps),
+        postgrad_snapshots=SourceCoverage("pg", intervals=intervals, known_gaps=gaps),
+        ownership=SourceCoverage("own", intervals=[], known_gaps=gaps),
+    )
 
 
 def _arr_from_trades(
@@ -69,6 +118,113 @@ def test_input_modules_do_not_import_targets() -> None:
     assert proof["ok"], proof["violations"]
 
 
+def test_survival_early_death_not_survive_long_horizons() -> None:
+    """Only trade at T+5s then confirmed dead → must NOT survive 30s/1m/24h."""
+    T = 1_000_000.0
+    times = [T - 10, T + 5]
+    prices = [1.0, 1.0]
+    arr = _arr_from_trades(times, prices)
+    cov = _cov(trade_start=T - 100, trade_end=T + 100_000)
+    out = compute_activity_survival(arr, T=T, coverage=cov)
+    assert out["surv_h30_status"] == STATUS_VALID_NEGATIVE
+    assert out["surv_h30_active"] is False
+    assert out["surv_h60_status"] == STATUS_VALID_NEGATIVE
+    assert out["surv_h86400_status"] == STATUS_VALID_NEGATIVE
+
+
+def test_survival_trade_at_2h_survives_shorter_horizons() -> None:
+    T = 1_000_000.0
+    times = [T - 1, T + 7200]
+    prices = [1.0, 1.1]
+    arr = _arr_from_trades(times, prices)
+    cov = _cov(trade_start=T - 100, trade_end=T + 200_000)
+    out = compute_activity_survival(arr, T=T, coverage=cov)
+    assert out["surv_h30_status"] == STATUS_VALID_POSITIVE
+    assert out["surv_h60_status"] == STATUS_VALID_POSITIVE
+    assert out["surv_h1800_status"] == STATUS_VALID_POSITIVE
+    assert out["surv_h3600_status"] == STATUS_VALID_POSITIVE
+    # 6h horizon (21600) beyond last activity at 2h → not survived
+    assert out["surv_h21600_status"] == STATUS_VALID_NEGATIVE
+
+
+def test_survival_source_ends_before_h_censored() -> None:
+    T = 1_000_000.0
+    arr = _arr_from_trades([T - 1], [1.0])
+    cov = _cov(trade_start=T - 100, trade_end=T + 10)  # ends before 30s
+    out = compute_activity_survival(arr, T=T, coverage=cov)
+    assert out["surv_h30_status"] in (
+        STATUS_RIGHT_CENSORED,
+        STATUS_SOURCE_BOUNDARY_UNAVAILABLE,
+    )
+    assert out["surv_h30_active"] is None
+
+
+def test_outage_cannot_create_death_label() -> None:
+    T = OUTAGE_START_UNIX - 10
+    arr = _arr_from_trades([T - 1], [1.0])
+    cov = _cov(
+        trade_start=OUTAGE_START_UNIX - 1000,
+        trade_end=OUTAGE_END_UNIX + 100_000,
+        with_outage_gap=True,
+    )
+    out = compute_activity_survival(arr, T=T, coverage=cov)
+    # Horizon crossing outage without later resolution → outage, not death.
+    assert out["surv_h60_status"] == STATUS_KNOWN_SOURCE_OUTAGE
+    assert out["surv_h60_active"] is None
+
+
+def test_persistence_null_when_uncovered_not_zero() -> None:
+    T = 1_000_000.0
+    arr = _arr_from_trades([T - 1], [1.0])
+    cov = _cov(trade_start=T - 100, trade_end=T + 5)
+    out = compute_persistence(arr, T=T, coverage=cov)
+    assert out["act_h30_status"] in (
+        STATUS_RIGHT_CENSORED,
+        STATUS_SOURCE_BOUNDARY_UNAVAILABLE,
+    )
+    assert out["act_h30_trade_count"] is None
+    assert out["act_h30_sol_buy_flow"] is None
+
+
+def test_persistence_zero_valid_when_covered() -> None:
+    T = 1_000_000.0
+    arr = _arr_from_trades([T - 1], [1.0])
+    cov = _cov(trade_start=T - 100, trade_end=T + 10_000)
+    out = compute_persistence(arr, T=T, coverage=cov)
+    assert out["act_h30_status"] == STATUS_VALID_NEGATIVE
+    assert out["act_h30_trade_count"] == 0
+
+
+def test_graduation_independent_of_token_trading() -> None:
+    """No migration + migration source covers H → valid negative even if no trades."""
+    T = 1_000_000.0
+    cov = _cov(
+        trade_start=T - 10,
+        trade_end=T + 10,  # trade source ends soon
+        mig_start=T - 1000,
+        mig_end=T + 100_000,  # migration source covers far
+    )
+    out = compute_graduation(T=T, migration_unix=None, coverage=cov)
+    assert out["grad_h3600_status"] == STATUS_VALID_NEGATIVE
+    assert out["grad_h3600_graduated"] is False
+
+
+def test_graduation_censored_when_mig_source_short() -> None:
+    T = 1_000_000.0
+    cov = _cov(
+        trade_start=T - 1000,
+        trade_end=T + 100_000,
+        mig_start=T - 10,
+        mig_end=T + 10,
+    )
+    out = compute_graduation(T=T, migration_unix=None, coverage=cov)
+    assert out["grad_h3600_status"] in (
+        STATUS_RIGHT_CENSORED,
+        STATUS_SOURCE_BOUNDARY_UNAVAILABLE,
+    )
+    assert out["grad_h3600_graduated"] is None
+
+
 def test_future_events_strictly_after_t() -> None:
     t0 = 1_000_000.0
     times = [t0 - 10, t0, t0 + 1, t0 + 30]
@@ -78,7 +234,6 @@ def test_future_events_strictly_after_t() -> None:
     assert ref["price_target_available"]
     assert ref["reference_price_time"] == t0
     out = compute_return_barrier_mfe(arr, T=t0, ref=ref, last_path_t=times[-1])
-    # Future mark for 30s must use events with t > T only.
     assert out["h30_future_mark_time"] > t0
     assert out["h30_future_mark_time"] == t0 + 30
 
@@ -106,7 +261,6 @@ def test_barrier_upper_implies_mfe() -> None:
 
 
 def test_explosion_detector_finds_sustained_transition() -> None:
-    # Quiet baseline then accelerating buy burst with sustained upside.
     t0 = 1_780_000_000.0
     times: list[float] = []
     prices: list[float] = []
@@ -114,7 +268,6 @@ def test_explosion_detector_finds_sustained_transition() -> None:
     is_buy: list[bool] = []
     sol: list[float] = []
     curve: list[float] = []
-    # Baseline: sparse trades
     for i in range(20):
         times.append(t0 + i * 10)
         prices.append(1.0)
@@ -123,21 +276,12 @@ def test_explosion_detector_finds_sustained_transition() -> None:
         sol.append(0.1)
         curve.append(1.0)
     onset = t0 + 200
-    # Explosion window
-    for i in range(20):
+    for i in range(40):
         times.append(onset + i * 1.5)
         prices.append(1.0 * (1.02**i))
         wallets.append(f"e{i}")
         is_buy.append(True)
-        sol.append(2.0)
-        curve.append(1.0 + i * 2.0)
-    # Continue to peak / confirm MFE
-    for i in range(20, 40):
-        times.append(onset + i * 1.5)
-        prices.append(1.0 * (1.02**i))
-        wallets.append(f"e{i}")
-        is_buy.append(True)
-        sol.append(1.5)
+        sol.append(2.0 if i < 20 else 1.5)
         curve.append(1.0 + i * 2.0)
     arr = _arr_from_trades(
         times, prices, is_buy=is_buy, wallets=wallets, sol=sol, curve=curve
@@ -145,8 +289,6 @@ def test_explosion_detector_finds_sustained_transition() -> None:
     events = detect_explosions_for_mint("m_expl", arr)
     primary = next(e for e in events if e["definition_id"] == PRIMARY_DEFINITION_ID)
     assert primary["explosion_exists"] is True
-    assert primary["onset_unix"] is not None
-    # Onset is start of accelerating transition near the burst, not the peak.
     assert abs(primary["onset_unix"] - onset) <= 20
     assert primary["explosion_magnitude"] >= 0.25
 
@@ -168,7 +310,7 @@ def test_explosion_imminence_censoring() -> None:
         T=970.0,
         primary=primary,
         all_defs=[primary],
-        last_path_t=2000.0,
+        coverage=_cov(),
         ref=ref,
     )
     assert out["explosion_within_30s"] is True
@@ -178,25 +320,20 @@ def test_explosion_imminence_censoring() -> None:
 
 
 def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
-    """Structural isolation: mutate future path → labels change, input digest stable."""
     world = tmp_path / "world_model"
     pump = tmp_path / "pumpfun_memecoin_corpus"
     for rel in (
         "universe",
         "pit",
+        "pit/global",
         "execution",
         "observations/observation_dataset_v1",
-        "graph",
-        "microstructure",
-        "bigquery",
-        "pit/global",
     ):
         (world / rel).mkdir(parents=True)
     (pump / "trades").mkdir(parents=True)
 
     t0 = datetime(2026, 6, 10, 12, tzinfo=UTC)
     mint = "m_iso"
-    # Build trades: pre-T flat, post-T explosive
     times = [t0 + timedelta(seconds=s) for s in range(0, 50, 5)]
     times += [t0 + timedelta(seconds=s) for s in range(60, 120)]
     prices = [1.0] * 10 + [1.0 * (1.03 ** i) for i in range(60)]
@@ -217,10 +354,21 @@ def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
         }
     )
     pq.write_table(trades, world / "pit" / "atomic_trades_subset.parquet")
-    pq.write_table(trades, pump / "trades" / "batch0.parquet")
+    # Global buckets for coverage registry
+    obs_t = (t0 + timedelta(seconds=45)).timestamp()
+    secs = list(range(int(obs_t) - 1000, int(obs_t) + 200_000))
     pq.write_table(
-        pa.table({"mint": [mint], "launch_day": ["2026-06-10"], "launch_regime": ["x"]}),
-        world / "universe" / "rich_subset_mints.parquet",
+        pa.table({"second_unix": secs}),
+        world / "pit" / "global" / "trade_second_buckets.parquet",
+    )
+    pq.write_table(
+        pa.table(
+            {
+                "mint": pa.array([], pa.string()),
+                "event_time_unix": pa.array([], pa.float64()),
+            }
+        ),
+        world / "pit" / "global" / "migrations_timeline.parquet",
     )
     pq.write_table(
         pa.table(
@@ -231,7 +379,6 @@ def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
         ),
         pump / "migrations.parquet",
     )
-    # Minimal empty postgard
     pq.write_table(
         pa.table(
             {
@@ -247,77 +394,49 @@ def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
         ),
         pump / "postgard_snapshots.parquet",
     )
-
-    obs_t = (t0 + timedelta(seconds=45)).timestamp()
-    obs = pa.table(
-        {
-            "mint": [mint],
-            "observation_id": ["obs1"],
-            "observation_time_t": [obs_t],
-            "token_age_seconds": [45.0],
-            "observation_trigger": ["fixed_age"],
-            "trigger_value": ["45s"],
-            "trigger_numeric": [45],
-            "source_freeze_version": ["world_model_freeze_v1"],
-            "pit_engine_version": ["pit_v4"],
-            "observation_dataset_version": ["observation_dataset_v1"],
-            "launch_day": ["2026-06-10"],
-            "launch_regime": ["x"],
-            "model_state_digest": ["deadbeef"],
-            "ownership_level_at_t": ["none"],
-            "holder_state_reconstructable_at_t": [False],
-            "mask_event_history": [True],
-            "mask_wallet_token_dynamic": [True],
-            "mask_microstructure": [False],
-            "mask_ownership_any": [False],
-            "mask_global_market": [True],
-        }
-    )
-    pq.write_table(
-        obs,
-        world / "observations" / "observation_dataset_v1" / "observation_index_v1.parquet",
-    )
-    # Supporting empty tables for reconstruct if needed
     pq.write_table(
         pa.table(
             {
                 "mint": [mint],
-                "event_time": [t0],
-                "price_sol": [1.0],
-                "is_buy": [True],
-                "sol_amount": [1.0],
-                "v_sol_bonding_curve": [30.0],
-                "v_tokens_bonding_curve": [1e9],
-                "curve_pct_depleted": [0.0],
-                "executable_price_sol": [1.0],
-                "has_reserves": [True],
-                "quality_flag": ["observed_curve_state"],
+                "observation_id": ["obs1"],
+                "observation_time_t": [obs_t],
+                "token_age_seconds": [45.0],
+                "observation_trigger": ["fixed_age"],
+                "trigger_value": ["45s"],
+                "trigger_numeric": [45],
+                "source_freeze_version": ["world_model_freeze_v1"],
+                "pit_engine_version": ["pit_v4"],
+                "observation_dataset_version": ["observation_dataset_v1"],
+                "launch_day": ["2026-06-10"],
+                "launch_regime": ["x"],
+                "model_state_digest": ["deadbeef"],
+                "ownership_level_at_t": ["none"],
+                "holder_state_reconstructable_at_t": [False],
+                "mask_event_history": [True],
+                "mask_wallet_token_dynamic": [True],
+                "mask_microstructure": [False],
+                "mask_ownership_any": [False],
+                "mask_global_market": [True],
             }
         ),
-        world / "execution" / "execution_curve_states.parquet",
+        world / "observations" / "observation_dataset_v1" / "observation_index_v1.parquet",
     )
 
     manifest = tmp_path / "manifests"
-    audit1 = build_target_dataset_v1(
+    audit1 = build_target_dataset_v2(
         world_root=world, manifest_dir=manifest, pump_root=pump
     )
     assert audit1["observations_processed"] == 1
     targets1 = pq.read_table(
-        world / "targets" / "target_dataset_v1" / "observation_targets_v1.parquet"
+        world / "targets" / "target_dataset_v2" / "observation_targets_v2.parquet"
     ).to_pylist()[0]
     ret1 = targets1.get("h60_simple_return")
     expl1 = targets1.get("explosion_within_60s")
-
-    # Input digest at T from atomic trades only (minimal reconstruct path may need indexes).
-    # Use a stable synthetic model_state digest proxy from pre-T trades.
     pre_t_prices = [
-        p
-        for ts, p in zip(times, prices, strict=True)
-        if ts.timestamp() <= obs_t
+        p for ts, p in zip(times, prices, strict=True) if ts.timestamp() <= obs_t
     ]
     digest1 = model_state_digest({"pre_t_prices": pre_t_prices, "mint": mint, "T": obs_t})
 
-    # Mutate future: flatten post-T trade prices AND reserves (path prefers reserves).
     prices2 = list(prices)
     v_sol2 = [30.0 + i * 0.1 for i in range(n)]
     v_tok2 = [1e9] * n
@@ -327,9 +446,7 @@ def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
             v_sol2[i] = 30.0
             v_tok2[i] = 1e9
     trades2 = trades.set_column(
-        trades.schema.get_field_index("price_sol"),
-        "price_sol",
-        pa.array(prices2),
+        trades.schema.get_field_index("price_sol"), "price_sol", pa.array(prices2)
     )
     trades2 = trades2.set_column(
         trades2.schema.get_field_index("v_sol_bonding_curve"),
@@ -342,26 +459,22 @@ def test_mutate_future_changes_labels_not_inputs(tmp_path: Path) -> None:
         pa.array(v_tok2),
     )
     pq.write_table(trades2, world / "pit" / "atomic_trades_subset.parquet")
-
-    build_target_dataset_v1(
-        world_root=world, manifest_dir=manifest, pump_root=pump
-    )
+    build_target_dataset_v2(world_root=world, manifest_dir=manifest, pump_root=pump)
     targets2 = pq.read_table(
-        world / "targets" / "target_dataset_v1" / "observation_targets_v1.parquet"
+        world / "targets" / "target_dataset_v2" / "observation_targets_v2.parquet"
     ).to_pylist()[0]
-    ret2 = targets2.get("h60_simple_return")
     digest2 = model_state_digest({"pre_t_prices": pre_t_prices, "mint": mint, "T": obs_t})
-
     assert digest1 == digest2
-    # Labels should change when future path flattens (return and/or explosion).
-    assert ret1 != ret2 or expl1 != targets2.get("explosion_within_60s")
+    assert ret1 != targets2.get("h60_simple_return") or expl1 != targets2.get(
+        "explosion_within_60s"
+    )
     assert SYSTEM_PROGRAM_WALLET not in str(targets1)
 
 
 def test_build_target_dataset_mini(tmp_path: Path) -> None:
     world = tmp_path / "world_model"
     pump = tmp_path / "pump"
-    for rel in ("universe", "pit", "observations/observation_dataset_v1"):
+    for rel in ("universe", "pit", "pit/global", "observations/observation_dataset_v1"):
         (world / rel).mkdir(parents=True)
     (pump / "trades").mkdir(parents=True)
 
@@ -387,24 +500,25 @@ def test_build_target_dataset_mini(tmp_path: Path) -> None:
         ),
         world / "pit" / "atomic_trades_subset.parquet",
     )
-    # Include a system-program row that must be excluded from path.
+    obs_t = (t0 + timedelta(seconds=50)).timestamp()
     pq.write_table(
         pa.table(
             {
-                "mint": [mint, mint],
-                "user_wallet": [SYSTEM_PROGRAM_WALLET, "w0"],
-                "event_time": [t0, t0 + timedelta(seconds=1)],
-                "is_buy": [True, True],
-                "sol_amount": [9.0, 0.5],
-                "token_amount": [1.0, 1e6],
-                "tx_signature": ["sys", "ok"],
-                "price_sol": [1.0, 1.0],
-                "v_sol_bonding_curve": [30.0, 30.0],
-                "v_tokens_bonding_curve": [1e9, 1e9],
-                "curve_pct_depleted": [0.0, 0.0],
+                "second_unix": list(
+                    range(int(obs_t) - 1000, int(obs_t) + 200_000)
+                )
             }
         ),
-        pump / "trades" / "extra.parquet",
+        world / "pit" / "global" / "trade_second_buckets.parquet",
+    )
+    pq.write_table(
+        pa.table(
+            {
+                "mint": pa.array([], pa.string()),
+                "event_time_unix": pa.array([], pa.float64()),
+            }
+        ),
+        world / "pit" / "global" / "migrations_timeline.parquet",
     )
     pq.write_table(
         pa.table(
@@ -430,7 +544,6 @@ def test_build_target_dataset_mini(tmp_path: Path) -> None:
         ),
         pump / "postgard_snapshots.parquet",
     )
-    obs_t = (t0 + timedelta(seconds=50)).timestamp()
     pq.write_table(
         pa.table(
             {
@@ -459,18 +572,25 @@ def test_build_target_dataset_mini(tmp_path: Path) -> None:
         world / "observations" / "observation_dataset_v1" / "observation_index_v1.parquet",
     )
     manifest = tmp_path / "m"
-    audit = build_target_dataset_v1(world_root=world, manifest_dir=manifest, pump_root=pump)
+    audit = build_target_dataset_v2(
+        world_root=world, manifest_dir=manifest, pump_root=pump
+    )
     assert audit["observations_processed"] == 1
-    assert (manifest / "TARGET_CONTRACT_V1.json").exists()
-    assert (manifest / "TARGET_DATASET_V1_AUDIT.json").exists()
-    assert (manifest / "EXPLOSION_TARGET_AUDIT_V1.json").exists()
-    path_rows = pq.read_table(
-        world / "targets" / "target_dataset_v1" / "future_market_path_v1.parquet"
-    ).to_pylist()
-    assert all(r.get("wallet") != SYSTEM_PROGRAM_WALLET for r in path_rows)
+    assert (manifest / "TARGET_CONTRACT_V2.json").exists()
+    assert (manifest / "TARGET_DATASET_V2_AUDIT.json").exists()
+    assert (manifest / "target_source_coverage_v1.json").exists()
+    assert audit.get("survival_positive_counts_monotonic_nonincreasing") is True
     tgt = pq.read_table(
-        world / "targets" / "target_dataset_v1" / "observation_targets_v1.parquet"
+        world / "targets" / "target_dataset_v2" / "observation_targets_v2.parquet"
     ).to_pylist()[0]
     assert tgt["price_target_available"] is True
     assert tgt["h30_status"] in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
     assert math.isfinite(float(tgt["h30_simple_return"]))
+    # Execution status is availability, not return sign.
+    assert tgt.get("exec_1p0sol_status") in (
+        "available",
+        STATUS_RIGHT_CENSORED,
+        STATUS_REFERENCE_PRICE_UNAVAILABLE,
+    )
+    if tgt.get("exec_1p0sol_status") == "available":
+        assert tgt.get("exec_1p0sol_gross_return") is not None

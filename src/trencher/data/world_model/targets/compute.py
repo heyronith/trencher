@@ -19,6 +19,7 @@ from trencher.data.world_model.targets.status import (
     EXPLOSION_IMMINENCE_HORIZONS_SEC,
     HORIZONS_SEC,
     INACTIVITY_CONFIRMATION_GAP_SEC,
+    OUTAGE_END_UNIX,
     POSITION_SIZES_SOL,
     STATUS_KNOWN_SOURCE_OUTAGE,
     STATUS_MIGRATION_REGIME_UNAVAILABLE,
@@ -334,11 +335,17 @@ def compute_activity_survival(
     arr: dict[str, np.ndarray],
     *,
     T: float,
-    last_path_t: float | None,
-    migration_unix: float | None,
+    coverage: Any,
+    migration_unix: float | None = None,
 ) -> dict[str, Any]:
+    """Survival-to-H: last genuine future activity >= T+H.
+
+    Positive only when activity is observed at or after the horizon.
+    Negatives require pump-trade *source* coverage through T+H — never the
+    mint's own last_path_t. Jul 3 outage cannot create a death label.
+    """
+    del migration_unix  # unused; kept for call-site compatibility
     t = arr["t"]
-    # Pre-grad trades only for activity (regime==0); postgrad snapshots are not trades.
     trade_mask = arr["regime"] == 0
     out: dict[str, Any] = {}
     future_trade_times = t[(t > T) & trade_mask]
@@ -348,92 +355,102 @@ def compute_activity_survival(
         float(last_any_before[-1]) if last_any_before.size else None
     )
     out["last_valid_future_trade_time"] = last_valid_trade
+    out["survival_definition"] = "last_genuine_future_activity_ge_T_plus_H"
 
+    trade_cov = coverage.pump_trades
     for h in SURVIVAL_HORIZONS_SEC:
-        end = T + h
-        if crosses_outage(T, end) and (
-            future_trade_times.size == 0
-            or not np.any((future_trade_times > T) & (future_trade_times <= end))
-        ):
-            # Missing coverage through outage must not count as death.
-            has_after_outage = np.any(future_trade_times >= OUTAGE_SAFE_RESUME)
-            if not has_after_outage and (last_path_t is None or last_path_t < end):
-                out[f"surv_h{h}_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-                out[f"surv_h{h}_active"] = None
-                continue
-
-        active = bool(np.any((future_trade_times > T) & (future_trade_times <= end)))
-        if active:
+        horizon_t = T + float(h)
+        # Positive: demonstrably active at/beyond horizon.
+        if last_valid_trade is not None and last_valid_trade >= horizon_t:
             out[f"surv_h{h}_status"] = STATUS_VALID_POSITIVE
             out[f"surv_h{h}_active"] = True
             continue
 
-        # Negative requires adequate future coverage to establish inactivity.
-        coverage_ok = last_path_t is not None and last_path_t >= end
-        # Also allow confirmation if we see a later trade after end (proves we
-        # observed through the horizon without activity inside it).
-        later = bool(np.any(future_trade_times > end))
-        if coverage_ok or later:
+        # Absence of activity at/after horizon — needs source coverage.
+        resolved_later = (
+            last_valid_trade is not None and last_valid_trade >= OUTAGE_END_UNIX
+        )
+        absence = trade_cov.absence_status(
+            T,
+            horizon_t,
+            resolved_by_later_observation=resolved_later
+            and trade_cov.covers_through(horizon_t),
+        )
+        # If outage intersects confirmation but post-outage coverage reaches
+        # horizon_t with no activity >= horizon_t, still need covers_through.
+        if absence == STATUS_KNOWN_SOURCE_OUTAGE:
+            # Resolve when source covers horizon after outage and we can see
+            # there is no activity >= horizon_t.
+            if trade_cov.covers_through(horizon_t) and (
+                last_valid_trade is None or last_valid_trade < horizon_t
+            ):
+                # covers_through alone isn't enough if gap sits inside (T, H].
+                if not trade_cov.covers_window(T, horizon_t):
+                    out[f"surv_h{h}_status"] = STATUS_KNOWN_SOURCE_OUTAGE
+                    out[f"surv_h{h}_active"] = None
+                    continue
+            else:
+                out[f"surv_h{h}_status"] = STATUS_KNOWN_SOURCE_OUTAGE
+                out[f"surv_h{h}_active"] = None
+                continue
+
+        if absence == STATUS_VALID_NEGATIVE or trade_cov.covers_window(T, horizon_t):
             out[f"surv_h{h}_status"] = STATUS_VALID_NEGATIVE
             out[f"surv_h{h}_active"] = False
         else:
-            out[f"surv_h{h}_status"] = STATUS_RIGHT_CENSORED
+            out[f"surv_h{h}_status"] = absence
             out[f"surv_h{h}_active"] = None
 
-    # Time-to-inactivity with confirmation gap.
+    # Time-to-inactivity with confirmation gap using source coverage.
     out["inactivity_confirmation_gap_sec"] = INACTIVITY_CONFIRMATION_GAP_SEC
-    if future_trade_times.size == 0:
-        # No future trades — need coverage through T + gap.
-        if last_path_t is not None and last_path_t >= T + INACTIVITY_CONFIRMATION_GAP_SEC:
-            if crosses_outage(T, T + INACTIVITY_CONFIRMATION_GAP_SEC):
-                out["time_to_inactivity_sec"] = None
-                out["time_to_inactivity_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-            else:
-                out["time_to_inactivity_sec"] = 0.0
-                out["time_to_inactivity_status"] = STATUS_VALID_POSITIVE
+    if last_valid_trade is None:
+        confirm_end = T + INACTIVITY_CONFIRMATION_GAP_SEC
+        st = trade_cov.absence_status(T, confirm_end)
+        if st == STATUS_VALID_NEGATIVE:
+            out["time_to_inactivity_sec"] = 0.0
+            out["time_to_inactivity_status"] = STATUS_VALID_POSITIVE
         else:
             out["time_to_inactivity_sec"] = None
-            out["time_to_inactivity_status"] = STATUS_RIGHT_CENSORED
+            out["time_to_inactivity_status"] = st
     else:
-        # Gap after last future trade confirmed.
-        last_ft = float(future_trade_times[-1])
+        last_ft = float(last_valid_trade)
         confirm_end = last_ft + INACTIVITY_CONFIRMATION_GAP_SEC
-        if crosses_outage(last_ft, confirm_end):
-            out["time_to_inactivity_sec"] = None
-            out["time_to_inactivity_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-        elif last_path_t is not None and last_path_t >= confirm_end:
+        st = trade_cov.absence_status(
+            last_ft,
+            confirm_end,
+            resolved_by_later_observation=False,
+        )
+        if st == STATUS_VALID_NEGATIVE:
             out["time_to_inactivity_sec"] = last_ft - T
             out["time_to_inactivity_status"] = STATUS_VALID_POSITIVE
-        elif last_path_t is not None and last_path_t >= CORPUS_END_UNIX - 1:
-            out["time_to_inactivity_sec"] = None
-            out["time_to_inactivity_status"] = STATUS_RIGHT_CENSORED
         else:
             out["time_to_inactivity_sec"] = None
-            out["time_to_inactivity_status"] = STATUS_RIGHT_CENSORED
+            out["time_to_inactivity_status"] = st
 
     return out
-
-
-# Jul 3 outage ends; resume boundary for survival.
-OUTAGE_SAFE_RESUME = 1783123200.0
 
 
 def compute_graduation(
     *,
     T: float,
     migration_unix: float | None,
-    last_path_t: float | None,
+    coverage: Any,
 ) -> dict[str, Any]:
+    """Graduation labels from migration events + migration-source coverage.
+
+    Valid negatives for no-migration do NOT depend on the token's trade path.
+    """
     out: dict[str, Any] = {
         "migration_unix": migration_unix,
         "graduated_at_or_before_t": (
             migration_unix is not None and migration_unix <= T
         ),
     }
+    mig_cov = coverage.migrations
     for h in HORIZONS_SEC:
-        end = T + h
+        end = T + float(h)
         if migration_unix is not None and migration_unix <= T:
-            out[f"grad_h{h}_status"] = STATUS_VALID_NEGATIVE  # already graduated
+            out[f"grad_h{h}_status"] = STATUS_VALID_NEGATIVE
             out[f"grad_h{h}_graduated"] = False
             out[f"grad_h{h}_already_graduated"] = True
             continue
@@ -443,24 +460,26 @@ def compute_graduation(
             out[f"grad_h{h}_already_graduated"] = False
             out[f"grad_h{h}_time_to_grad_sec"] = migration_unix - T
             continue
-        # Not graduated within horizon.
         if migration_unix is not None and migration_unix > end:
+            # Later migration proves not-yet-graduated within horizon.
             out[f"grad_h{h}_status"] = STATUS_VALID_NEGATIVE
             out[f"grad_h{h}_graduated"] = False
             out[f"grad_h{h}_already_graduated"] = False
             out[f"grad_h{h}_time_to_grad_sec"] = migration_unix - T
             continue
-        # No migration observed — censor if coverage insufficient to assert never.
-        if last_path_t is not None and last_path_t >= end:
+        # No migration observed — use migration-source coverage only.
+        absence = mig_cov.absence_status(T, end)
+        if absence == STATUS_VALID_NEGATIVE:
             out[f"grad_h{h}_status"] = STATUS_VALID_NEGATIVE
             out[f"grad_h{h}_graduated"] = False
             out[f"grad_h{h}_already_graduated"] = False
             out[f"grad_h{h}_time_to_grad_sec"] = None
         else:
-            out[f"grad_h{h}_status"] = STATUS_RIGHT_CENSORED
+            out[f"grad_h{h}_status"] = absence
             out[f"grad_h{h}_graduated"] = None
             out[f"grad_h{h}_already_graduated"] = False
             out[f"grad_h{h}_time_to_grad_sec"] = None
+
     if migration_unix is not None and migration_unix > T:
         out["time_to_graduation_sec"] = migration_unix - T
         out["time_to_graduation_status"] = STATUS_VALID_POSITIVE
@@ -468,26 +487,74 @@ def compute_graduation(
         out["time_to_graduation_sec"] = None
         out["time_to_graduation_status"] = STATUS_VALID_NEGATIVE
     else:
+        # Right-censor time-to-event unless migration source covers to corpus end.
+        st = mig_cov.absence_status(T, CORPUS_END_UNIX)
         out["time_to_graduation_sec"] = None
         out["time_to_graduation_status"] = (
-            STATUS_RIGHT_CENSORED
-            if last_path_t is None or last_path_t < CORPUS_END_UNIX - 1
-            else STATUS_VALID_NEGATIVE
+            STATUS_VALID_NEGATIVE if st == STATUS_VALID_NEGATIVE else st
         )
     return out
 
 
+def _persistence_nulls(out: dict[str, Any], h: int) -> None:
+    for k in (
+        "trade_count",
+        "buy_count",
+        "sell_count",
+        "unique_wallets",
+        "unique_buyers",
+        "unique_sellers",
+        "sol_buy_flow",
+        "sol_sell_flow",
+        "net_flow",
+        "activity_rate",
+        "mean_interarrival",
+        "activity_acceleration",
+        "curve_progression_change",
+        "curve_velocity",
+    ):
+        out[f"act_h{h}_{k}"] = None
+
+
 def compute_persistence(
-    arr: dict[str, np.ndarray], *, T: float
+    arr: dict[str, np.ndarray],
+    *,
+    T: float,
+    coverage: Any,
 ) -> dict[str, Any]:
+    """Activity/persistence with first-class horizon status.
+
+    Numeric zeros are valid only when the source window (T, T+H] is covered.
+    Uncovered windows get status + null numerics (never fake zeros).
+    """
     t = arr["t"]
     trade_mask = arr["regime"] == 0
     out: dict[str, Any] = {}
+    trade_cov = coverage.pump_trades
     for h in HORIZONS_SEC:
+        end = T + float(h)
+        win_status = None
+        if trade_cov.covers_window(T, end):
+            win_status = STATUS_VALID_NEGATIVE  # may upgrade if activity exists
+        else:
+            win_status = trade_cov.absence_status(T, end)
+            if win_status == STATUS_VALID_NEGATIVE:
+                # absence_status said covered — treat as covered empty window
+                pass
+            else:
+                out[f"act_h{h}_status"] = win_status
+                _persistence_nulls(out, h)
+                continue
+
         i0 = _search_gt(t, T)
-        i1 = _search_le(t, T + h) + 1
+        i1 = _search_le(t, end) + 1
         sel = np.arange(i0, max(i0, i1))
         sel = sel[(sel < len(t)) & trade_mask[sel]] if len(t) else sel
+
+        # Covered window: zeros are legitimate.
+        out[f"act_h{h}_status"] = (
+            STATUS_VALID_POSITIVE if sel.size > 0 else STATUS_VALID_NEGATIVE
+        )
         if sel.size == 0:
             out[f"act_h{h}_trade_count"] = 0
             out[f"act_h{h}_buy_count"] = 0
@@ -515,7 +582,6 @@ def compute_persistence(
         sol_sell = float(np.nansum(arr["sol"][sells])) if sells.size else 0.0
         times = t[sel]
         inter = np.diff(times) if times.size >= 2 else np.asarray([])
-        # Acceleration: second half rate - first half rate
         mid_t = T + h / 2.0
         r1 = float(np.sum(times <= mid_t)) / max(h / 2.0, 1e-9)
         r2 = float(np.sum(times > mid_t)) / max(h / 2.0, 1e-9)
@@ -552,9 +618,11 @@ def compute_explosion_obs(
     T: float,
     primary: dict[str, Any] | None,
     all_defs: list[dict[str, Any]],
-    last_path_t: float | None,
+    coverage: Any,
     ref: dict[str, Any],
+    last_path_t: float | None = None,
 ) -> dict[str, Any]:
+    del last_path_t  # unused; absence uses source coverage
     out: dict[str, Any] = {
         "explosion_definition_primary": PRIMARY_DEFINITION_ID,
         "explosion_event_observed": False,
@@ -574,6 +642,7 @@ def compute_explosion_obs(
         out[f"explosion_{lid}_onset_unix"] = ev.get("onset_unix")
         out[f"explosion_{lid}_magnitude"] = ev.get("explosion_magnitude")
 
+    trade_cov = coverage.pump_trades
     if primary is None:
         for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
             out[f"explosion_within_{h}s"] = None
@@ -594,20 +663,19 @@ def compute_explosion_obs(
             else "no_detected_explosion"
         )
         for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
-            if out["explosion_right_censored"]:
-                # Could still be negative if horizon fully before path end without onset.
-                if last_path_t is not None and last_path_t >= T + h:
-                    out[f"explosion_within_{h}s"] = False
-                    out[f"explosion_within_{h}s_status"] = STATUS_VALID_NEGATIVE
-                else:
-                    out[f"explosion_within_{h}s"] = None
-                    out[f"explosion_within_{h}s_status"] = STATUS_RIGHT_CENSORED
-            elif cens == "known_source_outage":
+            if cens == "known_source_outage":
                 out[f"explosion_within_{h}s"] = None
                 out[f"explosion_within_{h}s_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-            else:
+                continue
+            absence = trade_cov.absence_status(T, T + float(h))
+            if absence == STATUS_VALID_NEGATIVE or trade_cov.covers_window(
+                T, T + float(h)
+            ):
                 out[f"explosion_within_{h}s"] = False
                 out[f"explosion_within_{h}s_status"] = STATUS_VALID_NEGATIVE
+            else:
+                out[f"explosion_within_{h}s"] = None
+                out[f"explosion_within_{h}s_status"] = absence
         return out
 
     assert onset is not None
@@ -623,7 +691,6 @@ def compute_explosion_obs(
 
     if peak is not None and peak > T and ref.get("price_target_available"):
         p0 = ref["reference_price"]
-        # peak return from T uses onset/peak prices stored on event when possible
         peak_price = primary.get("peak_price")
         if p0 and peak_price:
             out["explosion_peak_future_return"] = (float(peak_price) / float(p0)) - 1.0
@@ -663,7 +730,7 @@ def compute_explosion_obs(
 
     # Auxiliary phase pseudolabel
     if already:
-        if end is not None and end <= T or peak is not None and peak <= T:
+        if (end is not None and end <= T) or (peak is not None and peak <= T):
             phase = "post_peak_exhaustion"
         else:
             phase = "exploding"
@@ -674,6 +741,43 @@ def compute_explosion_obs(
     return out
 
 
+def _amm_buy_tokens(v_sol: float, v_tok: float, sol_in: float) -> float | None:
+    if v_sol <= 0 or v_tok <= 0 or sol_in <= 0:
+        return None
+    k = v_sol * v_tok
+    new_sol = v_sol + sol_in
+    new_tok = k / new_sol
+    tokens_out = v_tok - new_tok
+    return tokens_out if tokens_out > 0 else None
+
+
+def _amm_sell_sol(v_sol: float, v_tok: float, tokens_in: float) -> float | None:
+    if v_sol <= 0 or v_tok <= 0 or tokens_in <= 0:
+        return None
+    k = v_sol * v_tok
+    new_tok = v_tok + tokens_in
+    new_sol = k / new_tok
+    sol_out = v_sol - new_sol
+    return sol_out if sol_out > 0 else None
+
+
+def _future_pregrad_reserves(
+    arr: dict[str, np.ndarray], idxs: np.ndarray
+) -> tuple[float | None, float | None, float | None]:
+    """Latest future pre-grad mark with usable reserves inside idxs."""
+    if len(idxs) == 0:
+        return None, None, None
+    for i in reversed(list(idxs)):
+        if int(arr["regime"][i]) != 0:
+            continue
+        vs = float(arr["v_sol"][i])
+        vt = float(arr["v_tok"][i])
+        px = float(arr["price"][i])
+        if math.isfinite(vs) and math.isfinite(vt) and vs > 0 and vt > 0:
+            return vs, vt, px if math.isfinite(px) and px > 0 else None
+    return None, None, None
+
+
 def compute_execution(
     arr: dict[str, np.ndarray],
     *,
@@ -681,7 +785,12 @@ def compute_execution(
     ref: dict[str, Any],
     horizon: float = 300.0,
 ) -> dict[str, Any]:
-    """Execution-adjusted targets. Net fees unavailable without row-level schedule."""
+    """Execution-adjusted targets.
+
+    Status encodes availability only — never conflated with return sign.
+    Round-trip curve impact when entry+exit reserves exist; otherwise
+    entry-impact-only. Fully net return unavailable without fee schedule.
+    """
     out: dict[str, Any] = {
         "execution_fee_schedule_available": False,
         "execution_fee_note": (
@@ -693,67 +802,88 @@ def compute_execution(
             tag = str(sz).replace(".", "p")
             out[f"exec_{tag}sol_available"] = False
             out[f"exec_{tag}sol_status"] = STATUS_REFERENCE_PRICE_UNAVAILABLE
+            out[f"exec_{tag}sol_gross_return"] = None
+            out[f"exec_{tag}sol_entry_impact_adjusted_return"] = None
+            out[f"exec_{tag}sol_curve_impact_adjusted_return"] = None
+            out[f"exec_{tag}sol_net_return"] = None
+            out[f"exec_{tag}sol_execution_target_available"] = 0
         return out
 
     p0 = float(ref["reference_price"])
     v_sol = ref.get("reference_v_sol")
     v_tok = ref.get("reference_v_tok")
-    has_reserves = (
+    has_entry_reserves = (
         v_sol is not None and v_tok is not None and v_sol > 0 and v_tok > 0
     )
 
     idxs, _ = _future_window(arr, T, horizon)
     future_mark = float(arr["price"][idxs[-1]]) if len(idxs) else None
+    fut_v_sol, fut_v_tok, _ = _future_pregrad_reserves(arr, idxs)
 
     for sz in POSITION_SIZES_SOL:
         tag = str(sz).replace(".", "p")
         out[f"exec_{tag}sol_position_size"] = sz
         out[f"exec_{tag}sol_gross_entry_price"] = p0
+        out[f"exec_{tag}sol_net_return"] = None
+        out[f"exec_{tag}sol_execution_target_available"] = 0  # fees unknown
+        out[f"exec_{tag}sol_entry_impact_adjusted_return"] = None
+        out[f"exec_{tag}sol_curve_impact_adjusted_return"] = None
+        # Deprecated alias removed as primary name; keep null for clarity.
+        out[f"exec_{tag}sol_slippage_adjusted_return"] = None
+
         if future_mark is None:
             out[f"exec_{tag}sol_available"] = False
             out[f"exec_{tag}sol_status"] = STATUS_RIGHT_CENSORED
             out[f"exec_{tag}sol_gross_return"] = None
-            out[f"exec_{tag}sol_slippage_adjusted_return"] = None
-            out[f"exec_{tag}sol_net_return"] = None
-            out[f"exec_{tag}sol_execution_target_available"] = 0
+            out[f"exec_{tag}sol_gross_available"] = False
             continue
 
         gross = (future_mark / p0) - 1.0
         out[f"exec_{tag}sol_gross_return"] = gross
         out[f"exec_{tag}sol_future_mark"] = future_mark
+        out[f"exec_{tag}sol_gross_available"] = True
+        out[f"exec_{tag}sol_available"] = True
+        # Availability status only — not a claim that the return is positive.
+        out[f"exec_{tag}sol_status"] = "available"
 
-        if has_reserves:
-            # Constant-product buy impact approximation.
-            k = float(v_sol) * float(v_tok)
-            new_sol = float(v_sol) + float(sz)
-            new_tok = k / new_sol
-            tokens_out = float(v_tok) - new_tok
-            if tokens_out > 0:
-                entry_exec = float(sz) / tokens_out
+        if has_entry_reserves:
+            tokens = _amm_buy_tokens(float(v_sol), float(v_tok), float(sz))
+            if tokens is not None and tokens > 0:
+                entry_exec = float(sz) / tokens
                 impact = (entry_exec / p0) - 1.0
-                # Exit approx at future mark without modeling exit impact precisely.
-                slip_ret = (future_mark / entry_exec) - 1.0
                 out[f"exec_{tag}sol_executable_entry_price"] = entry_exec
                 out[f"exec_{tag}sol_price_impact"] = impact
-                out[f"exec_{tag}sol_slippage_adjusted_return"] = slip_ret
-                out[f"exec_{tag}sol_slippage_available"] = True
+                # Entry-impact only vs future mark (no exit impact modeled here).
+                entry_adj = (future_mark / entry_exec) - 1.0
+                out[f"exec_{tag}sol_entry_impact_adjusted_return"] = entry_adj
+                out[f"exec_{tag}sol_entry_impact_available"] = True
+
+                if (
+                    fut_v_sol is not None
+                    and fut_v_tok is not None
+                    and fut_v_sol > 0
+                    and fut_v_tok > 0
+                ):
+                    sol_out = _amm_sell_sol(fut_v_sol, fut_v_tok, tokens)
+                    if sol_out is not None:
+                        curve_rt = (sol_out / float(sz)) - 1.0
+                        out[f"exec_{tag}sol_curve_impact_adjusted_return"] = curve_rt
+                        out[f"exec_{tag}sol_curve_impact_available"] = True
+                        out[f"exec_{tag}sol_executable_exit_sol"] = sol_out
+                    else:
+                        out[f"exec_{tag}sol_curve_impact_available"] = False
+                else:
+                    out[f"exec_{tag}sol_curve_impact_available"] = False
             else:
                 out[f"exec_{tag}sol_executable_entry_price"] = None
                 out[f"exec_{tag}sol_price_impact"] = None
-                out[f"exec_{tag}sol_slippage_adjusted_return"] = None
-                out[f"exec_{tag}sol_slippage_available"] = False
+                out[f"exec_{tag}sol_entry_impact_available"] = False
+                out[f"exec_{tag}sol_curve_impact_available"] = False
         else:
             out[f"exec_{tag}sol_executable_entry_price"] = None
             out[f"exec_{tag}sol_price_impact"] = None
-            out[f"exec_{tag}sol_slippage_adjusted_return"] = None
-            out[f"exec_{tag}sol_slippage_available"] = False
-
-        # Fully net unavailable — do not guess fees.
-        out[f"exec_{tag}sol_net_return"] = None
-        out[f"exec_{tag}sol_execution_target_available"] = 0
-        out[f"exec_{tag}sol_available"] = True
-        out[f"exec_{tag}sol_status"] = STATUS_VALID_POSITIVE
-        out[f"exec_{tag}sol_gross_available"] = True
+            out[f"exec_{tag}sol_entry_impact_available"] = False
+            out[f"exec_{tag}sol_curve_impact_available"] = False
     return out
 
 
@@ -779,9 +909,6 @@ def compute_ownership_targets(
     out["ownership_evidence_level"] = level
     out["holder_state_reconstructable"] = recon
     if recon:
-        # Full holder trajectory not materialized in freeze as time series —
-        # only mint-level evidence flags exist. Mark modality sparse/unavailable
-        # for dynamic targets rather than fabricating trajectories.
         out["ownership_target_status"] = STATUS_MODALITY_UNAVAILABLE
         out["ownership_target_note"] = (
             "holder_state_reconstructable mint but no frozen time-indexed holder "

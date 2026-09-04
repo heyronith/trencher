@@ -1,4 +1,8 @@
-"""Build target_dataset_v1 artifacts, contracts, and audits."""
+"""Build target_dataset_v2 artifacts, contracts, and audits.
+
+``target_dataset_v1`` artifacts are preserved on disk for audit history and are
+not overwritten by this module.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from trencher.data.world_model.freeze import FREEZE_ID
-from trencher.data.world_model.io import ensure_dir, file_provenance, utc_now, write_json
+from trencher.data.world_model.io import ensure_dir, file_provenance, read_json, utc_now, write_json
 from trencher.data.world_model.targets.compute import (
     compute_activity_survival,
     compute_execution,
@@ -28,6 +32,10 @@ from trencher.data.world_model.targets.compute import (
     future_path_refs_for_obs,
     reference_price_at_t,
 )
+from trencher.data.world_model.targets.coverage import (
+    build_source_coverage_registry,
+    write_coverage_manifest,
+)
 from trencher.data.world_model.targets.explosion import (
     DETECTOR_VERSION,
     PRIMARY_DEFINITION_ID,
@@ -37,7 +45,6 @@ from trencher.data.world_model.targets.explosion import (
 )
 from trencher.data.world_model.targets.future_path import (
     FUTURE_PATH_VERSION,
-    TARGET_DATASET_VERSION,
     build_future_market_path_v1,
     load_migration_unix,
     load_path_arrays,
@@ -50,7 +57,9 @@ from trencher.data.world_model.targets.status import (
     EXPLOSION_IMMINENCE_HORIZONS_SEC,
     HORIZONS_SEC,
     POSITION_SIZES_SOL,
+    STATUS_KNOWN_SOURCE_OUTAGE,
     STATUS_RIGHT_CENSORED,
+    STATUS_SOURCE_BOUNDARY_UNAVAILABLE,
     STATUS_VALID_NEGATIVE,
     STATUS_VALID_POSITIVE,
     SURVIVAL_HORIZONS_SEC,
@@ -59,7 +68,9 @@ from trencher.data.world_model.targets.status import (
 
 logger = logging.getLogger(__name__)
 
-TARGET_CONTRACT_VERSION = "target_contract_v1"
+TARGET_DATASET_V1 = "target_dataset_v1"
+TARGET_DATASET_V2 = "target_dataset_v2"
+TARGET_CONTRACT_VERSION = "target_contract_v2"
 PIT_ENGINE_VERSION = "pit_v4"
 OBSERVATION_DATASET_VERSION = "observation_dataset_v1"
 SEQUENCE_DATASET_VERSION = "sequence_dataset_v2"
@@ -74,7 +85,7 @@ INPUT_MODULES_FORBIDDEN_TO_IMPORT_TARGETS = (
 )
 
 
-def build_target_contract_v1() -> dict[str, Any]:
+def build_target_contract_v2() -> dict[str, Any]:
     return {
         "contract_version": TARGET_CONTRACT_VERSION,
         "generated_at": utc_now(),
@@ -83,9 +94,15 @@ def build_target_contract_v1() -> dict[str, Any]:
         "observation_dataset_version": OBSERVATION_DATASET_VERSION,
         "sequence_dataset_version": SEQUENCE_DATASET_VERSION,
         "model_input_contract_version": MODEL_INPUT_CONTRACT_VERSION,
-        "target_dataset_version": TARGET_DATASET_VERSION,
+        "target_dataset_version": TARGET_DATASET_V2,
+        "supersedes": TARGET_DATASET_V1,
         "label_only": True,
         "causal_rule": "everything knowable at T -> outcomes strictly after T (event_time > T)",
+        "survival_definition": "last_genuine_future_activity_ge_T_plus_H",
+        "absence_policy": (
+            "No-event/absence targets use centralized source coverage registry; "
+            "never mint last_path_t; Jul 3 outage never creates death labels."
+        ),
         "isolation": {
             "pit_input_modules_must_not_import_targets": True,
             "target_fields_never_enter_frozen_input_artifacts": True,
@@ -107,17 +124,24 @@ def build_target_contract_v1() -> dict[str, Any]:
             "explosion_ignition",
             "ownership_sparse",
         ],
+        "execution_semantics": {
+            "status_is_availability_not_return_sign": True,
+            "curve_impact_adjusted_return": "round_trip_amm_when_entry_and_exit_reserves",
+            "entry_impact_adjusted_return": "entry_amm_only_vs_future_mark",
+            "net_return": "unavailable_without_row_level_fee_schedule",
+        },
         "chronological_splits": "not_created",
         "training": "not_started",
         "artifacts": [
             "future_market_path_v1.parquet",
-            "observation_targets_v1.parquet",
-            "future_path_refs_v1.parquet",
+            "observation_targets_v2.parquet",
+            "future_path_refs_v2.parquet",
             "explosion_events_v1.parquet",
             "explosion_detector_config_v1.json",
-            "TARGET_CONTRACT_V1.json",
-            "TARGET_DATASET_V1_AUDIT.json",
-            "EXPLOSION_TARGET_AUDIT_V1.json",
+            "target_source_coverage_v1.json",
+            "TARGET_CONTRACT_V2.json",
+            "TARGET_DATASET_V2_AUDIT.json",
+            "EXPLOSION_TARGET_AUDIT_V2.json",
         ],
     }
 
@@ -199,16 +223,24 @@ def _sufficiency(
     }
 
 
-def build_target_dataset_v1(
+def build_target_dataset_v1(**_kwargs: Any) -> dict[str, Any]:
+    """v1 artifacts are frozen for audit history — use ``build_target_dataset_v2``."""
+    raise RuntimeError(
+        "target_dataset_v1 is frozen; call build_target_dataset_v2 "
+        "(v1 artifacts remain under data/.../target_dataset_v1/)."
+    )
+
+
+def build_target_dataset_v2(
     *,
     world_root: Path,
     manifest_dir: Path,
     pump_root: Path | None = None,
     observation_index_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Materialize label-only targets for all approved observations."""
+    """Materialize label-only targets v2 for all approved observations."""
     pump_root = pump_root or Path("data/external/pumpfun_memecoin_corpus")
-    out_dir = ensure_dir(world_root / "targets" / TARGET_DATASET_VERSION)
+    out_dir = ensure_dir(world_root / "targets" / TARGET_DATASET_V2)
     manifest_dir = ensure_dir(manifest_dir)
 
     obs_path = observation_index_path or (
@@ -220,12 +252,20 @@ def build_target_dataset_v1(
     observations = pq.read_table(obs_path).to_pylist()
     mints = {r["mint"] for r in observations if r.get("mint")}
     logger.info(
-        "Building targets for %d observations / %d mints",
+        "Building target_dataset_v2 for %d observations / %d mints",
         len(observations),
         len(mints),
     )
 
-    # 1) Future market path
+    coverage = build_source_coverage_registry(
+        world_root=world_root, pump_root=pump_root
+    )
+    cov_manifest = write_coverage_manifest(
+        coverage, out_dir / "target_source_coverage_v1.json"
+    )
+    write_json(manifest_dir / "target_source_coverage_v1.json", cov_manifest)
+
+    # 1) Future market path (label-only; schema unchanged)
     path_meta = build_future_market_path_v1(
         world_root=world_root,
         pump_root=pump_root,
@@ -239,7 +279,6 @@ def build_target_dataset_v1(
         world_root=world_root, pump_root=pump_root, mints=mints
     )
 
-    # Ownership meta
     own_path = world_root / "universe" / "ownership_evidence.parquet"
     own_by_mint: dict[str, dict[str, Any]] = {}
     if own_path.exists():
@@ -247,8 +286,7 @@ def build_target_dataset_v1(
             if row.get("mint") in mints:
                 own_by_mint[row["mint"]] = row
 
-    # 2) Explosion events per mint × definition
-    logger.info("Detecting explosion events")
+    logger.info("Detecting explosion events (prespecified detector family)")
     explosion_rows: list[dict[str, Any]] = []
     primary_by_mint: dict[str, dict[str, Any]] = {}
     all_defs_by_mint: dict[str, list[dict[str, Any]]] = {}
@@ -278,8 +316,7 @@ def build_target_dataset_v1(
     write_json(out_dir / "explosion_detector_config_v1.json", det_cfg)
     write_json(manifest_dir / "explosion_detector_config_v1.json", det_cfg)
 
-    # 3) Per-observation targets
-    logger.info("Computing observation-level targets")
+    logger.info("Computing observation-level targets (v2 semantics)")
     target_rows: list[dict[str, Any]] = []
     ref_rows: list[dict[str, Any]] = []
 
@@ -304,7 +341,7 @@ def build_target_dataset_v1(
             "trigger_value": obs.get("trigger_value"),
             "launch_day": obs.get("launch_day"),
             "launch_regime": obs.get("launch_regime"),
-            "target_dataset_version": TARGET_DATASET_VERSION,
+            "target_dataset_version": TARGET_DATASET_V2,
             "label_only": True,
         }
 
@@ -317,7 +354,6 @@ def build_target_dataset_v1(
                 "price_target_available": False,
             }
             row.update(ref)
-            # Minimal empty arrays for survival/grad still computable.
             empty = {
                 "t": np.asarray([], dtype=np.float64),
                 "price": np.asarray([], dtype=np.float64),
@@ -352,17 +388,19 @@ def build_target_dataset_v1(
         )
         row.update(
             compute_activity_survival(
-                arr, T=T, last_path_t=last_path_t, migration_unix=mig
+                arr, T=T, coverage=coverage, migration_unix=mig
             )
         )
-        row.update(compute_graduation(T=T, migration_unix=mig, last_path_t=last_path_t))
-        row.update(compute_persistence(arr, T=T))
+        row.update(
+            compute_graduation(T=T, migration_unix=mig, coverage=coverage)
+        )
+        row.update(compute_persistence(arr, T=T, coverage=coverage))
         row.update(
             compute_explosion_obs(
                 T=T,
                 primary=primary_by_mint.get(mint),
                 all_defs=all_defs_by_mint.get(mint, []),
-                last_path_t=last_path_t,
+                coverage=coverage,
                 ref=ref,
             )
         )
@@ -374,26 +412,25 @@ def build_target_dataset_v1(
         )
 
         target_rows.append(row)
+        ref_rows.append(
+            {
+                "observation_id": oid,
+                "mint": mint,
+                "observation_time_t": T,
+                "future_path_store": FUTURE_PATH_VERSION,
+                **future_path_refs_for_obs(arr, T=T),
+            }
+        )
 
-        pref = {
-            "observation_id": oid,
-            "mint": mint,
-            "observation_time_t": T,
-            "future_path_store": FUTURE_PATH_VERSION,
-            **future_path_refs_for_obs(arr, T=T),
-        }
-        ref_rows.append(pref)
-
-    targets_path = out_dir / "observation_targets_v1.parquet"
-    refs_path = out_dir / "future_path_refs_v1.parquet"
-    logger.info("Writing observation_targets_v1 (%d rows)", len(target_rows))
+    targets_path = out_dir / "observation_targets_v2.parquet"
+    refs_path = out_dir / "future_path_refs_v2.parquet"
+    logger.info("Writing observation_targets_v2 (%d rows)", len(target_rows))
     pq.write_table(pa.Table.from_pylist(target_rows), targets_path)
     pq.write_table(pa.Table.from_pylist(ref_rows), refs_path)
 
-    # Contracts + audits
-    contract = build_target_contract_v1()
-    write_json(out_dir / "TARGET_CONTRACT_V1.json", contract)
-    write_json(manifest_dir / "TARGET_CONTRACT_V1.json", contract)
+    contract = build_target_contract_v2()
+    write_json(out_dir / "TARGET_CONTRACT_V2.json", contract)
+    write_json(manifest_dir / "TARGET_CONTRACT_V2.json", contract)
 
     isolation = assert_input_modules_do_not_import_targets()
     audit = _build_audit(
@@ -407,29 +444,41 @@ def build_target_dataset_v1(
         targets_path=targets_path,
         refs_path=refs_path,
         expl_path=expl_path,
+        coverage_manifest=cov_manifest,
+        world_root=world_root,
+        manifest_dir=manifest_dir,
     )
-    write_json(out_dir / "TARGET_DATASET_V1_AUDIT.json", audit)
-    write_json(manifest_dir / "TARGET_DATASET_V1_AUDIT.json", audit)
+    write_json(out_dir / "TARGET_DATASET_V2_AUDIT.json", audit)
+    write_json(manifest_dir / "TARGET_DATASET_V2_AUDIT.json", audit)
+    write_json(out_dir / "EXPLOSION_TARGET_AUDIT_V2.json", audit["explosion_audit"])
     write_json(
-        out_dir / "EXPLOSION_TARGET_AUDIT_V1.json", audit["explosion_audit"]
+        manifest_dir / "EXPLOSION_TARGET_AUDIT_V2.json", audit["explosion_audit"]
     )
-    write_json(
-        manifest_dir / "EXPLOSION_TARGET_AUDIT_V1.json", audit["explosion_audit"]
-    )
-    _write_audit_markdown(manifest_dir / "TARGET_DATASET_V1_AUDIT.md", audit)
+    _write_audit_markdown(manifest_dir / "TARGET_DATASET_V2_AUDIT.md", audit)
     _write_explosion_markdown(
-        manifest_dir / "EXPLOSION_TARGET_AUDIT_V1.md", audit["explosion_audit"]
+        manifest_dir / "EXPLOSION_TARGET_AUDIT_V2.md", audit["explosion_audit"]
     )
-    write_json(out_dir / "target_dataset_manifest.json", {
-        "generated_at": utc_now(),
-        "version": TARGET_DATASET_VERSION,
-        "artifacts": {
-            "future_market_path": file_provenance(path_parquet, source="targets"),
-            "observation_targets": file_provenance(targets_path, source="targets"),
-            "future_path_refs": file_provenance(refs_path, source="targets"),
-            "explosion_events": file_provenance(expl_path, source="targets"),
+    write_json(
+        out_dir / "target_dataset_manifest.json",
+        {
+            "generated_at": utc_now(),
+            "version": TARGET_DATASET_V2,
+            "supersedes": TARGET_DATASET_V1,
+            "artifacts": {
+                "future_market_path": file_provenance(
+                    path_parquet, source="targets"
+                ),
+                "observation_targets": file_provenance(
+                    targets_path, source="targets"
+                ),
+                "future_path_refs": file_provenance(refs_path, source="targets"),
+                "explosion_events": file_provenance(expl_path, source="targets"),
+                "source_coverage": file_provenance(
+                    out_dir / "target_source_coverage_v1.json", source="targets"
+                ),
+            },
         },
-    })
+    )
     return audit
 
 
@@ -445,6 +494,9 @@ def _build_audit(
     targets_path: Path,
     refs_path: Path,
     expl_path: Path,
+    coverage_manifest: dict[str, Any],
+    world_root: Path,
+    manifest_dir: Path,
 ) -> dict[str, Any]:
     n_obs = len(target_rows)
     mints = {r["mint"] for r in target_rows}
@@ -502,13 +554,51 @@ def _build_audit(
         }
 
     survival_stats: dict[str, Any] = {}
+    surv_pos_by_h: list[int] = []
     for h in SURVIVAL_HORIZONS_SEC:
         c = Counter(r.get(f"surv_h{h}_status") for r in target_rows)
+        pos = c.get(STATUS_VALID_POSITIVE, 0)
+        surv_pos_by_h.append(pos)
         survival_stats[str(h)] = {
-            "positive": c.get(STATUS_VALID_POSITIVE, 0),
+            "positive": pos,
             "negative": c.get(STATUS_VALID_NEGATIVE, 0),
-            "censored": c.get(STATUS_RIGHT_CENSORED, 0),
+            "censored": c.get(STATUS_RIGHT_CENSORED, 0)
+            + c.get(STATUS_SOURCE_BOUNDARY_UNAVAILABLE, 0),
+            "outage": c.get(STATUS_KNOWN_SOURCE_OUTAGE, 0),
             "status_counts": dict(c),
+        }
+    # Positives should be monotonically non-increasing with horizon
+    # (aside from status/denominator differences — check raw positive counts).
+    survival_monotonic = all(
+        surv_pos_by_h[i] >= surv_pos_by_h[i + 1]
+        for i in range(len(surv_pos_by_h) - 1)
+    )
+
+    persistence_stats: dict[str, Any] = {}
+    for h in HORIZONS_SEC:
+        c = Counter(r.get(f"act_h{h}_status") for r in target_rows)
+        zero_as_valid = sum(
+            1
+            for r in target_rows
+            if r.get(f"act_h{h}_status") == STATUS_VALID_NEGATIVE
+            and r.get(f"act_h{h}_trade_count") == 0
+        )
+        null_when_censored = sum(
+            1
+            for r in target_rows
+            if r.get(f"act_h{h}_status")
+            not in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE, None)
+            and r.get(f"act_h{h}_trade_count") is None
+        )
+        persistence_stats[str(h)] = {
+            "valid": c.get(STATUS_VALID_POSITIVE, 0) + c.get(STATUS_VALID_NEGATIVE, 0),
+            "valid_positive": c.get(STATUS_VALID_POSITIVE, 0),
+            "valid_negative_zero_activity": zero_as_valid,
+            "censored": c.get(STATUS_RIGHT_CENSORED, 0)
+            + c.get(STATUS_SOURCE_BOUNDARY_UNAVAILABLE, 0),
+            "outage": c.get(STATUS_KNOWN_SOURCE_OUTAGE, 0),
+            "status_counts": dict(c),
+            "null_numerics_when_not_valid": null_when_censored,
         }
 
     grad_stats: dict[str, Any] = {}
@@ -521,10 +611,14 @@ def _build_audit(
         grad_stats[str(h)] = {
             "positives": len(pos),
             "positive_tokens": len({r["mint"] for r in pos}),
+            "negatives": c.get(STATUS_VALID_NEGATIVE, 0),
+            "censored": c.get(STATUS_RIGHT_CENSORED, 0)
+            + c.get(STATUS_SOURCE_BOUNDARY_UNAVAILABLE, 0),
+            "outage": c.get(STATUS_KNOWN_SOURCE_OUTAGE, 0),
             "status_counts": dict(c),
         }
 
-    # Explosion audit
+    # Explosion audit (same family; re-count under v2 observation statuses)
     primary_events = [
         e
         for e in explosion_rows
@@ -556,7 +650,6 @@ def _build_audit(
             "prevalence_among_all_obs": len(pos) / max(1, n_obs),
         }
 
-    # Precursor stats from primary events
     meaningful = 0
     zero_prec = 0
     act_leads: list[float] = []
@@ -564,7 +657,6 @@ def _build_audit(
     curve_leads: list[float] = []
     trades_before_dist: dict[str, list[int]] = defaultdict(list)
     obs_before: dict[str, int] = {str(h): 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
-    # Index observations by mint for precursor lead-time coverage counts.
     obs_by_mint: dict[str, list[float]] = defaultdict(list)
     for r in target_rows:
         obs_by_mint[r["mint"]].append(float(r["observation_time_t"]))
@@ -598,15 +690,12 @@ def _build_audit(
             continue
         mint_ts = obs_by_mint.get(e["mint"], [])
         for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
-            # any obs in (onset-h, onset]
             lo = onset - h
-            # binary search
             i = int(np.searchsorted(mint_ts, lo, side="right"))
             j = int(np.searchsorted(mint_ts, onset, side="right"))
             if j > i:
                 obs_before[str(h)] += 1
 
-    # Definition agreement
     by_mint_defs: dict[str, dict[str, bool]] = defaultdict(dict)
     for e in explosion_rows:
         by_mint_defs[e["mint"]][e.get("definition_label")] = bool(
@@ -643,20 +732,16 @@ def _build_audit(
     frac_meaningful = meaningful / max(1, n_expl)
     frac_zero = zero_prec / max(1, n_expl)
 
-    # Supervision sufficiency
-    # Returns h300
     ret_valid_tokens = {
         r["mint"]
         for r in target_rows
         if r.get("h300_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
     }
-    # Barriers +100
     bar_pos_tokens = {
         r["mint"]
         for r in target_rows
         if r.get("h3600_barrier_u100_l30_outcome") == BARRIER_UPPER_FIRST
     }
-    # Survival 24h
     surv_tokens = {
         r["mint"]
         for r in target_rows
@@ -667,16 +752,11 @@ def _build_audit(
         for r in target_rows
         if r.get("surv_h86400_status") == STATUS_VALID_POSITIVE
     }
-    # Explosion
     expl_pos_tokens_60 = {
         r["mint"] for r in target_rows if r.get("explosion_within_60s") is True
     }
-    # Graduation
-    # Holder
     holder_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("holder_state_reconstructable")
+        r["mint"] for r in target_rows if r.get("holder_state_reconstructable")
     }
 
     def _rec_explosion() -> str:
@@ -749,7 +829,6 @@ def _build_audit(
                     else "requires_broader_population"
                 )
             ),
-            notes="+100% barrier positives are rare on short-lived meme paths.",
         ),
         _sufficiency(
             name="survival_24h",
@@ -787,8 +866,7 @@ def _build_audit(
             censor_rate=None,
             recommendation=_rec_grad(),
             notes=(
-                "Rich 4k subset is outcome-independent and contains few graduates; "
-                "expand via frozen migrations/universe later without outcome selection."
+                "Negatives use migration-source coverage, not token trade activity."
             ),
         ),
         _sufficiency(
@@ -800,10 +878,6 @@ def _build_audit(
             prevalence=n_expl / max(1, len(mints)),
             censor_rate=None,
             recommendation=_rec_explosion(),
-            notes=(
-                "Expand supervision later from frozen pump trades/curve for broader "
-                "mint sets without selecting on explosion outcomes."
-            ),
         ),
         _sufficiency(
             name="holder_state_targets",
@@ -814,11 +888,9 @@ def _build_audit(
             prevalence=len(holder_tokens) / max(1, len(mints)),
             censor_rate=None,
             recommendation="requires_broader_population",
-            notes="Only a handful of mints are holder_state_reconstructable in freeze.",
         ),
     ]
 
-    # Execution coverage
     exec_cov = {}
     for sz in POSITION_SIZES_SOL:
         tag = str(sz).replace(".", "p")
@@ -826,25 +898,28 @@ def _build_audit(
             "gross_available": sum(
                 1 for r in target_rows if r.get(f"exec_{tag}sol_gross_available")
             ),
-            "slippage_available": sum(
-                1 for r in target_rows if r.get(f"exec_{tag}sol_slippage_available")
+            "entry_impact_available": sum(
+                1 for r in target_rows if r.get(f"exec_{tag}sol_entry_impact_available")
+            ),
+            "curve_impact_available": sum(
+                1 for r in target_rows if r.get(f"exec_{tag}sol_curve_impact_available")
             ),
             "net_available": sum(
                 1
                 for r in target_rows
                 if r.get(f"exec_{tag}sol_execution_target_available") == 1
             ),
+            "status_available": sum(
+                1 for r in target_rows if r.get(f"exec_{tag}sol_status") == "available"
+            ),
         }
 
-    disk = sum(
-        p.stat().st_size
-        for p in out_dir.rglob("*")
-        if p.is_file()
-    )
+    disk = sum(p.stat().st_size for p in out_dir.rglob("*") if p.is_file())
 
     explosion_audit = {
         "detector_version": DETECTOR_VERSION,
         "primary_definition_id": PRIMARY_DEFINITION_ID,
+        "detector_unchanged_from_v1": True,
         "distinct_tokens_with_primary_explosion": len(tokens_with_expl),
         "fraction_tokens_with_no_explosion": len(tokens_no_expl) / max(1, len(mints)),
         "independent_explosion_events": n_expl,
@@ -888,23 +963,17 @@ def _build_audit(
             "execution_curve_states / bonding-curve path",
             "migrations.parquet for graduation-linked explosion contexts",
         ],
-        "pathological_qa": {
-            "note": (
-                "Detector thresholds were prespecified; not tuned by manually "
-                "inspecting outcomes until they look good."
-            ),
-            "min_trades_guards_isolated_print": True,
-            "requires_subsequent_mfe_confirmation": True,
-            "outage_windows_censored": True,
-        },
     }
 
+    v1_compare = _compare_to_v1_audit(manifest_dir, survival_stats, grad_stats)
+
     return {
-        "audit_id": TARGET_DATASET_VERSION,
+        "audit_id": TARGET_DATASET_V2,
         "generated_at": utc_now(),
         "acquisition_freeze_id": FREEZE_ID,
         "pit_engine_version": PIT_ENGINE_VERSION,
         "observation_dataset_version": OBSERVATION_DATASET_VERSION,
+        "supersedes": TARGET_DATASET_V1,
         "observations_processed": n_obs,
         "unique_tokens": len(mints),
         "reference_price_coverage": {
@@ -914,8 +983,14 @@ def _build_audit(
         },
         "target_rows": n_obs,
         "future_market_path": path_meta,
+        "source_coverage": coverage_manifest,
         "horizons": horizon_stats,
         "survival": survival_stats,
+        "survival_positive_counts_monotonic_nonincreasing": survival_monotonic,
+        "survival_positive_counts_by_horizon": {
+            str(h): n for h, n in zip(SURVIVAL_HORIZONS_SEC, surv_pos_by_h, strict=True)
+        },
+        "persistence": persistence_stats,
         "graduation": {
             "by_horizon": grad_stats,
             "distinct_graduated_tokens_any_horizon": len(grad_pos_tokens),
@@ -925,10 +1000,10 @@ def _build_audit(
         "ownership": {
             "holder_state_reconstructable_tokens": len(holder_tokens),
             "dynamic_holder_targets_materialized": 0,
-            "note": "Sparse by design — no manufactured holder trajectories.",
         },
         "isolation_proof": isolation,
         "supervision_sufficiency": sufficiency,
+        "v1_comparison": v1_compare,
         "estimated_disk_bytes": disk,
         "estimated_disk_mb": disk / (1024 * 1024),
         "artifacts": {
@@ -936,39 +1011,86 @@ def _build_audit(
             "future_path_refs": str(refs_path),
             "explosion_events": str(expl_path),
             "out_dir": str(out_dir),
+            "v1_preserved": str(world_root / "targets" / TARGET_DATASET_V1),
         },
         "chronological_splits": "not_created",
         "training": "not_started",
     }
 
 
+def _compare_to_v1_audit(
+    manifest_dir: Path,
+    survival_v2: dict[str, Any],
+    grad_v2: dict[str, Any],
+) -> dict[str, Any]:
+    v1_path = manifest_dir / "TARGET_DATASET_V1_AUDIT.json"
+    if not v1_path.exists():
+        return {"available": False}
+    v1 = read_json(v1_path)
+    surv_cmp = {}
+    for h, st in survival_v2.items():
+        v1s = (v1.get("survival") or {}).get(h) or {}
+        surv_cmp[h] = {
+            "v1_positive": v1s.get("positive"),
+            "v2_positive": st.get("positive"),
+            "v1_negative": v1s.get("negative"),
+            "v2_negative": st.get("negative"),
+            "v1_censored": v1s.get("censored"),
+            "v2_censored": st.get("censored"),
+            "v2_outage": st.get("outage"),
+        }
+    grad_cmp = {}
+    for h, st in grad_v2.items():
+        v1g = ((v1.get("graduation") or {}).get("by_horizon") or {}).get(h) or {}
+        grad_cmp[h] = {
+            "v1_positives": v1g.get("positives"),
+            "v2_positives": st.get("positives"),
+            "v2_negatives": st.get("negatives"),
+            "v2_censored": st.get("censored"),
+        }
+    return {
+        "available": True,
+        "survival": surv_cmp,
+        "graduation": grad_cmp,
+        "v1_explosion_events": (v1.get("explosion_audit") or {}).get(
+            "independent_explosion_events"
+        ),
+    }
+
+
 def _write_audit_markdown(path: Path, audit: dict[str, Any]) -> None:
     expl = audit["explosion_audit"]
     lines = [
-        f"# Target Dataset v1 (`{audit['audit_id']}`)",
+        f"# Target Dataset v2 (`{audit['audit_id']}`)",
         "",
         f"Generated at: `{audit['generated_at']}`",
         f"Freeze: `{audit['acquisition_freeze_id']}`",
+        f"Supersedes: `{audit.get('supersedes')}`",
         f"Observations: **{audit['observations_processed']}**",
         f"Unique tokens: **{audit['unique_tokens']}**",
-        f"Reference-price coverage: **{audit['reference_price_coverage']['available']}** "
-        f"({audit['reference_price_coverage']['rate']:.3f})",
+        (
+            f"Reference-price coverage: "
+            f"**{audit['reference_price_coverage']['available']}** "
+            f"({audit['reference_price_coverage']['rate']:.3f})"
+        ),
         f"Disk MB: **{audit['estimated_disk_mb']:.1f}**",
+        "",
+        "## Survival (last activity >= T+H)",
+        (
+            f"- positive counts monotonic nonincreasing: "
+            f"**{audit.get('survival_positive_counts_monotonic_nonincreasing')}**"
+        ),
+        f"- by horizon: `{audit.get('survival_positive_counts_by_horizon')}`",
         "",
         "## Isolation",
         f"- input modules do not import targets: **{audit['isolation_proof']['ok']}**",
         "",
-        "## Explosion (primary)",
+        "## Explosion (primary; detector unchanged)",
         f"- independent events: **{expl['independent_explosion_events']}**",
         f"- tokens with explosion: **{expl['distinct_tokens_with_primary_explosion']}**",
         (
             f"- meaningful pre-onset warning: "
-            f"**{expl['precursor']['n_with_meaningful_preonset_warning']}** "
-            f"({expl['precursor']['fraction_with_meaningful_preonset_warning']:.3f})"
-        ),
-        (
-            f"- zero measurable precursor: "
-            f"**{expl['precursor']['n_essentially_zero_measurable_precursor']}**"
+            f"**{expl['precursor']['n_with_meaningful_preonset_warning']}**"
         ),
         f"- 4k sufficiency: **{expl['is_4k_enough_for_explosion_hazard_head']}**",
         "",

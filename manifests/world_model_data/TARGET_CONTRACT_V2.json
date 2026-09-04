@@ -1,0 +1,145 @@
+{
+  "contract_version": "target_contract_v2",
+  "generated_at": "2026-09-04T23:56:07.092811+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "pit_engine_version": "pit_v4",
+  "observation_dataset_version": "observation_dataset_v1",
+  "sequence_dataset_version": "sequence_dataset_v2",
+  "model_input_contract_version": "model_input_contract_v2",
+  "target_dataset_version": "target_dataset_v2",
+  "supersedes": "target_dataset_v1",
+  "label_only": true,
+  "causal_rule": "everything knowable at T -> outcomes strictly after T (event_time > T)",
+  "survival_definition": "last_genuine_future_activity_ge_T_plus_H",
+  "absence_policy": "No-event/absence targets use centralized source coverage registry; never mint last_path_t; Jul 3 outage never creates death labels.",
+  "isolation": {
+    "pit_input_modules_must_not_import_targets": true,
+    "target_fields_never_enter_frozen_input_artifacts": true,
+    "target_artifact_ids_not_structured_features": true
+  },
+  "status_contract": {
+    "contract_id": "target_status_v1",
+    "rule": "Never encode unknown/censored/unavailable as numeric zero.",
+    "statuses": [
+      "valid_positive",
+      "valid_negative",
+      "right_censored",
+      "modality_unavailable",
+      "source_boundary_unavailable",
+      "migration_regime_unavailable",
+      "known_source_outage",
+      "reference_price_unavailable",
+      "no_event"
+    ],
+    "barrier_outcomes": [
+      "upper_first",
+      "lower_first",
+      "neither",
+      "censored",
+      "unavailable"
+    ],
+    "horizons_sec": [
+      10,
+      30,
+      60,
+      120,
+      300,
+      600,
+      1800,
+      3600,
+      21600,
+      86400
+    ],
+    "survival_horizons_sec": [
+      30,
+      60,
+      120,
+      300,
+      600,
+      1800,
+      3600,
+      21600,
+      86400
+    ],
+    "explosion_imminence_horizons_sec": [
+      10,
+      30,
+      60,
+      120,
+      300
+    ],
+    "barrier_pairs": [
+      {
+        "upper": 0.1,
+        "lower": -0.1,
+        "id": "u10_l10"
+      },
+      {
+        "upper": 0.25,
+        "lower": -0.15,
+        "id": "u25_l15"
+      },
+      {
+        "upper": 0.5,
+        "lower": -0.2,
+        "id": "u50_l20"
+      },
+      {
+        "upper": 1.0,
+        "lower": -0.3,
+        "id": "u100_l30"
+      }
+    ],
+    "inactivity_confirmation_gap_sec": 1800.0,
+    "outage_window_unix": {
+      "start": 1783036800.0,
+      "end": 1783123200.0,
+      "day": "2026-07-03"
+    }
+  },
+  "explosion_detector_version": "explosion_detector_v1",
+  "explosion_primary_definition": "explosion_primary_v1",
+  "horizons_sec": [
+    10,
+    30,
+    60,
+    120,
+    300,
+    600,
+    1800,
+    3600,
+    21600,
+    86400
+  ],
+  "families": [
+    "returns",
+    "barriers",
+    "mfe_mae",
+    "survival_inactivity",
+    "graduation",
+    "activity_persistence",
+    "trend_path",
+    "execution_adjusted",
+    "explosion_ignition",
+    "ownership_sparse"
+  ],
+  "execution_semantics": {
+    "status_is_availability_not_return_sign": true,
+    "curve_impact_adjusted_return": "round_trip_amm_when_entry_and_exit_reserves",
+    "entry_impact_adjusted_return": "entry_amm_only_vs_future_mark",
+    "net_return": "unavailable_without_row_level_fee_schedule"
+  },
+  "chronological_splits": "not_created",
+  "training": "not_started",
+  "artifacts": [
+    "future_market_path_v1.parquet",
+    "observation_targets_v2.parquet",
+    "future_path_refs_v2.parquet",
+    "explosion_events_v1.parquet",
+    "explosion_detector_config_v1.json",
+    "target_source_coverage_v1.json",
+    "TARGET_CONTRACT_V2.json",
+    "TARGET_DATASET_V2_AUDIT.json",
+    "EXPLOSION_TARGET_AUDIT_V2.json"
+  ]
+}

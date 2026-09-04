@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-04T23:31:13.365189+00:00",
+  "generated_at": "2026-09-04T23:55:38.092824+00:00",
   "stages": [
     "targets"
   ],
-  "target_dataset_v1": {
+  "target_dataset_v2": {
     "observations_processed": 51353,
     "unique_tokens": 4000,
     "reference_price_coverage": {
@@ -12,8 +12,9 @@
       "rate": 0.6934161587443771
     },
     "explosion_events": 222,
+    "survival_monotonic": true,
     "isolation_ok": true,
-    "estimated_disk_mb": 74.64743041992188,
+    "estimated_disk_mb": 76.53624248504639,
     "supervision_sufficiency": [
       {
         "head": "returns_h300",
@@ -28,7 +29,7 @@
       {
         "head": "survival_24h",
         "recommendation": "sufficient_on_rich_4k",
-        "independent_event_count": 2987
+        "independent_event_count": 3736
       },
       {
         "head": "graduation",
