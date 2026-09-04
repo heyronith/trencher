@@ -1,7 +1,8 @@
 """Future / label sources — intentionally separate from PIT reconstruction.
 
-PIT reconstruction must never import this module. Labels, outcomes, and
-post-T supervision targets live here for later observation-state/target work.
+PIT reconstruction must never import this module. Prefer the versioned target
+engine in ``trencher.data.world_model.targets`` for production label builds.
+This module retains thin outcome loaders for compatibility.
 """
 
 from __future__ import annotations

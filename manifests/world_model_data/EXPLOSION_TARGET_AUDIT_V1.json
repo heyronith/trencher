@@ -1,0 +1,180 @@
+{
+  "detector_version": "explosion_detector_v1",
+  "primary_definition_id": "explosion_primary_v1",
+  "distinct_tokens_with_primary_explosion": 222,
+  "fraction_tokens_with_no_explosion": 0.9445,
+  "independent_explosion_events": 222,
+  "observations_pre_explosion": 726,
+  "imminence": {
+    "10": {
+      "positives": 317,
+      "positive_tokens": 192,
+      "valid": 40568,
+      "prevalence_among_valid": 0.007814040623151252,
+      "prevalence_among_all_obs": 0.006172959710240882
+    },
+    "30": {
+      "positives": 482,
+      "positive_tokens": 208,
+      "valid": 40568,
+      "prevalence_among_valid": 0.01188128574245711,
+      "prevalence_among_all_obs": 0.009386014449009794
+    },
+    "60": {
+      "positives": 555,
+      "positive_tokens": 211,
+      "valid": 40568,
+      "prevalence_among_valid": 0.0136807335831197,
+      "prevalence_among_all_obs": 0.010807547757677253
+    },
+    "120": {
+      "positives": 597,
+      "positive_tokens": 215,
+      "valid": 40568,
+      "prevalence_among_valid": 0.01471603234076119,
+      "prevalence_among_all_obs": 0.011625416236636613
+    },
+    "300": {
+      "positives": 631,
+      "positive_tokens": 218,
+      "valid": 40568,
+      "prevalence_among_valid": 0.015554131335042397,
+      "prevalence_among_all_obs": 0.012287500243413237
+    }
+  },
+  "time_to_explosion_quantiles": {
+    "n": 726,
+    "p50": 12.648773908615112,
+    "p90": 472.8959641456604,
+    "p99": 1448.4956941604614,
+    "min": 0.036010026931762695,
+    "max": 1478.3325409889221,
+    "mean": 133.41299146101824
+  },
+  "explosion_magnitude_quantiles": {
+    "n": 222,
+    "p50": 0.7706761783138727,
+    "p90": 2.3956148237980863,
+    "p99": 12.688016256042548,
+    "min": 0.2573697714774532,
+    "max": 48.39294621401916,
+    "mean": 1.5803926720803625
+  },
+  "onset_to_peak_sec_quantiles": {
+    "n": 222,
+    "p50": 32.29363012313843,
+    "p90": 246.18233799934387,
+    "p99": 985.2631089687347,
+    "min": 0.13773512840270996,
+    "max": 1676.1768870353699,
+    "mean": 106.96837750211492
+  },
+  "precursor": {
+    "n_with_meaningful_preonset_warning": 82,
+    "fraction_with_meaningful_preonset_warning": 0.36936936936936937,
+    "n_essentially_zero_measurable_precursor": 130,
+    "fraction_apparently_externally_triggered_or_no_precursor": 0.5855855855855856,
+    "activity_accel_lead_sec": {
+      "n": 89,
+      "p50": 12.382629871368408,
+      "p90": 102.2625150680542,
+      "p99": 548.014407157898,
+      "min": 0.40328407287597656,
+      "max": 577.7609181404114,
+      "mean": 46.98452212837305
+    },
+    "buyflow_accel_lead_sec": {
+      "n": 86,
+      "p50": 11.466514110565186,
+      "p90": 77.24131894111633,
+      "p99": 550.1370980739594,
+      "min": 0.40328407287597656,
+      "max": 564.8946959972382,
+      "mean": 49.23697334112123
+    },
+    "curve_accel_lead_sec": {
+      "n": 63,
+      "p50": 11.356284856796265,
+      "p90": 74.213613986969,
+      "p99": 317.7143859863281,
+      "min": 0.18184900283813477,
+      "max": 472.87881898880005,
+      "mean": 38.71534357373677
+    },
+    "trades_before_onset": {
+      "trades_5s_before": {
+        "n": 222,
+        "p50": 1.0,
+        "p90": 4.0,
+        "p99": 23.0,
+        "min": 1.0,
+        "max": 72.0,
+        "mean": 2.5855855855855854
+      },
+      "trades_10s_before": {
+        "n": 222,
+        "p50": 1.0,
+        "p90": 8.0,
+        "p99": 38.0,
+        "min": 1.0,
+        "max": 79.0,
+        "mean": 3.445945945945946
+      },
+      "trades_30s_before": {
+        "n": 222,
+        "p50": 1.0,
+        "p90": 11.0,
+        "p99": 69.0,
+        "min": 1.0,
+        "max": 83.0,
+        "mean": 4.8108108108108105
+      },
+      "trades_60s_before": {
+        "n": 222,
+        "p50": 1.0,
+        "p90": 13.0,
+        "p99": 69.0,
+        "min": 1.0,
+        "max": 83.0,
+        "mean": 5.274774774774775
+      },
+      "trades_120s_before": {
+        "n": 222,
+        "p50": 1.0,
+        "p90": 14.0,
+        "p99": 69.0,
+        "min": 1.0,
+        "max": 83.0,
+        "mean": 5.68018018018018
+      }
+    },
+    "answer_how_many_explosions_offer_meaningful_preonset_warning": 82
+  },
+  "observations_before_onset_by_horizon": {
+    "10": 199,
+    "30": 210,
+    "60": 212,
+    "120": 216,
+    "300": 218
+  },
+  "definition_agreement": {
+    "mints_scored": 2987,
+    "all_three_agree": 2695,
+    "primary_conservative_agree": 2871,
+    "primary_exists": 222,
+    "conservative_exists": 114,
+    "aggressive_exists": 396
+  },
+  "is_4k_enough_for_explosion_hazard_head": "marginal",
+  "expand_later_without_outcome_selection": [
+    "pumpfun_memecoin_corpus/trades (broader mint population)",
+    "execution_curve_states / bonding-curve path",
+    "migrations.parquet for graduation-linked explosion contexts"
+  ],
+  "pathological_qa": {
+    "note": "Detector thresholds were prespecified; not tuned by manually inspecting outcomes until they look good.",
+    "min_trades_guards_isolated_print": true,
+    "requires_subsequent_mfe_confirmation": true,
+    "outage_windows_censored": true
+  }
+}

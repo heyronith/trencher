@@ -1,0 +1,1274 @@
+{
+  "audit_id": "target_dataset_v1",
+  "generated_at": "2026-09-04T23:31:42.883318+00:00",
+  "acquisition_freeze_id": "world_model_freeze_v1",
+  "pit_engine_version": "pit_v4",
+  "observation_dataset_version": "observation_dataset_v1",
+  "observations_processed": 51353,
+  "unique_tokens": 4000,
+  "reference_price_coverage": {
+    "available": 35609,
+    "unavailable": 15744,
+    "rate": 0.6934161587443771
+  },
+  "target_rows": 51353,
+  "future_market_path": {
+    "generated_at": "2026-09-04T23:31:17.276227+00:00",
+    "version": "future_market_path_v1",
+    "label_only": true,
+    "mints_requested": 4000,
+    "mints_with_path": 2987,
+    "rows": 119455,
+    "pregrad_rows": 114522,
+    "postgrad_rows": 4933,
+    "migrations_in_set": 20,
+    "excluded_system_program": true,
+    "corpus_window_unix": {
+      "start": 1780646400.0,
+      "end": 1784073600.0
+    },
+    "outage_window_unix": {
+      "start": 1783036800.0,
+      "end": 1783123200.0
+    },
+    "path": {
+      "path": "data/external/world_model/targets/target_dataset_v1/future_market_path_v1.parquet",
+      "source": "label_only_future_path",
+      "bytes": 39521849,
+      "sha256": "a0ae65a9d8553c7e11d60286075b40055ef47516a699459e9854da78273e10c0",
+      "written_at": "2026-09-04T23:31:17.290258+00:00",
+      "notes": null
+    },
+    "entity_index": {
+      "path": "data/external/world_model/targets/target_dataset_v1/future_market_path_v1_entity_index.parquet",
+      "source": "label_only_future_path",
+      "bytes": 233184,
+      "sha256": "26c73f18c89437df48d536465ba31746a137a449d0af6008bff91f4ace85e703",
+      "written_at": "2026-09-04T23:31:17.290394+00:00",
+      "notes": null
+    },
+    "note": "Do not fabricate continuity across migration; post-grad marks only where genuine frozen snapshots exist."
+  },
+  "horizons": {
+    "10": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "valid_positive": 4072,
+        "right_censored": 25714,
+        "valid_negative": 5820,
+        "migration_regime_unavailable": 3
+      },
+      "valid": 9892,
+      "valid_positive": 4072,
+      "valid_negative": 5820,
+      "censored": 25714,
+      "unavailable": 15747,
+      "simple_return_quantiles": {
+        "n": 11259,
+        "p50": -0.01412860368143476,
+        "p90": 0.2855442056305524,
+        "p99": 1.4759184626610886,
+        "min": -0.9716424743174493,
+        "max": 10.672132915200942,
+        "mean": -0.035779715824163
+      },
+      "mfe_quantiles": {
+        "n": 11259,
+        "p50": 0.007469586306815712,
+        "p90": 0.4724892577522424,
+        "p99": 1.6986389290861728,
+        "min": -0.8986819280542351,
+        "max": 11.845509352168392,
+        "mean": 0.11088153810384795
+      },
+      "mae_quantiles": {
+        "n": 11259,
+        "p50": -0.059103447363650474,
+        "p90": 0.03317653193644854,
+        "p99": 0.6928395684235504,
+        "min": -0.9716424743174493,
+        "max": 4.892328410756152,
+        "mean": -0.13970724941379675
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15747,
+          "neither": 3609,
+          "upper_first": 2897,
+          "censored": 25024,
+          "lower_first": 4076
+        },
+        "u25_l15": {
+          "unavailable": 15747,
+          "neither": 4867,
+          "censored": 25136,
+          "lower_first": 3789,
+          "upper_first": 1814
+        },
+        "u50_l20": {
+          "unavailable": 15747,
+          "neither": 5970,
+          "censored": 25275,
+          "lower_first": 3394,
+          "upper_first": 967
+        },
+        "u100_l30": {
+          "unavailable": 15747,
+          "neither": 7250,
+          "censored": 25410,
+          "lower_first": 2563,
+          "upper_first": 383
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "30": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "valid_positive": 3334,
+        "right_censored": 25860,
+        "valid_negative": 6407,
+        "migration_regime_unavailable": 8
+      },
+      "valid": 9741,
+      "valid_positive": 3334,
+      "valid_negative": 6407,
+      "censored": 25860,
+      "unavailable": 15752,
+      "simple_return_quantiles": {
+        "n": 13070,
+        "p50": -0.047046054577460805,
+        "p90": 0.26645341028539504,
+        "p99": 1.916902037760726,
+        "min": -0.9821265057618,
+        "max": 14.394078366413785,
+        "mean": -0.09023885804972853
+      },
+      "mfe_quantiles": {
+        "n": 13070,
+        "p50": 0.008920438547613818,
+        "p90": 0.6240153066366034,
+        "p99": 2.612795699001467,
+        "min": -0.9479470802919708,
+        "max": 23.128958604808044,
+        "mean": 0.17553034220506591
+      },
+      "mae_quantiles": {
+        "n": 13070,
+        "p50": -0.1083759694185733,
+        "p90": 0.0065986827499355805,
+        "p99": 0.49367155246547245,
+        "min": -0.9821265057618,
+        "max": 4.95239581267593,
+        "mean": -0.21316193996432256
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15752,
+          "upper_first": 3491,
+          "censored": 23791,
+          "lower_first": 4976,
+          "neither": 3343
+        },
+        "u25_l15": {
+          "unavailable": 15752,
+          "neither": 4257,
+          "upper_first": 2332,
+          "censored": 24014,
+          "lower_first": 4998
+        },
+        "u50_l20": {
+          "unavailable": 15752,
+          "neither": 5119,
+          "censored": 24274,
+          "lower_first": 4831,
+          "upper_first": 1377
+        },
+        "u100_l30": {
+          "unavailable": 15752,
+          "neither": 6343,
+          "censored": 24572,
+          "lower_first": 4083,
+          "upper_first": 603
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "60": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 26876,
+        "valid_positive": 2787,
+        "valid_negative": 5936,
+        "migration_regime_unavailable": 10
+      },
+      "valid": 8723,
+      "valid_positive": 2787,
+      "valid_negative": 5936,
+      "censored": 26876,
+      "unavailable": 15754,
+      "simple_return_quantiles": {
+        "n": 14018,
+        "p50": -0.06272916296841546,
+        "p90": 0.2323473546915864,
+        "p99": 1.907558725830755,
+        "min": -0.9903705097709743,
+        "max": 53.963912896485034,
+        "mean": -0.11314149313355915
+      },
+      "mfe_quantiles": {
+        "n": 14018,
+        "p50": 0.007517345035066514,
+        "p90": 0.6834112372912435,
+        "p99": 2.92703023724219,
+        "min": -0.9899436222692036,
+        "max": 53.963912896485034,
+        "mean": 0.20883508921263366
+      },
+      "mae_quantiles": {
+        "n": 14018,
+        "p50": -0.12407399400625518,
+        "p90": 0.0023842468058010713,
+        "p99": 0.4426672022404363,
+        "min": -0.9921335049825937,
+        "max": 3.0827603443430887,
+        "mean": -0.2367534810872933
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15754,
+          "upper_first": 3784,
+          "censored": 23425,
+          "lower_first": 5345,
+          "neither": 3045
+        },
+        "u25_l15": {
+          "unavailable": 15754,
+          "upper_first": 2571,
+          "censored": 23765,
+          "lower_first": 5447,
+          "neither": 3816
+        },
+        "u50_l20": {
+          "unavailable": 15754,
+          "censored": 24125,
+          "lower_first": 5431,
+          "upper_first": 1560,
+          "neither": 4483
+        },
+        "u100_l30": {
+          "unavailable": 15754,
+          "censored": 24585,
+          "lower_first": 4717,
+          "neither": 5589,
+          "upper_first": 708
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "120": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 28337,
+        "valid_positive": 2106,
+        "valid_negative": 5152,
+        "migration_regime_unavailable": 14
+      },
+      "valid": 7258,
+      "valid_positive": 2106,
+      "valid_negative": 5152,
+      "censored": 28337,
+      "unavailable": 15758,
+      "simple_return_quantiles": {
+        "n": 14931,
+        "p50": -0.07712810690962413,
+        "p90": 0.1996725573817173,
+        "p99": 1.852688931846087,
+        "min": -0.9991613282397884,
+        "max": 83.2244790499501,
+        "mean": -0.12523133001695025
+      },
+      "mfe_quantiles": {
+        "n": 14931,
+        "p50": 0.006111984897672951,
+        "p90": 0.7066570024100443,
+        "p99": 2.990651658838832,
+        "min": -0.9899436222692036,
+        "max": 116.54414535305264,
+        "mean": 0.2544030540522811
+      },
+      "mae_quantiles": {
+        "n": 14931,
+        "p50": -0.13339714264560998,
+        "p90": 0.00039080220545950617,
+        "p99": 0.38036773734986395,
+        "min": -0.9991613282397884,
+        "max": 3.0827603443430887,
+        "mean": -0.24859931195338136
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15758,
+          "upper_first": 4102,
+          "censored": 23444,
+          "lower_first": 5575,
+          "neither": 2474
+        },
+        "u25_l15": {
+          "unavailable": 15758,
+          "upper_first": 2770,
+          "censored": 23874,
+          "lower_first": 5810,
+          "neither": 3141
+        },
+        "u50_l20": {
+          "unavailable": 15758,
+          "censored": 24347,
+          "lower_first": 5858,
+          "upper_first": 1720,
+          "neither": 3670
+        },
+        "u100_l30": {
+          "unavailable": 15758,
+          "censored": 25025,
+          "lower_first": 5154,
+          "neither": 4615,
+          "upper_first": 801
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "300": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 30877,
+        "valid_positive": 1326,
+        "valid_negative": 3391,
+        "migration_regime_unavailable": 15
+      },
+      "valid": 4717,
+      "valid_positive": 1326,
+      "valid_negative": 3391,
+      "censored": 30877,
+      "unavailable": 15759,
+      "simple_return_quantiles": {
+        "n": 15774,
+        "p50": -0.09446917062234139,
+        "p90": 0.10799488884452835,
+        "p99": 1.907558725830755,
+        "min": -0.9994278577725536,
+        "max": 83.86435030937648,
+        "mean": -0.13283793152233433
+      },
+      "mfe_quantiles": {
+        "n": 15774,
+        "p50": 0.004469247302374857,
+        "p90": 0.7270174812362502,
+        "p99": 3.2032022512630096,
+        "min": -0.9899436222692036,
+        "max": 116.54414535305264,
+        "mean": 0.2681273297392238
+      },
+      "mae_quantiles": {
+        "n": 15774,
+        "p50": -0.1399491514319493,
+        "p90": 3.33333360913457e-11,
+        "p99": 0.31978538031564585,
+        "min": -0.9994278577725536,
+        "max": 3.0827603443430887,
+        "mean": -0.25460710792739144
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15759,
+          "upper_first": 4251,
+          "censored": 23953,
+          "lower_first": 5742,
+          "neither": 1648
+        },
+        "u25_l15": {
+          "unavailable": 15759,
+          "upper_first": 2958,
+          "censored": 24558,
+          "lower_first": 6083,
+          "neither": 1995
+        },
+        "u50_l20": {
+          "unavailable": 15759,
+          "censored": 25230,
+          "lower_first": 6214,
+          "upper_first": 1824,
+          "neither": 2326
+        },
+        "u100_l30": {
+          "unavailable": 15759,
+          "censored": 26329,
+          "lower_first": 5476,
+          "neither": 2895,
+          "upper_first": 894
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "600": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 32131,
+        "valid_positive": 988,
+        "valid_negative": 2474,
+        "migration_regime_unavailable": 16
+      },
+      "valid": 3462,
+      "valid_positive": 988,
+      "valid_negative": 2474,
+      "censored": 32131,
+      "unavailable": 15760,
+      "simple_return_quantiles": {
+        "n": 16194,
+        "p50": -0.09678236894409875,
+        "p90": 0.06908587296004232,
+        "p99": 1.8601384905632,
+        "min": -0.9994278577725536,
+        "max": 83.2244790499501,
+        "mean": -0.1430308341444255
+      },
+      "mfe_quantiles": {
+        "n": 16194,
+        "p50": 0.0038348818110935934,
+        "p90": 0.7285112646584493,
+        "p99": 3.2674765063389213,
+        "min": -0.9899436222692036,
+        "max": 116.54414535305264,
+        "mean": 0.2682328984273184
+      },
+      "mae_quantiles": {
+        "n": 16194,
+        "p50": -0.1369334537625102,
+        "p90": 3.322253583348811e-11,
+        "p99": 0.2985886368577386,
+        "min": -0.9994278577725536,
+        "max": 3.0827603443430887,
+        "mean": -0.2550143603771087
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15760,
+          "upper_first": 4316,
+          "censored": 24255,
+          "lower_first": 5843,
+          "neither": 1179
+        },
+        "u25_l15": {
+          "unavailable": 15760,
+          "upper_first": 3015,
+          "censored": 24970,
+          "lower_first": 6195,
+          "neither": 1413
+        },
+        "u50_l20": {
+          "unavailable": 15760,
+          "censored": 25713,
+          "lower_first": 6342,
+          "upper_first": 1867,
+          "neither": 1671
+        },
+        "u100_l30": {
+          "unavailable": 15760,
+          "censored": 26976,
+          "lower_first": 5595,
+          "neither": 2079,
+          "upper_first": 943
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "1800": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 33838,
+        "valid_positive": 646,
+        "valid_negative": 1108,
+        "migration_regime_unavailable": 17
+      },
+      "valid": 1754,
+      "valid_positive": 646,
+      "valid_negative": 1108,
+      "censored": 33838,
+      "unavailable": 15761,
+      "simple_return_quantiles": {
+        "n": 16714,
+        "p50": -0.09247263220109969,
+        "p90": 0.033638161634156116,
+        "p99": 1.9057972274161226,
+        "min": -0.9996538841823647,
+        "max": 83.2244790499501,
+        "mean": -0.14169287039724945
+      },
+      "mfe_quantiles": {
+        "n": 16714,
+        "p50": 0.0032732660963319393,
+        "p90": 0.735031407923229,
+        "p99": 3.2785099673926226,
+        "min": -0.9899436222692036,
+        "max": 116.54414535305264,
+        "mean": 0.26729080264886856
+      },
+      "mae_quantiles": {
+        "n": 16714,
+        "p50": -0.13012649137530008,
+        "p90": 0.0,
+        "p99": 0.2887855769600791,
+        "min": -0.9998359433764122,
+        "max": 3.0827603443430887,
+        "mean": -0.25175352580477295
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15761,
+          "upper_first": 4397,
+          "censored": 24592,
+          "lower_first": 5940,
+          "neither": 663
+        },
+        "u25_l15": {
+          "unavailable": 15761,
+          "upper_first": 3084,
+          "censored": 25431,
+          "lower_first": 6291,
+          "neither": 786
+        },
+        "u50_l20": {
+          "unavailable": 15761,
+          "censored": 26309,
+          "lower_first": 6440,
+          "upper_first": 1938,
+          "neither": 905
+        },
+        "u100_l30": {
+          "unavailable": 15761,
+          "censored": 27798,
+          "lower_first": 5670,
+          "neither": 1143,
+          "upper_first": 981
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "3600": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 34367,
+        "valid_positive": 481,
+        "valid_negative": 743,
+        "migration_regime_unavailable": 18
+      },
+      "valid": 1224,
+      "valid_positive": 481,
+      "valid_negative": 743,
+      "censored": 34367,
+      "unavailable": 15762,
+      "simple_return_quantiles": {
+        "n": 16945,
+        "p50": -0.09042286847412229,
+        "p90": 0.021362677339799685,
+        "p99": 1.8979063965830636,
+        "min": -0.999673190406419,
+        "max": 83.2244790499501,
+        "mean": -0.14336483151970256
+      },
+      "mfe_quantiles": {
+        "n": 16945,
+        "p50": 0.0031309745356329355,
+        "p90": 0.7319274147790997,
+        "p99": 3.2674765063389213,
+        "min": -0.9996706711431717,
+        "max": 116.54414535305264,
+        "mean": 0.26541575646152726
+      },
+      "mae_quantiles": {
+        "n": 16945,
+        "p50": -0.12649408972246945,
+        "p90": 0.0,
+        "p99": 0.28075040441776156,
+        "min": -0.9998359433764122,
+        "max": 3.0827603443430887,
+        "mean": -0.2502632639399324
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15762,
+          "upper_first": 4440,
+          "censored": 24738,
+          "lower_first": 5971,
+          "neither": 442
+        },
+        "u25_l15": {
+          "unavailable": 15762,
+          "upper_first": 3129,
+          "censored": 25633,
+          "lower_first": 6315,
+          "neither": 514
+        },
+        "u50_l20": {
+          "unavailable": 15762,
+          "censored": 26554,
+          "lower_first": 6477,
+          "upper_first": 1969,
+          "neither": 591
+        },
+        "u100_l30": {
+          "unavailable": 15762,
+          "censored": 28118,
+          "lower_first": 5707,
+          "neither": 772,
+          "upper_first": 994
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "21600": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 35184,
+        "valid_positive": 239,
+        "valid_negative": 168,
+        "migration_regime_unavailable": 18
+      },
+      "valid": 407,
+      "valid_positive": 239,
+      "valid_negative": 168,
+      "censored": 35184,
+      "unavailable": 15762,
+      "simple_return_quantiles": {
+        "n": 17108,
+        "p50": -0.09043144883411725,
+        "p90": 0.013653601637172885,
+        "p99": 1.8983269276413446,
+        "min": -0.9998656506038713,
+        "max": 83.2244790499501,
+        "mean": -0.1387801513158471
+      },
+      "mfe_quantiles": {
+        "n": 17108,
+        "p50": 0.002982266935717348,
+        "p90": 0.7375890536514755,
+        "p99": 3.3614914679209793,
+        "min": -0.9998533120589945,
+        "max": 116.54414535305264,
+        "mean": 0.2729772200121289
+      },
+      "mae_quantiles": {
+        "n": 17108,
+        "p50": -0.12649408972246945,
+        "p90": -9.415810897639432e-08,
+        "p99": 0.27640968850654324,
+        "min": -0.9998656506038713,
+        "max": 3.0827603443430887,
+        "mean": -0.2504378033452064
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15762,
+          "upper_first": 4470,
+          "censored": 25041,
+          "lower_first": 6018,
+          "neither": 62
+        },
+        "u25_l15": {
+          "unavailable": 15762,
+          "upper_first": 3141,
+          "censored": 26010,
+          "lower_first": 6359,
+          "neither": 81
+        },
+        "u50_l20": {
+          "unavailable": 15762,
+          "censored": 26979,
+          "lower_first": 6517,
+          "upper_first": 1986,
+          "neither": 109
+        },
+        "u100_l30": {
+          "unavailable": 15762,
+          "censored": 28648,
+          "lower_first": 5754,
+          "neither": 173,
+          "upper_first": 1016
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    },
+    "86400": {
+      "status_counts": {
+        "reference_price_unavailable": 15744,
+        "right_censored": 35250,
+        "valid_negative": 210,
+        "migration_regime_unavailable": 27,
+        "valid_positive": 122
+      },
+      "valid": 332,
+      "valid_positive": 122,
+      "valid_negative": 210,
+      "censored": 35250,
+      "unavailable": 15771,
+      "simple_return_quantiles": {
+        "n": 17233,
+        "p50": -0.09861999835914648,
+        "p90": 0.007204668882634824,
+        "p99": 1.8979063965830636,
+        "min": -0.9998775527688933,
+        "max": 83.2244790499501,
+        "mean": -0.15031124228592968
+      },
+      "mfe_quantiles": {
+        "n": 17233,
+        "p50": 0.0025998342768518423,
+        "p90": 0.7330670292371073,
+        "p99": 3.3405425190175695,
+        "min": -0.9998723309409407,
+        "max": 124.55438225976769,
+        "mean": 0.27271428219252314
+      },
+      "mae_quantiles": {
+        "n": 17233,
+        "p50": -0.1344324889623103,
+        "p90": -3.5254446234533887e-06,
+        "p99": 0.27616863673843617,
+        "min": -0.999879353276175,
+        "max": 3.0827603443430887,
+        "mean": -0.2569050144651541
+      },
+      "barriers": {
+        "u10_l10": {
+          "unavailable": 15771,
+          "upper_first": 4473,
+          "censored": 24927,
+          "lower_first": 6158,
+          "neither": 24
+        },
+        "u25_l15": {
+          "unavailable": 15771,
+          "upper_first": 3142,
+          "censored": 25898,
+          "lower_first": 6508,
+          "neither": 34
+        },
+        "u50_l20": {
+          "unavailable": 15771,
+          "censored": 26871,
+          "lower_first": 6675,
+          "upper_first": 1986,
+          "neither": 50
+        },
+        "u100_l30": {
+          "unavailable": 15771,
+          "censored": 28543,
+          "lower_first": 5934,
+          "upper_first": 1016,
+          "neither": 89
+        }
+      },
+      "mfe_terminal_consistent_rate": 1.0,
+      "mae_terminal_consistent_rate": 1.0
+    }
+  },
+  "survival": {
+    "30": {
+      "positive": 16495,
+      "negative": 5783,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 16495,
+        "right_censored": 29075,
+        "valid_negative": 5783
+      }
+    },
+    "60": {
+      "positive": 17896,
+      "negative": 4382,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 17896,
+        "right_censored": 29075,
+        "valid_negative": 4382
+      }
+    },
+    "120": {
+      "positive": 19173,
+      "negative": 3105,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 19173,
+        "right_censored": 29075,
+        "valid_negative": 3105
+      }
+    },
+    "300": {
+      "positive": 20305,
+      "negative": 1973,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 20305,
+        "right_censored": 29075,
+        "valid_negative": 1973
+      }
+    },
+    "600": {
+      "positive": 20834,
+      "negative": 1444,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 20834,
+        "right_censored": 29075,
+        "valid_negative": 1444
+      }
+    },
+    "1800": {
+      "positive": 21462,
+      "negative": 816,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 21462,
+        "right_censored": 29075,
+        "valid_negative": 816
+      }
+    },
+    "3600": {
+      "positive": 21742,
+      "negative": 536,
+      "censored": 29075,
+      "status_counts": {
+        "valid_positive": 21742,
+        "right_censored": 29075,
+        "valid_negative": 536
+      }
+    },
+    "21600": {
+      "positive": 21936,
+      "negative": 340,
+      "censored": 29073,
+      "status_counts": {
+        "valid_positive": 21936,
+        "right_censored": 29073,
+        "valid_negative": 340,
+        "known_source_outage": 4
+      }
+    },
+    "86400": {
+      "positive": 22061,
+      "negative": 185,
+      "censored": 27839,
+      "status_counts": {
+        "valid_positive": 22061,
+        "right_censored": 27839,
+        "known_source_outage": 1268,
+        "valid_negative": 185
+      }
+    }
+  },
+  "graduation": {
+    "by_horizon": {
+      "10": {
+        "positives": 16,
+        "positive_tokens": 9,
+        "status_counts": {
+          "valid_negative": 20466,
+          "right_censored": 30871,
+          "valid_positive": 16
+        }
+      },
+      "30": {
+        "positives": 20,
+        "positive_tokens": 10,
+        "status_counts": {
+          "valid_negative": 17801,
+          "right_censored": 33532,
+          "valid_positive": 20
+        }
+      },
+      "60": {
+        "positives": 25,
+        "positive_tokens": 10,
+        "status_counts": {
+          "right_censored": 36266,
+          "valid_negative": 15062,
+          "valid_positive": 25
+        }
+      },
+      "120": {
+        "positives": 36,
+        "positive_tokens": 12,
+        "status_counts": {
+          "right_censored": 39433,
+          "valid_negative": 11884,
+          "valid_positive": 36
+        }
+      },
+      "300": {
+        "positives": 62,
+        "positive_tokens": 17,
+        "status_counts": {
+          "right_censored": 43744,
+          "valid_negative": 7547,
+          "valid_positive": 62
+        }
+      },
+      "600": {
+        "positives": 111,
+        "positive_tokens": 18,
+        "status_counts": {
+          "right_censored": 45821,
+          "valid_negative": 5421,
+          "valid_positive": 111
+        }
+      },
+      "1800": {
+        "positives": 114,
+        "positive_tokens": 19,
+        "status_counts": {
+          "right_censored": 48572,
+          "valid_negative": 2667,
+          "valid_positive": 114
+        }
+      },
+      "3600": {
+        "positives": 145,
+        "positive_tokens": 19,
+        "status_counts": {
+          "right_censored": 49498,
+          "valid_negative": 1710,
+          "valid_positive": 145
+        }
+      },
+      "21600": {
+        "positives": 154,
+        "positive_tokens": 19,
+        "status_counts": {
+          "right_censored": 50657,
+          "valid_negative": 542,
+          "valid_positive": 154
+        }
+      },
+      "86400": {
+        "positives": 165,
+        "positive_tokens": 20,
+        "status_counts": {
+          "right_censored": 50818,
+          "valid_negative": 370,
+          "valid_positive": 165
+        }
+      }
+    },
+    "distinct_graduated_tokens_any_horizon": 20
+  },
+  "explosion_audit": {
+    "detector_version": "explosion_detector_v1",
+    "primary_definition_id": "explosion_primary_v1",
+    "distinct_tokens_with_primary_explosion": 222,
+    "fraction_tokens_with_no_explosion": 0.9445,
+    "independent_explosion_events": 222,
+    "observations_pre_explosion": 726,
+    "imminence": {
+      "10": {
+        "positives": 317,
+        "positive_tokens": 192,
+        "valid": 40568,
+        "prevalence_among_valid": 0.007814040623151252,
+        "prevalence_among_all_obs": 0.006172959710240882
+      },
+      "30": {
+        "positives": 482,
+        "positive_tokens": 208,
+        "valid": 40568,
+        "prevalence_among_valid": 0.01188128574245711,
+        "prevalence_among_all_obs": 0.009386014449009794
+      },
+      "60": {
+        "positives": 555,
+        "positive_tokens": 211,
+        "valid": 40568,
+        "prevalence_among_valid": 0.0136807335831197,
+        "prevalence_among_all_obs": 0.010807547757677253
+      },
+      "120": {
+        "positives": 597,
+        "positive_tokens": 215,
+        "valid": 40568,
+        "prevalence_among_valid": 0.01471603234076119,
+        "prevalence_among_all_obs": 0.011625416236636613
+      },
+      "300": {
+        "positives": 631,
+        "positive_tokens": 218,
+        "valid": 40568,
+        "prevalence_among_valid": 0.015554131335042397,
+        "prevalence_among_all_obs": 0.012287500243413237
+      }
+    },
+    "time_to_explosion_quantiles": {
+      "n": 726,
+      "p50": 12.648773908615112,
+      "p90": 472.8959641456604,
+      "p99": 1448.4956941604614,
+      "min": 0.036010026931762695,
+      "max": 1478.3325409889221,
+      "mean": 133.41299146101824
+    },
+    "explosion_magnitude_quantiles": {
+      "n": 222,
+      "p50": 0.7706761783138727,
+      "p90": 2.3956148237980863,
+      "p99": 12.688016256042548,
+      "min": 0.2573697714774532,
+      "max": 48.39294621401916,
+      "mean": 1.5803926720803625
+    },
+    "onset_to_peak_sec_quantiles": {
+      "n": 222,
+      "p50": 32.29363012313843,
+      "p90": 246.18233799934387,
+      "p99": 985.2631089687347,
+      "min": 0.13773512840270996,
+      "max": 1676.1768870353699,
+      "mean": 106.96837750211492
+    },
+    "precursor": {
+      "n_with_meaningful_preonset_warning": 82,
+      "fraction_with_meaningful_preonset_warning": 0.36936936936936937,
+      "n_essentially_zero_measurable_precursor": 130,
+      "fraction_apparently_externally_triggered_or_no_precursor": 0.5855855855855856,
+      "activity_accel_lead_sec": {
+        "n": 89,
+        "p50": 12.382629871368408,
+        "p90": 102.2625150680542,
+        "p99": 548.014407157898,
+        "min": 0.40328407287597656,
+        "max": 577.7609181404114,
+        "mean": 46.98452212837305
+      },
+      "buyflow_accel_lead_sec": {
+        "n": 86,
+        "p50": 11.466514110565186,
+        "p90": 77.24131894111633,
+        "p99": 550.1370980739594,
+        "min": 0.40328407287597656,
+        "max": 564.8946959972382,
+        "mean": 49.23697334112123
+      },
+      "curve_accel_lead_sec": {
+        "n": 63,
+        "p50": 11.356284856796265,
+        "p90": 74.213613986969,
+        "p99": 317.7143859863281,
+        "min": 0.18184900283813477,
+        "max": 472.87881898880005,
+        "mean": 38.71534357373677
+      },
+      "trades_before_onset": {
+        "trades_5s_before": {
+          "n": 222,
+          "p50": 1.0,
+          "p90": 4.0,
+          "p99": 23.0,
+          "min": 1.0,
+          "max": 72.0,
+          "mean": 2.5855855855855854
+        },
+        "trades_10s_before": {
+          "n": 222,
+          "p50": 1.0,
+          "p90": 8.0,
+          "p99": 38.0,
+          "min": 1.0,
+          "max": 79.0,
+          "mean": 3.445945945945946
+        },
+        "trades_30s_before": {
+          "n": 222,
+          "p50": 1.0,
+          "p90": 11.0,
+          "p99": 69.0,
+          "min": 1.0,
+          "max": 83.0,
+          "mean": 4.8108108108108105
+        },
+        "trades_60s_before": {
+          "n": 222,
+          "p50": 1.0,
+          "p90": 13.0,
+          "p99": 69.0,
+          "min": 1.0,
+          "max": 83.0,
+          "mean": 5.274774774774775
+        },
+        "trades_120s_before": {
+          "n": 222,
+          "p50": 1.0,
+          "p90": 14.0,
+          "p99": 69.0,
+          "min": 1.0,
+          "max": 83.0,
+          "mean": 5.68018018018018
+        }
+      },
+      "answer_how_many_explosions_offer_meaningful_preonset_warning": 82
+    },
+    "observations_before_onset_by_horizon": {
+      "10": 199,
+      "30": 210,
+      "60": 212,
+      "120": 216,
+      "300": 218
+    },
+    "definition_agreement": {
+      "mints_scored": 2987,
+      "all_three_agree": 2695,
+      "primary_conservative_agree": 2871,
+      "primary_exists": 222,
+      "conservative_exists": 114,
+      "aggressive_exists": 396
+    },
+    "is_4k_enough_for_explosion_hazard_head": "marginal",
+    "expand_later_without_outcome_selection": [
+      "pumpfun_memecoin_corpus/trades (broader mint population)",
+      "execution_curve_states / bonding-curve path",
+      "migrations.parquet for graduation-linked explosion contexts"
+    ],
+    "pathological_qa": {
+      "note": "Detector thresholds were prespecified; not tuned by manually inspecting outcomes until they look good.",
+      "min_trades_guards_isolated_print": true,
+      "requires_subsequent_mfe_confirmation": true,
+      "outage_windows_censored": true
+    }
+  },
+  "execution_coverage": {
+    "0.1": {
+      "gross_available": 15774,
+      "slippage_available": 15669,
+      "net_available": 0
+    },
+    "0.5": {
+      "gross_available": 15774,
+      "slippage_available": 15669,
+      "net_available": 0
+    },
+    "1.0": {
+      "gross_available": 15774,
+      "slippage_available": 15669,
+      "net_available": 0
+    },
+    "2.0": {
+      "gross_available": 15774,
+      "slippage_available": 15669,
+      "net_available": 0
+    },
+    "5.0": {
+      "gross_available": 15774,
+      "slippage_available": 15669,
+      "net_available": 0
+    }
+  },
+  "ownership": {
+    "holder_state_reconstructable_tokens": 6,
+    "dynamic_holder_targets_materialized": 0,
+    "note": "Sparse by design \u2014 no manufactured holder trajectories."
+  },
+  "isolation_proof": {
+    "checked_modules": [
+      "/Users/ronny/Desktop/trencher/src/trencher/data/world_model/pit.py",
+      "/Users/ronny/Desktop/trencher/src/trencher/data/world_model/observations.py",
+      "/Users/ronny/Desktop/trencher/src/trencher/data/world_model/sequences.py",
+      "/Users/ronny/Desktop/trencher/src/trencher/data/world_model/pit_audit.py",
+      "/Users/ronny/Desktop/trencher/src/trencher/data/world_model/ownership.py"
+    ],
+    "violations": [],
+    "ok": true
+  },
+  "supervision_sufficiency": [
+    {
+      "head": "returns_h300",
+      "observations": 4717,
+      "unique_tokens_with_valid_supervision": 613,
+      "distinct_positive_tokens": 836,
+      "independent_event_count": 613,
+      "prevalence": null,
+      "effective_censoring": 0.6012696434482893,
+      "recommendation": "marginal",
+      "notes": ""
+    },
+    {
+      "head": "barrier_u100_l30_h3600",
+      "observations": 7473,
+      "unique_tokens_with_valid_supervision": 1369,
+      "distinct_positive_tokens": 334,
+      "independent_event_count": 334,
+      "prevalence": 0.0835,
+      "effective_censoring": null,
+      "recommendation": "sufficient_on_rich_4k",
+      "notes": "+100% barrier positives are rare on short-lived meme paths."
+    },
+    {
+      "head": "survival_24h",
+      "observations": 22246,
+      "unique_tokens_with_valid_supervision": 2987,
+      "distinct_positive_tokens": 2983,
+      "independent_event_count": 2987,
+      "prevalence": 0.9986608637428859,
+      "effective_censoring": 0.5421104901368956,
+      "recommendation": "sufficient_on_rich_4k",
+      "notes": ""
+    },
+    {
+      "head": "graduation",
+      "observations": 165,
+      "unique_tokens_with_valid_supervision": 37,
+      "distinct_positive_tokens": 20,
+      "independent_event_count": 20,
+      "prevalence": 0.005,
+      "effective_censoring": null,
+      "recommendation": "requires_broader_population",
+      "notes": "Rich 4k subset is outcome-independent and contains few graduates; expand via frozen migrations/universe later without outcome selection."
+    },
+    {
+      "head": "explosion_onset_primary",
+      "observations": 726,
+      "unique_tokens_with_valid_supervision": 222,
+      "distinct_positive_tokens": 211,
+      "independent_event_count": 222,
+      "prevalence": 0.0555,
+      "effective_censoring": null,
+      "recommendation": "marginal",
+      "notes": "Expand supervision later from frozen pump trades/curve for broader mint sets without selecting on explosion outcomes."
+    },
+    {
+      "head": "holder_state_targets",
+      "observations": 85,
+      "unique_tokens_with_valid_supervision": 6,
+      "distinct_positive_tokens": 6,
+      "independent_event_count": 6,
+      "prevalence": 0.0015,
+      "effective_censoring": null,
+      "recommendation": "requires_broader_population",
+      "notes": "Only a handful of mints are holder_state_reconstructable in freeze."
+    }
+  ],
+  "estimated_disk_bytes": 78273504,
+  "estimated_disk_mb": 74.64743041992188,
+  "artifacts": {
+    "observation_targets": "data/external/world_model/targets/target_dataset_v1/observation_targets_v1.parquet",
+    "future_path_refs": "data/external/world_model/targets/target_dataset_v1/future_path_refs_v1.parquet",
+    "explosion_events": "data/external/world_model/targets/target_dataset_v1/explosion_events_v1.parquet",
+    "out_dir": "data/external/world_model/targets/target_dataset_v1"
+  },
+  "chronological_splits": "not_created",
+  "training": "not_started"
+}

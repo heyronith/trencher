@@ -25,6 +25,7 @@ from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
 from trencher.data.world_model.sequences import build_sequence_dataset_v2
+from trencher.data.world_model.targets import build_target_dataset_v1
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,7 @@ def run_world_model_pipeline(
         or "pit" in stages
         or "observations" in stages
         or "sequences" in stages
+        or "targets" in stages
     ):
         from trencher.data.world_model.io import read_json
 
@@ -271,6 +273,34 @@ def run_world_model_pipeline(
                 ),
                 "estimated_disk_mb": seq.get("estimated_disk_mb"),
                 "integrity_confirmations": seq.get("integrity_confirmations"),
+            }
+
+        if "targets" in stages:
+            logger.info(
+                "Building label-only target dataset v1 (post-T; freeze/inputs unchanged)"
+            )
+            tgt = build_target_dataset_v1(
+                world_root=world_root,
+                manifest_dir=manifest_dir,
+                pump_root=external_root / "pumpfun_memecoin_corpus",
+            )
+            summary["target_dataset_v1"] = {
+                "observations_processed": tgt.get("observations_processed"),
+                "unique_tokens": tgt.get("unique_tokens"),
+                "reference_price_coverage": tgt.get("reference_price_coverage"),
+                "explosion_events": (tgt.get("explosion_audit") or {}).get(
+                    "independent_explosion_events"
+                ),
+                "isolation_ok": (tgt.get("isolation_proof") or {}).get("ok"),
+                "estimated_disk_mb": tgt.get("estimated_disk_mb"),
+                "supervision_sufficiency": [
+                    {
+                        "head": s.get("head"),
+                        "recommendation": s.get("recommendation"),
+                        "independent_event_count": s.get("independent_event_count"),
+                    }
+                    for s in (tgt.get("supervision_sufficiency") or [])
+                ],
             }
 
         if "report" in stages:
