@@ -19,7 +19,7 @@ from trencher.data.world_model.acquire.funding import run_native_sol_funding_acq
 from trencher.data.world_model.acquire.rpc import SolanaRpc
 from trencher.data.world_model.freeze import build_data_freeze
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
-from trencher.data.world_model.pit_audit import build_pit_v2_audit
+from trencher.data.world_model.pit_audit import build_pit_v3_audit
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
@@ -202,25 +202,22 @@ def run_world_model_pipeline(
             )
 
         if "pit" in stages or "report" in stages:
-            logger.info("Building PIT v2 audit (derived; freeze acquisition unchanged)")
-            audit = build_pit_v2_audit(
+            logger.info("Building PIT v3 audit (derived; freeze acquisition unchanged)")
+            audit = build_pit_v3_audit(
                 world_root=world_root,
                 manifest_dir=manifest_dir,
                 pump_root=external_root / "pumpfun_memecoin_corpus",
                 max_mints=50,
             )
-            summary["pit_v2_audit"] = {
-                "truly_reconstructable_holder_state_count": audit.get(
-                    "truly_reconstructable_holder_state_count"
-                ),
-                "core_plus_any_genuine_ownership": audit.get(
-                    "core_plus_any_genuine_ownership"
-                ),
-                "core_plus_reconstructable_holder_state": audit.get(
-                    "core_plus_reconstructable_holder_state"
+            summary["pit_v3_audit"] = {
+                "future_labels_absent": audit.get(
+                    "future_labels_structurally_absent_from_model_state"
                 ),
                 "leakage_all_passed": (audit.get("leakage_tests") or {}).get(
                     "all_passed"
+                ),
+                "holder_state_reconstructable_at_t_by_age": audit.get(
+                    "holder_state_reconstructable_at_t_by_age"
                 ),
             }
             summary["fusion_coverage"] = audit.get("fusion_coverage")

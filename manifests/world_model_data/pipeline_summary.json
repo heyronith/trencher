@@ -1,30 +1,25 @@
 {
-  "generated_at": "2026-09-04T11:25:56.531135+00:00",
+  "generated_at": "2026-09-04T11:58:04.634187+00:00",
   "stages": [
     "report",
     "pit"
   ],
-  "pit_v2_audit": {
-    "truly_reconstructable_holder_state_count": 14,
-    "core_plus_any_genuine_ownership": 3132,
-    "core_plus_reconstructable_holder_state": 13,
-    "leakage_all_passed": true
+  "pit_v3_audit": {
+    "future_labels_absent": true,
+    "leakage_all_passed": true,
+    "holder_state_reconstructable_at_t_by_age": {
+      "launch": 0,
+      "10s": 2,
+      "30s": 2,
+      "1m": 2,
+      "2m": 2,
+      "5m": 2,
+      "10m": 3,
+      "30m": 5
+    }
   },
-  "fusion_coverage": {
-    "core_event_graph_micro_exec_market": 3133,
-    "core_plus_any_genuine_ownership": 3132,
-    "core_plus_reconstructable_ownership": 13,
-    "core_plus_holder_state_reconstructable": 13,
-    "with_true_native_sol_history": 84,
-    "core_plus_native_sol": 46
-  },
-  "ownership_evidence_counts": {
-    "holder_state_reconstructable": 14,
-    "transfer_ledger_observed_partial": 303,
-    "rpc_balance_observed": 2845,
-    "trade_derived_proxy": 1,
-    "missing": 837
-  },
+  "fusion_coverage": null,
+  "ownership_evidence_counts": null,
   "encoders": {
     "Event Encoder": "READY",
     "Wallet/Graph Encoder": "READY",

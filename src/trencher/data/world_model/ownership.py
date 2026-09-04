@@ -98,6 +98,85 @@ def holder_state_completeness_spec() -> dict[str, Any]:
     }
 
 
+def evaluate_holder_state_completeness_at_t(
+    *,
+    transfer_rows: list[dict[str, Any]],
+    detected_at: Any,
+    observation_time_t: float,
+    trade_wallets: set[str] | None = None,
+    rpc_owners: set[str] | None = None,
+) -> dict[str, Any]:
+    """Completeness using only transfers with block_timestamp <= T."""
+    eligible = []
+    for row in transfer_rows:
+        ts = _to_unix(row.get("block_timestamp"))
+        if ts is not None and ts <= observation_time_t:
+            eligible.append(row)
+    result = evaluate_holder_state_completeness(
+        transfer_rows=eligible,
+        detected_at=detected_at,
+        trade_wallets=trade_wallets,
+        rpc_owners=rpc_owners,
+    )
+    result["observation_time_t"] = observation_time_t
+    result["transfers_at_or_before_t"] = len(eligible)
+    return result
+
+
+def classify_ownership_at_t(
+    *,
+    transfer_rows: list[dict[str, Any]],
+    rpc_rows: list[dict[str, Any]],
+    trade_participation_before_t: bool,
+    detected_at: Any,
+    observation_time_t: float,
+) -> dict[str, Any]:
+    """Strongest ownership evidence knowable strictly from records at/before T."""
+    transfers_at_t = []
+    for row in transfer_rows:
+        ts = _to_unix(row.get("block_timestamp"))
+        if ts is not None and ts <= observation_time_t:
+            transfers_at_t.append(row)
+
+    rpc_at_t = []
+    rpc_owners: set[str] = set()
+    for row in rpc_rows:
+        ts = row.get("block_time")
+        if ts is None:
+            continue
+        if float(ts) <= observation_time_t:
+            rpc_at_t.append(row)
+            if row.get("owner"):
+                rpc_owners.add(row["owner"])
+
+    completeness = None
+    if transfers_at_t:
+        completeness = evaluate_holder_state_completeness_at_t(
+            transfer_rows=transfers_at_t,
+            detected_at=detected_at,
+            observation_time_t=observation_time_t,
+            rpc_owners=rpc_owners,
+        )
+        if completeness["holder_state_reconstructable"]:
+            level: OwnershipLevel = "holder_state_reconstructable"
+        else:
+            level = "transfer_ledger_observed_partial"
+    elif rpc_at_t:
+        level = "rpc_balance_observed"
+    elif trade_participation_before_t:
+        level = "trade_derived_proxy"
+    else:
+        level = "missing"
+
+    return {
+        "ownership_level_at_t": level,
+        "ownership_rows_observed_at_t": len(transfers_at_t),
+        "ownership_rpc_observed_at_t": len(rpc_at_t),
+        "holder_state_reconstructable_at_t": level == "holder_state_reconstructable",
+        "completeness_at_t": completeness,
+    }
+
+
 def evaluate_holder_state_completeness(
     *,
     transfer_rows: list[dict[str, Any]],

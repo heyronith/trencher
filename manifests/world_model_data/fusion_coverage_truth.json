@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T11:27:32.641195+00:00",
+  "generated_at": "2026-09-04T11:58:07.223819+00:00",
   "source_of_truth": "data/external/world_model/universe/fusion_coverage_truth.parquet",
   "definition_version": "fusion_coverage_v3_holder_completeness",
   "prior_disagreement_note": "v2 counted any BQ transfer row as reconstructable (~287). v3 requires documented holder-state completeness; sparse ledgers are transfer_ledger_observed_partial.",
