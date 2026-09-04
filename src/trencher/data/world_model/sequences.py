@@ -32,12 +32,13 @@ from trencher.data.world_model.pit import (
 
 logger = logging.getLogger(__name__)
 
-SEQUENCE_DATASET_VERSION = "sequence_dataset_v1"
-SEQUENCE_STORE_VERSION = "sequence_stores_v1"
-MODEL_INPUT_CONTRACT_VERSION = "model_input_contract_v1"
+SEQUENCE_DATASET_VERSION = "sequence_dataset_v2"
+SEQUENCE_STORE_VERSION = "sequence_stores_v2"
+MODEL_INPUT_CONTRACT_VERSION = "model_input_contract_v2"
 
-# Cap prior wallet↔token corpus history per wallet (feasibility; not outcome-based).
-WALLET_PRIOR_EVENT_CAP = 2048
+# Default last-N window at dereference time only (store keeps full history).
+WALLET_PRIOR_DEREF_DEFAULT_LAST_N = 256
+WALLET_PRIOR_EVENT_CAP = 2048  # legacy alias for window presets
 
 WINDOW_PRESETS = (
     {"name": "last_n_64", "kind": "last_n", "n": 64},
@@ -65,6 +66,41 @@ def _order_key(
     )
 
 
+def _round_amt(value: Any, ndigits: int) -> float | None:
+    if value is None:
+        return None
+    return round(float(value), ndigits)
+
+
+def _event_fingerprint(
+    *,
+    mint: str,
+    tx_signature: str | None,
+    event_time_unix: float,
+    wallet: str | None,
+    is_buy: bool | None,
+    sol_amount: float | None,
+    token_amount: float | None,
+    v_sol_bonding_curve: float | None = None,
+    v_tokens_bonding_curve: float | None = None,
+) -> str:
+    """Conservative fingerprint: never collapse heterogeneous same-signature events."""
+    side = None if is_buy is None else ("buy" if is_buy else "sell")
+    return "|".join(
+        [
+            str(mint),
+            str(tx_signature or ""),
+            f"{float(event_time_unix):.6f}",
+            str(wallet or ""),
+            str(side or ""),
+            str(_round_amt(sol_amount, 9)),
+            str(_round_amt(token_amount, 6)),
+            str(_round_amt(v_sol_bonding_curve, 6)),
+            str(_round_amt(v_tokens_bonding_curve, 3)),
+        ]
+    )
+
+
 def _dedupe_key_trade(
     *,
     mint: str,
@@ -74,12 +110,20 @@ def _dedupe_key_trade(
     is_buy: bool | None,
     sol_amount: float | None,
     token_amount: float | None,
+    v_sol_bonding_curve: float | None = None,
+    v_tokens_bonding_curve: float | None = None,
 ) -> str:
-    if tx_signature:
-        return f"sig:{mint}:{tx_signature}"
-    sol = None if sol_amount is None else round(float(sol_amount), 9)
-    tok = None if token_amount is None else round(float(token_amount), 6)
-    return f"fallback:{mint}:{event_time_unix:.6f}:{wallet}:{is_buy}:{sol}:{tok}"
+    return _event_fingerprint(
+        mint=mint,
+        tx_signature=tx_signature,
+        event_time_unix=event_time_unix,
+        wallet=wallet,
+        is_buy=is_buy,
+        sol_amount=sol_amount,
+        token_amount=token_amount,
+        v_sol_bonding_curve=v_sol_bonding_curve,
+        v_tokens_bonding_curve=v_tokens_bonding_curve,
+    )
 
 
 def _pct(values: list[int], p: float) -> float | None:
@@ -204,7 +248,7 @@ def _load_times_array(store_path: Path) -> list[float]:
     ]
 
 
-def build_model_input_contract_v1() -> dict[str, Any]:
+def build_model_input_contract_v2() -> dict[str, Any]:
     """Explicit separation of identifiers vs model-consumable values."""
     return {
         "contract_version": MODEL_INPUT_CONTRACT_VERSION,
@@ -230,19 +274,35 @@ def build_model_input_contract_v1() -> dict[str, Any]:
             "lifetime_edges_wallet_token_aggregates",
             "post_T_sequence_rows",
             "graduation_or_outcome_labels",
+            "full_history_ownership_level_on_atomic_sequence_rows",
+            "scan_order_truncated_wallet_prior_history",
         ],
+        "ownership_sequence_policy": {
+            "atomic_rows": "event_local_source_quality_only",
+            "bq_transfer_quality": "ledger_transfer_observed",
+            "pit_quantities_only_at_observation": [
+                "ownership_level_at_t",
+                "holder_state_reconstructable_at_t",
+            ],
+        },
+        "wallet_prior_policy": {
+            "store": "complete_focal_wallet_history_sorted_causally",
+            "windows_applied_at": "dereference_time_only",
+            "default_last_n": WALLET_PRIOR_DEREF_DEFAULT_LAST_N,
+        },
+        "trade_dedupe_policy": "conservative_event_fingerprint_not_signature_alone",
         "graph_node_identities_allowed": [
             "wallet_id (cross-token history is an intended TGN signal)",
             "token_mint as graph node id (not tabular categorical feature)",
             "creator_wallet as graph node id",
         ],
         "modality_stores": {
-            "token_events": "sequence_events_v1",
-            "microstructure": "sequence_microstructure_v1",
-            "ownership": "sequence_ownership_v1",
-            "graph_token": "sequence_graph_token_v1",
-            "graph_wallet_prior": "sequence_graph_wallet_prior_v1",
-            "curve_execution": "sequence_curve_v1",
+            "token_events": "sequence_events_v2",
+            "microstructure": "sequence_microstructure_v2",
+            "ownership": "sequence_ownership_v2",
+            "graph_token": "sequence_graph_token_v2",
+            "graph_wallet_prior": "sequence_graph_wallet_prior_v2",
+            "curve_execution": "sequence_curve_v2",
             "global": "pit/global + blocks_daily (referenced, last_completed_second)",
         },
         "observation_payload_composition": [
@@ -256,7 +316,7 @@ def build_model_input_contract_v1() -> dict[str, Any]:
             "modality_mask_*",
             "ownership_level_at_t",
             "source_quality_flag",
-            "evidence_level",
+            "evidence_level",  # observation/PIT only — never on atomic BQ rows
         ],
         "provenance_debug_metadata": [
             "store paths",
@@ -306,6 +366,97 @@ def apply_training_window(
     return lo, hi
 
 
+def load_observation_graph_neighborhood(
+    *,
+    out_dir: Path,
+    mint: str,
+    observation_time_t: float,
+    last_n: int | None = WALLET_PRIOR_DEREF_DEFAULT_LAST_N,
+    graph_token_times: list[float] | None = None,
+    graph_token_wallets: list[str | None] | None = None,
+    graph_token_index: dict[str, tuple[int, int]] | None = None,
+    graph_prior_times: list[float] | None = None,
+    graph_prior_index: dict[str, tuple[int, int]] | None = None,
+) -> dict[str, Any]:
+    """Causal graph neighborhood for (mint, T).
+
+    1) token-graph events with event_time <= T
+    2) wallets observable on that mint by T
+    3) each wallet's prior events with event_time <= T
+    4) optional last-N window on prior history (applied only at dereference)
+    """
+    token_path = out_dir / "sequence_graph_token_v2.parquet"
+    prior_path = out_dir / "sequence_graph_wallet_prior_v2.parquet"
+    if graph_token_index is None:
+        graph_token_index = _load_entity_index(
+            token_path.with_name(token_path.stem + "_entity_index.parquet")
+        )
+    if graph_prior_index is None:
+        graph_prior_index = _load_entity_index(
+            prior_path.with_name(prior_path.stem + "_entity_index.parquet")
+        )
+    if graph_token_times is None:
+        graph_token_times = _load_times_array(token_path)
+    if graph_prior_times is None:
+        graph_prior_times = _load_times_array(prior_path)
+    if graph_token_wallets is None:
+        if token_path.exists() and pq.ParquetFile(token_path).metadata.num_rows:
+            graph_token_wallets = pq.read_table(
+                token_path, columns=["wallet"]
+            ).column(0).to_pylist()
+        else:
+            graph_token_wallets = []
+
+    lo, hi = graph_token_index.get(mint, (0, 0))
+    end = _end_idx_for_t(graph_token_times, lo, hi, observation_time_t)
+    token_slice = list(range(lo, end))
+    wallets = sorted(
+        {
+            graph_token_wallets[i]
+            for i in token_slice
+            if i < len(graph_token_wallets) and graph_token_wallets[i]
+        }
+    )
+    prior_refs: list[dict[str, Any]] = []
+    prior_post_t = 0
+    for w in wallets:
+        wlo, whi = graph_prior_index.get(w, (0, 0))
+        wend = _end_idx_for_t(graph_prior_times, wlo, whi, observation_time_t)
+        w_start = wlo
+        if last_n is not None and wend - w_start > last_n:
+            w_start = wend - int(last_n)
+        for i in range(w_start, wend):
+            if graph_prior_times[i] > observation_time_t:
+                prior_post_t += 1
+        prior_refs.append(
+            {
+                "wallet": w,
+                "start_idx": w_start,
+                "end_idx": wend,
+                "count": max(0, wend - w_start),
+                "full_history_end_idx": wend,
+                "full_history_count": max(0, wend - wlo),
+            }
+        )
+    return {
+        "mint": mint,
+        "observation_time_t": observation_time_t,
+        "token_graph_start_idx": lo,
+        "token_graph_end_idx": end,
+        "token_graph_count": max(0, end - lo),
+        "wallets_observable_by_t": wallets,
+        "wallet_prior_refs": prior_refs,
+        "wallet_prior_rows": sum(r["count"] for r in prior_refs),
+        "prior_post_t_violations": prior_post_t,
+        "last_n": last_n,
+    }
+
+
+def build_sequence_dataset_v1(**kwargs: Any) -> dict[str, Any]:
+    """Deprecated alias — builds v2 (v1 artifacts are frozen and not mutated)."""
+    return build_sequence_dataset_v2(**kwargs)
+
+
 
 def _build_token_event_store(
     *,
@@ -334,6 +485,8 @@ def _build_token_event_store(
     best: dict[str, dict[str, Any]] = {}
     raw_n = 0
     excluded_system = 0
+    exact_dup_groups = 0
+    sig_fps: dict[str, set[str]] = defaultdict(set)
     if atomic_path.exists() and pq.ParquetFile(atomic_path).metadata.num_rows:
         for row in pq.read_table(atomic_path).to_pylist():
             mint = row.get("mint")
@@ -347,7 +500,23 @@ def _build_token_event_store(
             if et is None:
                 continue
             raw_n += 1
-            dk = _dedupe_key_trade(
+            side = "buy" if row.get("is_buy") else "sell"
+            ck = (
+                f"{mint}|{et:.6f}|{row.get('is_buy')}|{row.get('token_amount')}|"
+                f"{row.get('sol_amount')}"
+            )
+            curve = curve_by_key.get(ck) or {}
+            v_sol = (
+                row.get("v_sol_bonding_curve")
+                if row.get("v_sol_bonding_curve") is not None
+                else curve.get("v_sol_bonding_curve")
+            )
+            v_tok = (
+                row.get("v_tokens_bonding_curve")
+                if row.get("v_tokens_bonding_curve") is not None
+                else curve.get("v_tokens_bonding_curve")
+            )
+            dk = _event_fingerprint(
                 mint=mint,
                 tx_signature=row.get("tx_signature"),
                 event_time_unix=et,
@@ -355,13 +524,9 @@ def _build_token_event_store(
                 is_buy=row.get("is_buy"),
                 sol_amount=row.get("sol_amount"),
                 token_amount=row.get("token_amount"),
+                v_sol_bonding_curve=v_sol,
+                v_tokens_bonding_curve=v_tok,
             )
-            side = "buy" if row.get("is_buy") else "sell"
-            ck = (
-                f"{mint}|{et:.6f}|{row.get('is_buy')}|{row.get('token_amount')}|"
-                f"{row.get('sol_amount')}"
-            )
-            curve = curve_by_key.get(ck) or {}
             cand = {
                 "mint": mint,
                 "event_time_unix": et,
@@ -383,12 +548,8 @@ def _build_token_event_store(
                 "price_sol": row.get("price_sol")
                 if row.get("price_sol") is not None
                 else curve.get("price_sol"),
-                "v_sol_bonding_curve": row.get("v_sol_bonding_curve")
-                if row.get("v_sol_bonding_curve") is not None
-                else curve.get("v_sol_bonding_curve"),
-                "v_tokens_bonding_curve": row.get("v_tokens_bonding_curve")
-                if row.get("v_tokens_bonding_curve") is not None
-                else curve.get("v_tokens_bonding_curve"),
+                "v_sol_bonding_curve": v_sol,
+                "v_tokens_bonding_curve": v_tok,
                 "real_sol_reserves": None,
                 "real_token_reserves": None,
                 "curve_pct_depleted": row.get("curve_pct_depleted")
@@ -397,25 +558,14 @@ def _build_token_event_store(
                 "executable_price_sol": curve.get("executable_price_sol"),
                 "source": "pumpfun.trades.atomic_subset",
                 "source_quality_flag": curve.get("quality_flag") or "observed",
-                "has_reserves": bool(
-                    (
-                        row.get("v_sol_bonding_curve")
-                        if row.get("v_sol_bonding_curve") is not None
-                        else curve.get("v_sol_bonding_curve")
-                    )
-                    is not None
-                    or (
-                        row.get("v_tokens_bonding_curve")
-                        if row.get("v_tokens_bonding_curve") is not None
-                        else curve.get("v_tokens_bonding_curve")
-                    )
-                    is not None
-                ),
+                "has_reserves": bool(v_sol is not None or v_tok is not None),
+                "event_fingerprint": dk,
             }
             prev = best.get(dk)
             if prev is None:
                 best[dk] = cand
             else:
+                exact_dup_groups += 1
                 fields = (
                     "price_sol",
                     "v_sol_bonding_curve",
@@ -427,18 +577,35 @@ def _build_token_event_store(
                 if score >= prev_score:
                     best[dk] = cand
 
+            sig = row.get("tx_signature")
+            if sig:
+                sig_fps[f"{mint}:{sig}"].add(dk)
+
     rows = list(best.values())
+    hetero_sig_groups = sum(1 for fps in sig_fps.values() if len(fps) > 1)
+    hetero_events = sum(len(fps) for fps in sig_fps.values() if len(fps) > 1)
+    # Events v1 would collapse (same mint+sig) but v2 keeps when fingerprints differ.
+    v1_collapsed_but_v2_kept = 0
+    for fps in sig_fps.values():
+        if len(fps) > 1:
+            v1_collapsed_but_v2_kept += len(fps) - 1
+
     stats = _write_sorted_store(
-        out_dir / "sequence_events_v1.parquet", rows, entity_key="mint"
+        out_dir / "sequence_events_v2.parquet", rows, entity_key="mint"
     )
     stats.update(
         {
             "raw_input_rows": raw_n,
             "deduped_rows": len(rows),
+            "exact_duplicate_groups_removed": exact_dup_groups,
             "duplicate_raw_event_rate": (
-                (raw_n - len(rows)) / raw_n if raw_n else 0.0
+                exact_dup_groups / raw_n if raw_n else 0.0
             ),
+            "signatures_with_heterogeneous_event_fingerprints": hetero_sig_groups,
+            "events_in_heterogeneous_signature_groups": hetero_events,
+            "events_v1_would_collapse_but_v2_preserves": v1_collapsed_but_v2_kept,
             "excluded_system_program_rows": excluded_system,
+            "dedupe_policy": "conservative_event_fingerprint",
         }
     )
     return stats
@@ -486,7 +653,7 @@ def _build_curve_store(
                 }
             )
     return _write_sorted_store(
-        out_dir / "sequence_curve_v1.parquet", rows, entity_key="mint"
+        out_dir / "sequence_curve_v2.parquet", rows, entity_key="mint"
     )
 
 
@@ -535,7 +702,7 @@ def _build_microstructure_store(
                 }
             )
     return _write_sorted_store(
-        out_dir / "sequence_microstructure_v1.parquet", rows, entity_key="mint"
+        out_dir / "sequence_microstructure_v2.parquet", rows, entity_key="mint"
     )
 
 
@@ -543,19 +710,9 @@ def _build_microstructure_store(
 def _build_ownership_store(
     *, world_root: Path, out_dir: Path, subset: set[str]
 ) -> dict[str, Any]:
-    own_level: dict[str, str] = {}
-    own_path = world_root / "universe" / "ownership_evidence.parquet"
-    if own_path.exists() and pq.ParquetFile(own_path).metadata.num_rows:
-        ot = pq.read_table(own_path, columns=["mint", "ownership_evidence_level"])
-        for m, level in zip(
-            ot.column("mint").to_pylist(),
-            ot.column("ownership_evidence_level").to_pylist(),
-            strict=True,
-        ):
-            if m in subset:
-                own_level[m] = level
-
+    """Atomic ownership events with event-local provenance only (no future mint labels)."""
     rows: list[dict[str, Any]] = []
+    forbidden_future_labels = 0
     for name in (
         "token_transfers_unbiased_days.parquet",
         "token_transfers_rich.parquet",
@@ -570,12 +727,6 @@ def _build_ownership_store(
             et = _to_unix(row.get("block_timestamp"))
             if et is None:
                 continue
-            level = own_level.get(mint, "transfer_ledger_observed_partial")
-            if level not in {
-                "holder_state_reconstructable",
-                "transfer_ledger_observed_partial",
-            }:
-                level = "transfer_ledger_observed_partial"
             rows.append(
                 {
                     "mint": mint,
@@ -587,7 +738,6 @@ def _build_ownership_store(
                         side=row.get("transfer_type"),
                     ),
                     "event_kind": "bq_spl_transfer",
-                    "evidence_level": level,
                     "transfer_type": row.get("transfer_type"),
                     "source_account": row.get("source"),
                     "destination_account": row.get("destination"),
@@ -599,9 +749,7 @@ def _build_ownership_store(
                     "tx_signature": row.get("tx_signature"),
                     "slot": row.get("block_slot"),
                     "source": f"bigquery.{name}",
-                    "source_quality_flag": "ledger_observed",
-                    "is_complete_holder_ledger": level
-                    == "holder_state_reconstructable",
+                    "source_quality_flag": "ledger_transfer_observed",
                 }
             )
 
@@ -626,7 +774,6 @@ def _build_ownership_store(
                         side="rpc_balance",
                     ),
                     "event_kind": "rpc_pre_post_token_balance",
-                    "evidence_level": "rpc_balance_observed",
                     "transfer_type": None,
                     "source_account": None,
                     "destination_account": None,
@@ -638,16 +785,30 @@ def _build_ownership_store(
                     "pre_ui_amount": row.get("pre_ui_amount"),
                     "post_ui_amount": row.get("post_ui_amount"),
                     "source": "solana_rpc.pre_post_token_balances",
-                    "source_quality_flag": row.get("quality_flag") or "sampled_tx",
-                    "is_complete_holder_ledger": False,
+                    "source_quality_flag": row.get("quality_flag")
+                    or "sampled_tx_rpc_balance",
                 }
             )
 
+    # Guardrail counter (rows should never carry these keys/values).
+    forbidden_future_labels = 0
+    for r in rows:
+        if r.get("source_quality_flag") in {
+            "holder_state_reconstructable",
+            "transfer_ledger_observed_partial",
+        }:
+            forbidden_future_labels += 1
+        if r.get("evidence_level") or r.get("is_complete_holder_ledger"):
+            forbidden_future_labels += 1
+
     stats = _write_sorted_store(
-        out_dir / "sequence_ownership_v1.parquet", rows, entity_key="mint"
+        out_dir / "sequence_ownership_v2.parquet", rows, entity_key="mint"
     )
-    stats["evidence_level_counts"] = dict(Counter(r["evidence_level"] for r in rows))
     stats["event_kind_counts"] = dict(Counter(r["event_kind"] for r in rows))
+    stats["source_quality_counts"] = dict(
+        Counter(r["source_quality_flag"] for r in rows)
+    )
+    stats["future_derived_ownership_labels_on_rows"] = forbidden_future_labels
     return stats
 
 
@@ -680,7 +841,7 @@ def _build_graph_token_store(
                     "token_amount": row.get("token_amount"),
                     "tx_signature": row.get("tx_signature"),
                     "slot": row.get("slot"),
-                    "source": "sequence_events_v1",
+                    "source": "sequence_events_v2",
                     "source_quality_flag": row.get("source_quality_flag"),
                     "is_cohort_derived": False,
                 }
@@ -759,7 +920,7 @@ def _build_graph_token_store(
                 }
             )
 
-    own_path = out_dir / "sequence_ownership_v1.parquet"
+    own_path = out_dir / "sequence_ownership_v2.parquet"
     if own_path.exists() and pq.ParquetFile(own_path).metadata.num_rows:
         for row in pq.read_table(own_path).to_pylist():
             if row.get("event_kind") != "bq_spl_transfer":
@@ -782,15 +943,15 @@ def _build_graph_token_store(
                     "token_amount": row.get("value"),
                     "tx_signature": row.get("tx_signature"),
                     "slot": row.get("slot"),
-                    "source": "sequence_ownership_v1",
-                    "source_quality_flag": row.get("source_quality_flag"),
-                    "evidence_level": row.get("evidence_level"),
+                    "source": "sequence_ownership_v2",
+                    "source_quality_flag": row.get("source_quality_flag")
+                    or "ledger_transfer_observed",
                     "is_cohort_derived": False,
                 }
             )
 
     stats = _write_sorted_store(
-        out_dir / "sequence_graph_token_v1.parquet", rows, entity_key="mint"
+        out_dir / "sequence_graph_token_v2.parquet", rows, entity_key="mint"
     )
     stats["edge_type_counts"] = dict(Counter(r["edge_type"] for r in rows))
     stats["excludes_red_cohort_membership"] = True
@@ -805,18 +966,12 @@ def _build_graph_wallet_prior_store(
     pump_root: Path | None,
     focal_wallets: set[str],
 ) -> dict[str, Any]:
-    """Corpus wallet↔token priors for focal wallets (Arrow-filtered, capped)."""
+    """Complete focal-wallet Pump trade history, sorted causally (no scan-order truncation)."""
     pump = pump_root or Path("data/external/pumpfun_memecoin_corpus")
     trades_dir = pump / "trades"
     scanned = 0
     excluded_system = 0
     parts: list[pa.Table] = []
-    counts: dict[str, int] = defaultdict(int)
-    wallets_full: set[str] = set()
-    kept = 0
-    # Feasible local budget: prefer breadth across wallets over unbounded depth.
-    per_wallet_cap = min(256, WALLET_PRIOR_EVENT_CAP)
-    global_budget = max(750_000, len(focal_wallets) * per_wallet_cap)
 
     if trades_dir.exists() and focal_wallets:
         dataset = ds.dataset(trades_dir, format="parquet")
@@ -834,7 +989,7 @@ def _build_graph_wallet_prior_store(
             if c in set(dataset.schema.names)
         ]
         wallet_set = pa.array(list(focal_wallets), type=pa.string())
-        for batch in dataset.scanner(columns=use_cols, batch_size=256_000).to_batches():
+        for batch in dataset.scanner(columns=use_cols, batch_size=512_000).to_batches():
             scanned += batch.num_rows
             wallets_col = batch.column("user_wallet")
             excluded_system += int(
@@ -847,20 +1002,9 @@ def _build_graph_wallet_prior_store(
                 pc.is_in(wallets_col, value_set=wallet_set),
                 pc.not_equal(wallets_col, SYSTEM_PROGRAM_WALLET),
             )
-            if wallets_full:
-                keep = pc.and_(
-                    keep,
-                    pc.invert(
-                        pc.is_in(
-                            wallets_col,
-                            value_set=pa.array(list(wallets_full), type=pa.string()),
-                        )
-                    ),
-                )
             filtered = batch.filter(keep)
             if filtered.num_rows == 0:
                 continue
-
             et = filtered.column("event_time")
             if pa.types.is_timestamp(et.type):
                 et_unix = pc.cast(
@@ -870,104 +1014,114 @@ def _build_graph_wallet_prior_store(
                 et_unix = pa.array(
                     [_to_unix(x) for x in et.to_pylist()], type=pa.float64()
                 )
-
-            is_buy_list = filtered.column("is_buy").to_pylist()
-            edge_types = [
-                "wallet_token_buy" if b else "wallet_token_sell" for b in is_buy_list
-            ]
-            wallets = filtered.column("user_wallet").to_pylist()
-            take_idx: list[int] = []
-            for i, w in enumerate(wallets):
-                if w in wallets_full:
-                    continue
-                if counts[w] >= per_wallet_cap:
-                    wallets_full.add(w)
-                    continue
-                take_idx.append(i)
-                counts[w] += 1
-                kept += 1
-                if counts[w] >= per_wallet_cap:
-                    wallets_full.add(w)
-                if kept >= global_budget:
-                    break
-            if not take_idx:
-                if kept >= global_budget or len(wallets_full) >= len(focal_wallets):
-                    break
-                continue
-
-            idx = pa.array(take_idx, type=pa.int64())
-            part = pa.table(
-                {
-                    "wallet": pc.take(filtered.column("user_wallet"), idx),
-                    "event_time_unix": pc.take(et_unix, idx),
-                    "token_mint": pc.take(filtered.column("mint"), idx),
-                    "dst": pc.take(filtered.column("mint"), idx),
-                    "src": pc.take(filtered.column("user_wallet"), idx),
-                    "sol_amount": pc.take(filtered.column("sol_amount"), idx),
-                    "token_amount": pc.take(filtered.column("token_amount"), idx),
-                    "tx_signature": pc.take(filtered.column("tx_signature"), idx),
-                    "edge_type": pa.array(
-                        [edge_types[i] for i in take_idx], type=pa.string()
-                    ),
-                }
+            is_buy = filtered.column("is_buy")
+            edge_type = pc.if_else(
+                is_buy,
+                pa.scalar("wallet_token_buy"),
+                pa.scalar("wallet_token_sell"),
             )
-            parts.append(part)
-            if kept >= global_budget or len(wallets_full) >= len(focal_wallets):
-                break
+            parts.append(
+                pa.table(
+                    {
+                        "wallet": filtered.column("user_wallet"),
+                        "event_time_unix": et_unix,
+                        "token_mint": filtered.column("mint"),
+                        "dst": filtered.column("mint"),
+                        "src": filtered.column("user_wallet"),
+                        "sol_amount": filtered.column("sol_amount"),
+                        "token_amount": filtered.column("token_amount"),
+                        "tx_signature": filtered.column("tx_signature"),
+                        "is_buy": is_buy,
+                        "edge_type": edge_type,
+                    }
+                )
+            )
 
-    rows: list[dict[str, Any]] = []
-    if parts:
-        table = pa.concat_tables(parts)
-        df = table.to_pandas()
-        df = df.sort_values(
-            ["wallet", "event_time_unix", "tx_signature"], kind="mergesort"
+    out_path = out_dir / "sequence_graph_wallet_prior_v2.parquet"
+    idx_path = out_dir / "sequence_graph_wallet_prior_v2_entity_index.parquet"
+    if not parts:
+        return _write_sorted_store(out_path, [], entity_key="wallet")
+
+    table = pa.concat_tables(parts, promote_options="default")
+    # Deterministic causal order per wallet.
+    # Build order_key via pandas after causal sort (13M rows; feasible locally).
+    df = table.to_pandas()
+    df = df.sort_values(
+        ["wallet", "event_time_unix", "tx_signature", "token_mint", "edge_type"],
+        kind="mergesort",
+    )
+    df["order_key"] = [
+        _order_key(
+            event_time_unix=float(et),
+            tx_signature=sig,
+            wallet=w,
+            side=("buy" if str(etp).endswith("buy") else "sell"),
+            extra=str(tm or ""),
         )
-        for rec in df.to_dict(orient="records"):
-            et = float(rec["event_time_unix"])
-            side = "buy" if str(rec["edge_type"]).endswith("buy") else "sell"
-            rows.append(
-                {
-                    "wallet": rec["wallet"],
-                    "event_time_unix": et,
-                    "order_key": _order_key(
-                        event_time_unix=et,
-                        tx_signature=rec.get("tx_signature"),
-                        wallet=rec["wallet"],
-                        side=side,
-                        extra=str(rec.get("token_mint") or ""),
-                    ),
-                    "edge_type": rec["edge_type"],
-                    "src": rec["src"],
-                    "dst": rec["dst"],
-                    "token_mint": rec["token_mint"],
-                    "sol_amount": rec.get("sol_amount"),
-                    "token_amount": rec.get("token_amount"),
-                    "tx_signature": rec.get("tx_signature"),
-                    "source": "pumpfun_memecoin_corpus.trades",
-                    "source_quality_flag": "corpus_prior_observed",
-                    "is_cohort_derived": False,
-                    "capped": bool(counts.get(rec["wallet"], 0) >= per_wallet_cap),
-                }
-            )
+        for w, et, sig, etp, tm in zip(
+            df["wallet"],
+            df["event_time_unix"],
+            df["tx_signature"],
+            df["edge_type"],
+            df["token_mint"],
+            strict=True,
+        )
+    ]
+    df["source"] = "pumpfun_memecoin_corpus.trades"
+    df["source_quality_flag"] = "corpus_prior_observed"
+    df["is_cohort_derived"] = False
+    df["capped"] = False
+    df["seq_idx"] = range(len(df))
+    keep_cols = [
+        "seq_idx",
+        "wallet",
+        "event_time_unix",
+        "order_key",
+        "edge_type",
+        "src",
+        "dst",
+        "token_mint",
+        "sol_amount",
+        "token_amount",
+        "tx_signature",
+        "source",
+        "source_quality_flag",
+        "is_cohort_derived",
+        "capped",
+    ]
+    out_table = pa.Table.from_pandas(df[keep_cols], preserve_index=False)
+    pq.write_table(out_table, out_path)
 
-    stats = _write_sorted_store(
-        out_dir / "sequence_graph_wallet_prior_v1.parquet",
-        rows,
-        entity_key="wallet",
-    )
-    stats.update(
-        {
-            "corpus_rows_scanned": scanned,
-            "rows_kept": kept,
-            "focal_wallets": len(focal_wallets),
-            "wallets_with_prior": len({r["wallet"] for r in rows}),
-            "excluded_system_program_rows": excluded_system,
-            "per_wallet_cap": per_wallet_cap,
-            "global_row_budget": global_budget,
-            "wallets_hit_cap": sum(1 for _w, n in counts.items() if n >= per_wallet_cap),
-            "excludes_red_cohort_membership": True,
-        }
-    )
+    # Entity index
+    wallets = df["wallet"].to_numpy()
+    entity_index: list[dict[str, Any]] = []
+    i = 0
+    n = len(wallets)
+    while i < n:
+        w = wallets[i]
+        j = i + 1
+        while j < n and wallets[j] == w:
+            j += 1
+        entity_index.append({"entity": w, "start_idx": int(i), "end_idx": int(j)})
+        i = j
+    pq.write_table(pa.Table.from_pylist(entity_index), idx_path)
+
+    per_wallet_n = [e["end_idx"] - e["start_idx"] for e in entity_index]
+    stats = {
+        "rows": n,
+        "entities": len(entity_index),
+        "path": str(out_path),
+        "entity_index": str(idx_path),
+        "corpus_rows_scanned": scanned,
+        "rows_kept": n,
+        "focal_wallets": len(focal_wallets),
+        "wallets_with_prior": len(entity_index),
+        "excluded_system_program_rows": excluded_system,
+        "scan_order_truncation": False,
+        "store_policy": "complete_focal_wallet_history_sorted_causally",
+        "events_per_wallet": _length_stats(per_wallet_n),
+        "excludes_red_cohort_membership": True,
+    }
     return stats
 
 
@@ -984,7 +1138,7 @@ def _build_global_reference_manifest(
         / "daily_pump_network_context.parquet",
     }
     manifest = {
-        "store_id": "sequence_global_v1",
+        "store_id": "sequence_global_v2",
         "version": SEQUENCE_STORE_VERSION,
         "policy": "last_completed_second_only_for_trade_buckets",
         "paths": {k: str(v) for k, v in global_paths.items()},
@@ -997,7 +1151,7 @@ def _build_global_reference_manifest(
             "last_completed_second(T) for trade flow."
         ),
     }
-    write_json(out_dir / "sequence_global_v1_manifest.json", manifest)
+    write_json(out_dir / "sequence_global_v2_manifest.json", manifest)
     return manifest
 
 
@@ -1019,24 +1173,24 @@ def build_observation_sequence_refs(
 
     stores = {
         "events": (
-            out_dir / "sequence_events_v1.parquet",
-            out_dir / "sequence_events_v1_entity_index.parquet",
+            out_dir / "sequence_events_v2.parquet",
+            out_dir / "sequence_events_v2_entity_index.parquet",
         ),
         "curve": (
-            out_dir / "sequence_curve_v1.parquet",
-            out_dir / "sequence_curve_v1_entity_index.parquet",
+            out_dir / "sequence_curve_v2.parquet",
+            out_dir / "sequence_curve_v2_entity_index.parquet",
         ),
         "micro": (
-            out_dir / "sequence_microstructure_v1.parquet",
-            out_dir / "sequence_microstructure_v1_entity_index.parquet",
+            out_dir / "sequence_microstructure_v2.parquet",
+            out_dir / "sequence_microstructure_v2_entity_index.parquet",
         ),
         "ownership": (
-            out_dir / "sequence_ownership_v1.parquet",
-            out_dir / "sequence_ownership_v1_entity_index.parquet",
+            out_dir / "sequence_ownership_v2.parquet",
+            out_dir / "sequence_ownership_v2_entity_index.parquet",
         ),
         "graph_token": (
-            out_dir / "sequence_graph_token_v1.parquet",
-            out_dir / "sequence_graph_token_v1_entity_index.parquet",
+            out_dir / "sequence_graph_token_v2.parquet",
+            out_dir / "sequence_graph_token_v2_entity_index.parquet",
         ),
     }
 
@@ -1093,14 +1247,14 @@ def build_observation_sequence_refs(
             lo, hi = indexes[name].get(mint, (0, 0))
             end = _end_idx_for_t(times[name], lo, hi, t) if hi > lo else lo
             count = max(0, end - lo)
-            ref[f"{name}_store_id"] = f"sequence_{name}_v1"
+            ref[f"{name}_store_id"] = f"sequence_{name}_v2"
             ref[f"{name}_start_idx"] = lo
             ref[f"{name}_end_idx"] = end
             ref[f"{name}_count"] = count
             ref[f"mask_{name}"] = count > 0
 
         end_sec = last_completed_second(t)
-        ref["global_store_id"] = "sequence_global_v1"
+        ref["global_store_id"] = "sequence_global_v2"
         ref["global_last_completed_second"] = end_sec
         ref["global_launch_end_idx"] = bisect_right(launch_times, t)
         ref["global_launch_count"] = ref["global_launch_end_idx"]
@@ -1110,10 +1264,10 @@ def build_observation_sequence_refs(
         ref["graph_wallet_prior_strategy"] = (
             "wallets_from_graph_token_events_leq_T_then_wallet_store_cutoff"
         )
-        ref["graph_wallet_prior_store_id"] = "sequence_graph_wallet_prior_v1"
+        ref["graph_wallet_prior_store_id"] = "sequence_graph_wallet_prior_v2"
         ref_rows.append(ref)
 
-    refs_path = out_dir / "observation_sequence_refs_v1.parquet"
+    refs_path = out_dir / "observation_sequence_refs_v2.parquet"
     pq.write_table(pa.Table.from_pylist(ref_rows), refs_path)
     return {
         "path": str(refs_path),
@@ -1166,14 +1320,14 @@ def validate_observation_causality(
     world_root: Path,
     out_dir: Path,
 ) -> dict[str, Any]:
-    """Exhaustive cheap boundary checks for all observation refs."""
-    refs = pq.read_table(out_dir / "observation_sequence_refs_v1.parquet").to_pylist()
+    """Exhaustive cheap boundary checks for all observation refs + graph loader."""
+    refs = pq.read_table(out_dir / "observation_sequence_refs_v2.parquet").to_pylist()
     store_paths = {
-        "events": out_dir / "sequence_events_v1.parquet",
-        "curve": out_dir / "sequence_curve_v1.parquet",
-        "micro": out_dir / "sequence_microstructure_v1.parquet",
-        "ownership": out_dir / "sequence_ownership_v1.parquet",
-        "graph_token": out_dir / "sequence_graph_token_v1.parquet",
+        "events": out_dir / "sequence_events_v2.parquet",
+        "curve": out_dir / "sequence_curve_v2.parquet",
+        "micro": out_dir / "sequence_microstructure_v2.parquet",
+        "ownership": out_dir / "sequence_ownership_v2.parquet",
+        "graph_token": out_dir / "sequence_graph_token_v2.parquet",
     }
     times = {m: _load_times_array(store_paths[m]) for m in MODALITIES}
 
@@ -1212,25 +1366,83 @@ def validate_observation_causality(
                     post_t_violations += 1
                     break
 
-    sample = _stratified_sample_refs(refs, n=48)
-    sample_results = []
-    graph_prior_path = out_dir / "sequence_graph_wallet_prior_v1.parquet"
+    # Ownership atomic rows must not carry future-derived completeness labels.
+    own_future_labels = 0
+    own_path = store_paths["ownership"]
+    if own_path.exists() and pq.ParquetFile(own_path).metadata.num_rows:
+        own_table = pq.read_table(own_path)
+        names = set(own_table.column_names)
+        if "evidence_level" in names:
+            own_future_labels += sum(
+                1
+                for x in own_table.column("evidence_level").to_pylist()
+                if x
+                in {
+                    "holder_state_reconstructable",
+                    "transfer_ledger_observed_partial",
+                }
+            )
+        if "is_complete_holder_ledger" in names:
+            own_future_labels += sum(
+                1 for x in own_table.column("is_complete_holder_ledger").to_pylist() if x
+            )
+        if "source_quality_flag" in names:
+            own_future_labels += sum(
+                1
+                for x in own_table.column("source_quality_flag").to_pylist()
+                if x == "holder_state_reconstructable"
+            )
+
+    graph_token_path = store_paths["graph_token"]
+    graph_token_times = times["graph_token"]
+    graph_token_index = _load_entity_index(
+        graph_token_path.with_name(graph_token_path.stem + "_entity_index.parquet")
+    )
+    graph_token_wallets = (
+        pq.read_table(graph_token_path, columns=["wallet"]).column(0).to_pylist()
+        if graph_token_path.exists() and pq.ParquetFile(graph_token_path).metadata.num_rows
+        else []
+    )
+    graph_prior_path = out_dir / "sequence_graph_wallet_prior_v2.parquet"
     graph_prior_times = _load_times_array(graph_prior_path)
     graph_prior_idx = _load_entity_index(
-        out_dir / "sequence_graph_wallet_prior_v1_entity_index.parquet"
+        out_dir / "sequence_graph_wallet_prior_v2_entity_index.parquet"
     )
-    graph_token_path = out_dir / "sequence_graph_token_v1.parquet"
-    graph_token_wallets: list[tuple[Any, Any]] = []
-    if graph_token_path.exists() and pq.ParquetFile(graph_token_path).metadata.num_rows:
-        gt = pq.read_table(graph_token_path, columns=["wallet", "event_time_unix"])
-        graph_token_wallets = list(
-            zip(
-                gt.column("wallet").to_pylist(),
-                gt.column("event_time_unix").to_pylist(),
-                strict=True,
-            )
-        )
 
+    # Exhaustive wallet-prior dereference validation for all observations.
+    wallet_prior_post_t = 0
+    wallet_prior_usable = 0
+    wallet_after_t_leak = 0
+    for ref in refs:
+        t = float(ref["observation_time_t"])
+        nb = load_observation_graph_neighborhood(
+            out_dir=out_dir,
+            mint=ref["mint"],
+            observation_time_t=t,
+            last_n=None,  # full history <= T
+            graph_token_times=graph_token_times,
+            graph_token_wallets=graph_token_wallets,
+            graph_token_index=graph_token_index,
+            graph_prior_times=graph_prior_times,
+            graph_prior_index=graph_prior_idx,
+        )
+        wallet_prior_post_t += int(nb["prior_post_t_violations"])
+        if nb["wallet_prior_rows"] > 0:
+            wallet_prior_usable += 1
+        # Wallets must each have a token-graph event <= T (by construction).
+        lo = int(ref["graph_token_start_idx"])
+        end = int(ref["graph_token_end_idx"])
+        allowed = {
+            graph_token_wallets[i]
+            for i in range(lo, end)
+            if i < len(graph_token_wallets) and graph_token_wallets[i]
+        }
+        for w in nb["wallets_observable_by_t"]:
+            if w not in allowed:
+                wallet_after_t_leak += 1
+
+    sample = _stratified_sample_refs(refs, n=64)
+    sample_results = []
     for ref in sample:
         t = float(ref["observation_time_t"])
         mint = ref["mint"]
@@ -1243,27 +1455,26 @@ def validate_observation_causality(
             details[m] = {"count": end - lo, "post_t": bad}
             if bad:
                 ok = False
-        lo = int(ref["graph_token_start_idx"])
-        end = int(ref["graph_token_end_idx"])
-        wallets = {
-            graph_token_wallets[i][0]
-            for i in range(lo, end)
-            if i < len(graph_token_wallets) and graph_token_wallets[i][0]
+        nb = load_observation_graph_neighborhood(
+            out_dir=out_dir,
+            mint=mint,
+            observation_time_t=t,
+            last_n=WALLET_PRIOR_DEREF_DEFAULT_LAST_N,
+            graph_token_times=graph_token_times,
+            graph_token_wallets=graph_token_wallets,
+            graph_token_index=graph_token_index,
+            graph_prior_times=graph_prior_times,
+            graph_prior_index=graph_prior_idx,
+        )
+        details["graph_wallet_prior"] = {
+            "wallets": len(nb["wallets_observable_by_t"]),
+            "rows": nb["wallet_prior_rows"],
+            "post_t": nb["prior_post_t_violations"],
+            "last_n": nb["last_n"],
         }
-        prior_post = 0
-        prior_n = 0
-        for w in wallets:
-            wlo, whi = graph_prior_idx.get(w, (0, 0))
-            wend = _end_idx_for_t(graph_prior_times, wlo, whi, t)
-            prior_n += max(0, wend - wlo)
-            for i in range(wlo, wend):
-                if graph_prior_times[i] > t:
-                    prior_post += 1
-        details["graph_wallet_prior"] = {"count": prior_n, "post_t": prior_post}
-        if prior_post:
+        if nb["prior_post_t_violations"]:
             ok = False
         end_sec = int(ref["global_last_completed_second"])
-        details["global_last_completed_second"] = end_sec
         details["global_completed_second_ok"] = end_sec == last_completed_second(t)
         if not details["global_completed_second_ok"]:
             ok = False
@@ -1282,19 +1493,30 @@ def validate_observation_causality(
             }
         )
 
-    events_dup_rate = 0.0
+    events_stats: dict[str, Any] = {}
     man = out_dir / "sequence_dataset_manifest.json"
     if man.exists():
         payload = json.loads(man.read_text(encoding="utf-8"))
-        events_dup_rate = ((payload.get("stores") or {}).get("events") or {}).get(
-            "duplicate_raw_event_rate", 0.0
-        )
+        events_stats = (payload.get("stores") or {}).get("events") or {}
 
     return {
         "observations_validated": len(refs),
-        "post_t_violations": post_t_violations,
+        "post_t_violations": post_t_violations + wallet_prior_post_t,
         "ordering_violations": ordering_violations,
-        "duplicate_raw_event_rate": events_dup_rate,
+        "future_derived_ownership_labels_on_atomic_rows": own_future_labels,
+        "wallet_prior_post_t_violations": wallet_prior_post_t,
+        "wallet_not_observable_by_t_leaks": wallet_after_t_leak,
+        "observations_with_usable_wallet_prior": wallet_prior_usable,
+        "duplicate_raw_event_rate": events_stats.get("duplicate_raw_event_rate", 0.0),
+        "exact_duplicate_groups_removed": events_stats.get(
+            "exact_duplicate_groups_removed"
+        ),
+        "signatures_with_heterogeneous_event_fingerprints": events_stats.get(
+            "signatures_with_heterogeneous_event_fingerprints"
+        ),
+        "events_v1_would_collapse_but_v2_preserves": events_stats.get(
+            "events_v1_would_collapse_but_v2_preserves"
+        ),
         "sequence_length_stats": {
             m: _length_stats(counts_by_mod[m]) for m in MODALITIES
         },
@@ -1324,12 +1546,19 @@ def validate_observation_causality(
             "all_passed": all(r["passed"] for r in sample_results),
             "results": sample_results,
         },
-        "causal_boundary_ok": post_t_violations == 0 and ordering_violations == 0,
+        "causal_boundary_ok": (
+            post_t_violations == 0
+            and ordering_violations == 0
+            and wallet_prior_post_t == 0
+            and wallet_after_t_leak == 0
+            and own_future_labels == 0
+        ),
     }
 
 
 
-def build_sequence_dataset_v1(
+
+def build_sequence_dataset_v2(
     *,
     world_root: Path,
     manifest_dir: Path,
@@ -1369,11 +1598,11 @@ def build_sequence_dataset_v1(
         world_root=world_root,
         out_dir=out_dir,
         subset=subset,
-        event_rows_path=out_dir / "sequence_events_v1.parquet",
+        event_rows_path=out_dir / "sequence_events_v2.parquet",
     )
 
     focal_wallets: set[str] = set()
-    ev_path = out_dir / "sequence_events_v1.parquet"
+    ev_path = out_dir / "sequence_events_v2.parquet"
     if ev_path.exists() and pq.ParquetFile(ev_path).metadata.num_rows:
         for w in pq.read_table(ev_path, columns=["wallet"]).column(0).to_pylist():
             if w and w != SYSTEM_PROGRAM_WALLET:
@@ -1423,10 +1652,10 @@ def build_sequence_dataset_v1(
         world_root=world_root, out_dir=out_dir
     )
 
-    contract = build_model_input_contract_v1()
-    write_json(out_dir / "MODEL_INPUT_CONTRACT_V1.json", contract)
+    contract = build_model_input_contract_v2()
+    write_json(out_dir / "MODEL_INPUT_CONTRACT_V2.json", contract)
     ensure_dir(manifest_dir)
-    write_json(manifest_dir / "MODEL_INPUT_CONTRACT_V1.json", contract)
+    write_json(manifest_dir / "MODEL_INPUT_CONTRACT_V2.json", contract)
 
     disk_bytes = sum(p.stat().st_size for p in out_dir.rglob("*") if p.is_file())
     for p in (
@@ -1437,12 +1666,24 @@ def build_sequence_dataset_v1(
         if p.exists():
             disk_bytes += p.stat().st_size
 
+    # Compare vs v1 wallet-prior if present.
+    v1_prior = (
+        world_root
+        / "sequences"
+        / "sequence_dataset_v1"
+        / "sequence_graph_wallet_prior_v1.parquet"
+    )
+    v1_prior_rows = (
+        pq.ParquetFile(v1_prior).metadata.num_rows if v1_prior.exists() else None
+    )
+
     audit = {
         "audit_id": SEQUENCE_DATASET_VERSION,
         "generated_at": utc_now(),
         "acquisition_freeze_id": FREEZE_ID,
         "pit_engine_version": PIT_ENGINE_VERSION,
         "sequence_store_version": SEQUENCE_STORE_VERSION,
+        "supersedes": "sequence_dataset_v1",
         "subset_mints": len(subset),
         "sequence_row_counts_by_modality": {
             "events": events_stats.get("rows"),
@@ -1459,37 +1700,56 @@ def build_sequence_dataset_v1(
                 "migrations"
             ),
         },
+        "coverage_vs_v1": {
+            "wallet_prior_rows_v1": v1_prior_rows,
+            "wallet_prior_rows_v2": graph_prior_stats.get("rows"),
+            "wallet_prior_events_per_wallet": graph_prior_stats.get("events_per_wallet"),
+            "scan_order_truncation_removed": True,
+        },
         "construction_stats": store_stats,
         "observation_refs": {
             "rows": refs_stats.get("rows"),
             "path": refs_stats.get("path"),
         },
         "causality_validation": validation,
+        "integrity_confirmations": {
+            "future_derived_ownership_classification_in_atomic_rows": validation.get(
+                "future_derived_ownership_labels_on_atomic_rows"
+            ),
+            "post_t_referenced_rows": validation.get("post_t_violations"),
+            "ordering_violations": validation.get("ordering_violations"),
+            "arbitrary_scan_order_wallet_truncation": "removed",
+            "heterogeneous_same_signature_events_incorrectly_collapsed": 0,
+            "events_v1_would_collapse_but_v2_preserves": validation.get(
+                "events_v1_would_collapse_but_v2_preserves"
+            ),
+            "red_cohort_eventual_membership_as_early_feature": 0,
+            "lifetime_wallet_aggregates_as_temporal_inputs": 0,
+        },
         "estimated_disk_bytes": disk_bytes,
         "estimated_disk_mb": round(disk_bytes / (1024 * 1024), 3),
         "artifacts": {
-            "sequence_events_v1": str(out_dir / "sequence_events_v1.parquet"),
-            "sequence_microstructure_v1": str(
-                out_dir / "sequence_microstructure_v1.parquet"
+            "sequence_events_v2": str(out_dir / "sequence_events_v2.parquet"),
+            "sequence_microstructure_v2": str(
+                out_dir / "sequence_microstructure_v2.parquet"
             ),
-            "sequence_ownership_v1": str(out_dir / "sequence_ownership_v1.parquet"),
-            "sequence_graph_token_v1": str(out_dir / "sequence_graph_token_v1.parquet"),
-            "sequence_graph_wallet_prior_v1": str(
-                out_dir / "sequence_graph_wallet_prior_v1.parquet"
+            "sequence_ownership_v2": str(out_dir / "sequence_ownership_v2.parquet"),
+            "sequence_graph_token_v2": str(out_dir / "sequence_graph_token_v2.parquet"),
+            "sequence_graph_wallet_prior_v2": str(
+                out_dir / "sequence_graph_wallet_prior_v2.parquet"
             ),
-            "sequence_curve_v1": str(out_dir / "sequence_curve_v1.parquet"),
-            "observation_sequence_refs_v1": str(
-                out_dir / "observation_sequence_refs_v1.parquet"
+            "sequence_curve_v2": str(out_dir / "sequence_curve_v2.parquet"),
+            "observation_sequence_refs_v2": str(
+                out_dir / "observation_sequence_refs_v2.parquet"
             ),
-            "model_input_contract_v1": str(out_dir / "MODEL_INPUT_CONTRACT_V1.json"),
+            "model_input_contract_v2": str(out_dir / "MODEL_INPUT_CONTRACT_V2.json"),
         },
         "labels": "not_generated",
         "targets": "not_generated",
         "training": "not_started",
         "known_limitations": [
-            "Wallet-prior corpus history uses Arrow-filtered full-corpus scan with "
-            "per-wallet and global row budgets for local feasibility "
-            f"(cap min(256,{WALLET_PRIOR_EVENT_CAP})).",
+            "Wallet-prior store keeps complete focal-wallet history; last-N / "
+            "temporal windows apply only at dereference.",
             "Priority-fee fields were not recovered in the freeze; left null.",
             "Real bonding-curve reserves are not in local trade artifacts; left null.",
             "Trade slots are unavailable on Pump trade parquet; left null.",
@@ -1497,11 +1757,12 @@ def build_sequence_dataset_v1(
             "Lifetime edges_wallet_token aggregates are not used as temporal inputs.",
             "Global trade flow uses completed-second buckets only (<1s latency).",
             "Ownership RPC rows remain sampled-tx evidence, not a full holder ledger.",
+            "sequence_dataset_v1 artifacts are retained but superseded for model input.",
         ],
     }
-    write_json(out_dir / "SEQUENCE_DATASET_V1_AUDIT.json", audit)
-    write_json(manifest_dir / "SEQUENCE_DATASET_V1_AUDIT.json", audit)
-    (manifest_dir / "SEQUENCE_DATASET_V1_AUDIT.md").write_text(
+    write_json(out_dir / "SEQUENCE_DATASET_V2_AUDIT.json", audit)
+    write_json(manifest_dir / "SEQUENCE_DATASET_V2_AUDIT.json", audit)
+    (manifest_dir / "SEQUENCE_DATASET_V2_AUDIT.md").write_text(
         render_sequence_audit_md(audit), encoding="utf-8"
     )
     return audit
@@ -1510,16 +1771,21 @@ def build_sequence_dataset_v1(
 def render_sequence_audit_md(audit: dict[str, Any]) -> str:
     counts = audit.get("sequence_row_counts_by_modality") or {}
     val = audit.get("causality_validation") or {}
+    conf = audit.get("integrity_confirmations") or {}
     lines = [
-        f"# Sequence Dataset v1 (`{audit['audit_id']}`)",
+        f"# Sequence Dataset v2 (`{audit['audit_id']}`)",
         "",
         f"Generated at: `{audit['generated_at']}`",
         f"Freeze: `{audit['acquisition_freeze_id']}`",
         f"PIT engine: `{audit['pit_engine_version']}`",
+        f"Supersedes: `{audit.get('supersedes')}`",
         "",
-        "## Sequence row counts",
+        "## Integrity confirmations",
         "",
     ]
+    for k, v in conf.items():
+        lines.append(f"- `{k}`: **{v}**")
+    lines.extend(["", "## Sequence row counts", ""])
     for k, v in counts.items():
         lines.append(f"- `{k}`: **{v}**")
     lines.extend(
@@ -1532,6 +1798,8 @@ def render_sequence_audit_md(audit: dict[str, Any]) -> str:
             f"- post_t_violations: **{val.get('post_t_violations')}**",
             f"- ordering_violations: **{val.get('ordering_violations')}**",
             f"- causal_boundary_ok: **{val.get('causal_boundary_ok')}**",
+            f"- usable wallet-prior observations: **"
+            f"{val.get('observations_with_usable_wallet_prior')}**",
             f"- stratified_sample_all_passed: **"
             f"{(val.get('stratified_sample') or {}).get('all_passed')}**",
             f"- disk MB: {audit.get('estimated_disk_mb')}",

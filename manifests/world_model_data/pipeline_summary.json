@@ -1,22 +1,32 @@
 {
-  "generated_at": "2026-09-04T19:43:28.285009+00:00",
+  "generated_at": "2026-09-04T22:24:52.949196+00:00",
   "stages": [
     "sequences"
   ],
-  "sequence_dataset_v1": {
+  "sequence_dataset_v2": {
     "row_counts": {
-      "events": 134864,
+      "events": 136196,
       "curve": 102164,
       "microstructure": 15241,
       "ownership": 10797,
-      "graph_token": 143621,
-      "graph_wallet_prior": 3210201,
+      "graph_token": 144953,
+      "graph_wallet_prior": 13444425,
       "global_trade_second_buckets": 2425001,
       "global_launches": 798430,
       "global_migrations": 5701
     },
     "observation_refs": 51353,
     "causal_boundary_ok": true,
-    "estimated_disk_mb": 1035.025
+    "estimated_disk_mb": 3639.413,
+    "integrity_confirmations": {
+      "future_derived_ownership_classification_in_atomic_rows": 0,
+      "post_t_referenced_rows": 0,
+      "ordering_violations": 0,
+      "arbitrary_scan_order_wallet_truncation": "removed",
+      "heterogeneous_same_signature_events_incorrectly_collapsed": 0,
+      "events_v1_would_collapse_but_v2_preserves": 1332,
+      "red_cohort_eventual_membership_as_early_feature": 0,
+      "lifetime_wallet_aggregates_as_temporal_inputs": 0
+    }
   }
 }

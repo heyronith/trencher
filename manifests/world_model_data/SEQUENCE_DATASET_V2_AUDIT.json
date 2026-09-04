@@ -1,0 +1,2985 @@
+{
+  "audit_id": "sequence_dataset_v2",
+  "generated_at": "2026-09-04T22:26:04.640002+00:00",
+  "acquisition_freeze_id": "world_model_freeze_v1",
+  "pit_engine_version": "pit_v4",
+  "sequence_store_version": "sequence_stores_v2",
+  "supersedes": "sequence_dataset_v1",
+  "subset_mints": 4000,
+  "sequence_row_counts_by_modality": {
+    "events": 136196,
+    "curve": 102164,
+    "microstructure": 15241,
+    "ownership": 10797,
+    "graph_token": 144953,
+    "graph_wallet_prior": 13444425,
+    "global_trade_second_buckets": 2425001,
+    "global_launches": 798430,
+    "global_migrations": 5701
+  },
+  "coverage_vs_v1": {
+    "wallet_prior_rows_v1": 3210201,
+    "wallet_prior_rows_v2": 13444425,
+    "wallet_prior_events_per_wallet": {
+      "min": 1,
+      "median": 74.0,
+      "p90": 1139.0,
+      "p99": 5831.0,
+      "max": 253503,
+      "mean": 489.7430059740638,
+      "zero_count": 0,
+      "n": 27452
+    },
+    "scan_order_truncation_removed": true
+  },
+  "construction_stats": {
+    "events": {
+      "rows": 136196,
+      "entities": 3117,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_events_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_events_v2_entity_index.parquet",
+      "raw_input_rows": 136196,
+      "deduped_rows": 136196,
+      "exact_duplicate_groups_removed": 0,
+      "duplicate_raw_event_rate": 0.0,
+      "signatures_with_heterogeneous_event_fingerprints": 799,
+      "events_in_heterogeneous_signature_groups": 2131,
+      "events_v1_would_collapse_but_v2_preserves": 1332,
+      "excluded_system_program_rows": 0,
+      "dedupe_policy": "conservative_event_fingerprint"
+    },
+    "curve": {
+      "rows": 102164,
+      "entities": 3133,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_curve_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_curve_v2_entity_index.parquet"
+    },
+    "microstructure": {
+      "rows": 15241,
+      "entities": 3133,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_microstructure_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_microstructure_v2_entity_index.parquet"
+    },
+    "ownership": {
+      "rows": 10797,
+      "entities": 3162,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_ownership_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_ownership_v2_entity_index.parquet",
+      "event_kind_counts": {
+        "rpc_pre_post_token_balance": 5691,
+        "bq_spl_transfer": 5106
+      },
+      "source_quality_counts": {
+        "genuine_spl_token_balance_delta_observed": 5691,
+        "ledger_transfer_observed": 5106
+      },
+      "future_derived_ownership_labels_on_rows": 0
+    },
+    "graph_token": {
+      "rows": 144953,
+      "entities": 4000,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_token_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_token_v2_entity_index.parquet",
+      "edge_type_counts": {
+        "creator_token": 4000,
+        "wallet_token_buy": 70896,
+        "wallet_token_sell": 65300,
+        "spl_transfer_ownership": 4041,
+        "native_sol_funding": 716
+      },
+      "excludes_red_cohort_membership": true,
+      "excludes_lifetime_wallet_token_aggregates": true
+    },
+    "graph_wallet_prior": {
+      "rows": 13444425,
+      "entities": 27452,
+      "path": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_wallet_prior_v2.parquet",
+      "entity_index": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_wallet_prior_v2_entity_index.parquet",
+      "corpus_rows_scanned": 33581765,
+      "rows_kept": 13444425,
+      "focal_wallets": 27452,
+      "wallets_with_prior": 27452,
+      "excluded_system_program_rows": 6690901,
+      "scan_order_truncation": false,
+      "store_policy": "complete_focal_wallet_history_sorted_causally",
+      "events_per_wallet": {
+        "min": 1,
+        "median": 74.0,
+        "p90": 1139.0,
+        "p99": 5831.0,
+        "max": 253503,
+        "mean": 489.7430059740638,
+        "zero_count": 0,
+        "n": 27452
+      },
+      "excludes_red_cohort_membership": true
+    },
+    "global": {
+      "store_id": "sequence_global_v2",
+      "version": "sequence_stores_v2",
+      "policy": "last_completed_second_only_for_trade_buckets",
+      "paths": {
+        "launches": "data/external/world_model/pit/global/launches_timeline.parquet",
+        "trade_buckets": "data/external/world_model/pit/global/trade_second_buckets.parquet",
+        "migrations": "data/external/world_model/pit/global/migrations_timeline.parquet",
+        "blocks_daily": "data/external/world_model/bigquery/blocks_daily.parquet",
+        "daily_pump_network": "data/external/world_model/global_context/daily_pump_network_context.parquet"
+      },
+      "row_counts": {
+        "launches": 798430,
+        "trade_buckets": 2425001,
+        "migrations": 5701,
+        "blocks_daily": 61,
+        "daily_pump_network": 38
+      },
+      "note": "References PIT v4 global indexes; consumers must apply last_completed_second(T) for trade flow."
+    }
+  },
+  "observation_refs": {
+    "rows": 51353,
+    "path": "data/external/world_model/sequences/sequence_dataset_v2/observation_sequence_refs_v2.parquet"
+  },
+  "causality_validation": {
+    "observations_validated": 51353,
+    "post_t_violations": 0,
+    "ordering_violations": 0,
+    "future_derived_ownership_labels_on_atomic_rows": 0,
+    "wallet_prior_post_t_violations": 0,
+    "wallet_not_observable_by_t_leaks": 0,
+    "observations_with_usable_wallet_prior": 42539,
+    "duplicate_raw_event_rate": 0.0,
+    "exact_duplicate_groups_removed": 0,
+    "signatures_with_heterogeneous_event_fingerprints": 799,
+    "events_v1_would_collapse_but_v2_preserves": 1332,
+    "sequence_length_stats": {
+      "events": {
+        "min": 0,
+        "median": 2.0,
+        "p90": 32.0,
+        "p99": 256.0,
+        "max": 3891,
+        "mean": 17.42248748855958,
+        "zero_count": 14038,
+        "n": 51353
+      },
+      "curve": {
+        "min": 0,
+        "median": 4.0,
+        "p90": 47.0,
+        "p99": 198.0,
+        "max": 200,
+        "mean": 16.383969777812396,
+        "zero_count": 14409,
+        "n": 51353
+      },
+      "micro": {
+        "min": 0,
+        "median": 2.0,
+        "p90": 6.0,
+        "p99": 6.0,
+        "max": 6,
+        "mean": 2.7352442895254416,
+        "zero_count": 13723,
+        "n": 51353
+      },
+      "ownership": {
+        "min": 0,
+        "median": 2.0,
+        "p90": 2.0,
+        "p99": 10.0,
+        "max": 258,
+        "mean": 1.8380036219889782,
+        "zero_count": 15648,
+        "n": 51353
+      },
+      "graph_token": {
+        "min": 1,
+        "median": 3.0,
+        "p90": 33.0,
+        "p99": 257.0,
+        "max": 3962,
+        "mean": 19.031410044203845,
+        "zero_count": 0,
+        "n": 51353
+      }
+    },
+    "observations_with_no_sequence": {
+      "events": 14038,
+      "curve": 14409,
+      "micro": 13723,
+      "ownership": 15648,
+      "graph_token": 0
+    },
+    "token_event_coverage_by_age": {
+      "launch": {
+        "graph_token": 4000,
+        "micro": 350,
+        "ownership": 338
+      },
+      "trades_1": {
+        "events": 3117,
+        "curve": 3038,
+        "micro": 2943,
+        "ownership": 2735,
+        "graph_token": 3133
+      },
+      "trades_2": {
+        "events": 2594,
+        "curve": 2512,
+        "micro": 2446,
+        "ownership": 2266,
+        "graph_token": 2607
+      },
+      "trades_4": {
+        "events": 2067,
+        "curve": 1987,
+        "micro": 1945,
+        "ownership": 1780,
+        "graph_token": 2078
+      },
+      "10s": {
+        "events": 2071,
+        "curve": 2328,
+        "micro": 2390,
+        "ownership": 2194,
+        "graph_token": 4000
+      },
+      "trades_8": {
+        "events": 1466,
+        "curve": 1384,
+        "micro": 1383,
+        "ownership": 1234,
+        "graph_token": 1472
+      },
+      "30s": {
+        "events": 2648,
+        "curve": 2669,
+        "micro": 2735,
+        "ownership": 2559,
+        "graph_token": 4000
+      },
+      "trades_16": {
+        "events": 917,
+        "curve": 835,
+        "micro": 870,
+        "ownership": 753,
+        "graph_token": 918
+      },
+      "1m": {
+        "events": 2844,
+        "curve": 2836,
+        "micro": 2895,
+        "ownership": 2740,
+        "graph_token": 4000
+      },
+      "2m": {
+        "events": 2977,
+        "curve": 2966,
+        "micro": 3003,
+        "ownership": 2881,
+        "graph_token": 4000
+      },
+      "5m": {
+        "events": 3058,
+        "curve": 3059,
+        "micro": 3072,
+        "ownership": 2986,
+        "graph_token": 4000
+      },
+      "10m": {
+        "events": 3081,
+        "curve": 3088,
+        "micro": 3097,
+        "ownership": 3029,
+        "graph_token": 4000
+      },
+      "30m": {
+        "events": 3103,
+        "curve": 3115,
+        "micro": 3119,
+        "ownership": 3080,
+        "graph_token": 4000
+      },
+      "1h": {
+        "events": 3111,
+        "curve": 3125,
+        "micro": 3127,
+        "ownership": 3104,
+        "graph_token": 4000
+      },
+      "6h": {
+        "events": 3116,
+        "curve": 3131,
+        "micro": 3131,
+        "ownership": 3132,
+        "graph_token": 4000
+      },
+      "trades_32": {
+        "events": 558,
+        "curve": 484,
+        "micro": 543,
+        "graph_token": 558,
+        "ownership": 446
+      },
+      "trades_64": {
+        "events": 307,
+        "curve": 243,
+        "micro": 304,
+        "graph_token": 307,
+        "ownership": 234
+      },
+      "trades_128": {
+        "events": 160,
+        "curve": 103,
+        "micro": 159,
+        "ownership": 121,
+        "graph_token": 160
+      },
+      "trades_256": {
+        "events": 74,
+        "micro": 73,
+        "graph_token": 74,
+        "ownership": 57,
+        "curve": 29
+      },
+      "trades_512": {
+        "events": 46,
+        "micro": 45,
+        "graph_token": 46,
+        "ownership": 36,
+        "curve": 12
+      }
+    },
+    "coverage_by_trigger": {
+      "fixed_age": {
+        "graph_token": 40000,
+        "events": 26009,
+        "curve": 26317,
+        "micro": 26919,
+        "ownership": 26043
+      },
+      "event_count": {
+        "events": 11306,
+        "curve": 10627,
+        "micro": 10711,
+        "ownership": 9662,
+        "graph_token": 11353
+      }
+    },
+    "temporal_graph_coverage": {
+      "obs_with_graph_token": 51353,
+      "obs_total": 51353
+    },
+    "microstructure_coverage": {
+      "obs_with_micro": 37630,
+      "obs_total": 51353
+    },
+    "ownership_coverage": {
+      "obs_with_ownership": 35705,
+      "obs_total": 51353
+    },
+    "stratified_sample": {
+      "n": 64,
+      "all_passed": true,
+      "results": [
+        {
+          "observation_id": "67d5c3481124491f49ba3d00",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673320.649476,
+          "trigger": "event_count",
+          "trigger_value": "trades_128",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 128,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 129,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 129,
+              "rows": 9155,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "2b2021acfbc2e805a1fe692f",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676647.707471,
+          "trigger": "event_count",
+          "trigger_value": "trades_128",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 128,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 129,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 76,
+              "rows": 4195,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "030601adf6f8532e8c9833a9",
+          "mint": "61cW4ohpSuNdGZk2ZE7PxZVLhowwi9M5VXLCaZs2pump",
+          "observation_time_t": 1780678712.593625,
+          "trigger": "event_count",
+          "trigger_value": "trades_16",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 16,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 17,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 17,
+              "rows": 1066,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "a71c7b68de24933cdbf851f9",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673305.434059,
+          "trigger": "event_count",
+          "trigger_value": "trades_16",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 16,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 17,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 17,
+              "rows": 1123,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0bd08d9c6b7da9bef9f984f6",
+          "mint": "6SNwLx9geQCK9yEmjx2qL5aFjZWWjmhw2hb2vZ9dpump",
+          "observation_time_t": 1780652150.635201,
+          "trigger": "event_count",
+          "trigger_value": "trades_1",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 130,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0e1f6dab56892446b9302e81",
+          "mint": "61cW4ohpSuNdGZk2ZE7PxZVLhowwi9M5VXLCaZs2pump",
+          "observation_time_t": 1780678707.743856,
+          "trigger": "event_count",
+          "trigger_value": "trades_1",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 19,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "301a79fd4a317993774773fb",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673332.91289,
+          "trigger": "event_count",
+          "trigger_value": "trades_256",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 256,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 3,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 257,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 241,
+              "rows": 16065,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "fff615040df3e111dd613a91",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676659.737733,
+          "trigger": "event_count",
+          "trigger_value": "trades_256",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 256,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 257,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 135,
+              "rows": 5806,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0433ebd17dbe58c8eb069daa",
+          "mint": "7yyu2MwNUfJo7fXLjGkyiqFyJUfjUSiKT37aiJgApump",
+          "observation_time_t": 1780666886.789289,
+          "trigger": "event_count",
+          "trigger_value": "trades_2",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 2,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 9,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 3,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 273,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "3bef4163031d6879f014053c",
+          "mint": "XbjFJF7YcGJybDCym62EXDp73iimY1EM93hJCejpump",
+          "observation_time_t": 1780659330.580845,
+          "trigger": "event_count",
+          "trigger_value": "trades_2",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 2,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 5,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 3,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 3,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "01c95eab9c02afe9139f7261",
+          "mint": "3ZVH57eC5coxXp3zBh28ZsRMinYTLUMKAouiTWq5pump",
+          "observation_time_t": 1780654831.617501,
+          "trigger": "event_count",
+          "trigger_value": "trades_32",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 32,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 32,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 33,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 20,
+              "rows": 181,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "462ec1f3daacf3f4f198bc43",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676637.798431,
+          "trigger": "event_count",
+          "trigger_value": "trades_32",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 32,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 33,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 27,
+              "rows": 1807,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0936287891a91d9284874cf4",
+          "mint": "6hYrNL6qMEJKphUDv4QHPUmKZa8uAmiYsKUeQMe5pump",
+          "observation_time_t": 1780657214.007446,
+          "trigger": "event_count",
+          "trigger_value": "trades_4",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 4,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 4,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 5,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 4,
+              "rows": 32,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0d61ec6a631134fb60e8fdd2",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780815527.333097,
+          "trigger": "event_count",
+          "trigger_value": "trades_4",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 4,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 4,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 4,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 5,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 5,
+              "rows": 263,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "2315ce3dc5c709ea4320c685",
+          "mint": "227KTAUykzPJ6dM5ygnfzGBMmRA83q23ETFtVmjMpump",
+          "observation_time_t": 1780680240.916354,
+          "trigger": "event_count",
+          "trigger_value": "trades_512",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 512,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 513,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 251,
+              "rows": 55678,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "9ebec3ca6ce22290d1009a67",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676686.230206,
+          "trigger": "event_count",
+          "trigger_value": "trades_512",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 512,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 513,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 222,
+              "rows": 8234,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "02b6239906fc50b2f48842db",
+          "mint": "37pjPynUrzBzpF4DBConCb7JxqfMdwhnEC2KecoFpump",
+          "observation_time_t": 1780655635.445222,
+          "trigger": "event_count",
+          "trigger_value": "trades_64",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 64,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 64,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 65,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 28,
+              "rows": 1229,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "2879b9d119b696c2b13572c1",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676640.467653,
+          "trigger": "event_count",
+          "trigger_value": "trades_64",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 64,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 65,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 46,
+              "rows": 2864,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "030c04697150152d39ac3e70",
+          "mint": "FPWUordmGpG72mZg2WJSiT465DGYonSSYuLsyTUPpump",
+          "observation_time_t": 1780666872.513618,
+          "trigger": "event_count",
+          "trigger_value": "trades_8",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 8,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 8,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 9,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 9,
+              "rows": 298,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "1461c2b5727ca979563f2ee6",
+          "mint": "227KTAUykzPJ6dM5ygnfzGBMmRA83q23ETFtVmjMpump",
+          "observation_time_t": 1780680183.573471,
+          "trigger": "event_count",
+          "trigger_value": "trades_8",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 8,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 9,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 9,
+              "rows": 1794,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "1cd70f77c9b614831ab8332b",
+          "mint": "814F8B77drSQmypyX7BX8UT9FLWPZw4bp1M5bxw6pump",
+          "observation_time_t": 1780672433.820603,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "04f3fdf35ce3f9fc3c6b292c",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673894.668557,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 928,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 200,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 929,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 418,
+              "rows": 26572,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "019b4dfb178df08434e2b022",
+          "mint": "9xsAAjCXyFKoCgvB1cEG9oyVJfd3Nhez9zNFcr5apump",
+          "observation_time_t": 1780678748.64061,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 6,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 72,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "018611062405945423f1c9ff",
+          "mint": "GnQWciH6zHWJMMbrJYimS36GLvf7S3CqYHo8KAPrpump",
+          "observation_time_t": 1780672162.095088,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 6,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 6,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 7,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 4,
+              "rows": 311,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "1bc3ccfb734c772040a04f6e",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780677229.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1614,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 13,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1615,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 448,
+              "rows": 13748,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "8a9c8c742c0ea780b6535774",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780665928.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "10m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0025cc834e49ac836c150d93",
+          "mint": "6sebucg9BVb6zwfZewMEeN6CASHrEqnB4ZbLiRYfpump",
+          "observation_time_t": 1780666271.007121,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "7ee0f24831f9ef9ec15068fc",
+          "mint": "227KTAUykzPJ6dM5ygnfzGBMmRA83q23ETFtVmjMpump",
+          "observation_time_t": 1780680188.367594,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 47,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 48,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 48,
+              "rows": 11716,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "072bc4e774c976f2db5dcb5f",
+          "mint": "DJ2RxEPPKcNtcbFUsxkDhzsGz6L9w5GgkGKgiPFPpump",
+          "observation_time_t": 1780679326.038865,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 2,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 12,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 3,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 261,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "035d4da064aaae93833dcbde",
+          "mint": "5Hx28uKMXfzS7MRkaeyo5XjfR4hX9NQAsT9XarKipump",
+          "observation_time_t": 1780668187.533473,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 5,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 5,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 6,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 5,
+              "rows": 419,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "aecac3310f1697ea1adac238",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676639.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 49,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 50,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 36,
+              "rows": 2286,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "083ed8a9b357547dca7e9f0a",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780665338.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "798af0bbc98f258636068555",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673304.668557,
+          "trigger": "fixed_age",
+          "trigger_value": "10s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 12,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 13,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 13,
+              "rows": 801,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "127126ac7c50e88a6148d363",
+          "mint": "7UUHp53rfM8KX8JWGovcMUK5fy2FsaeTenNZL5Zmpump",
+          "observation_time_t": 1780680077.73,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "2734a4adca416a9998b66d18",
+          "mint": "FPWUordmGpG72mZg2WJSiT465DGYonSSYuLsyTUPpump",
+          "observation_time_t": 1780670466.894232,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 43,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 43,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 44,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 28,
+              "rows": 1144,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0c082bda11823c0e8b80de98",
+          "mint": "8GB9pWggXMrXaGC3MoacvZ85TQWFVQnhBbYQJYLepump",
+          "observation_time_t": 1780675478.179902,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 11,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0387661646b5566f28826939",
+          "mint": "7u5UMyjgKkAqm9cKZrvrXTm9j1heASywdeWvSPJtpump",
+          "observation_time_t": 1780664945.268334,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 3,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 19,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 4,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 87,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "9d199945ef5d15a0c45deb17",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780680229.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1786,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 185,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1787,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 489,
+              "rows": 17820,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "b8bd896bb2e14c0eede9beaa",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780668928.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "1h",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 60,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "06510c157c068b7f1deb9841",
+          "mint": "BRaj7CvNtqJrgRsawvW4ZUia1WuJV4NW4cTrxiK6pump",
+          "observation_time_t": 1780673900.044047,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 11,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "366590e370ec4a1f9a2cfdee",
+          "mint": "AEyAY2nhgLzFV5CWByE6aowSLnXfKBusnDTui5BKpump",
+          "observation_time_t": 1780662998.038269,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 102,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 165,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 103,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 9,
+              "rows": 938,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "1c6d9cb9462902f26a483ffd",
+          "mint": "7XUVYSy5UTNMUxW6BkoU5wKMUic5NDiswsCvoxodpump",
+          "observation_time_t": 1780679502.466383,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 2,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 2,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 3,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 161,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "006cea48530fe82e6bd7e993",
+          "mint": "5Hx28uKMXfzS7MRkaeyo5XjfR4hX9NQAsT9XarKipump",
+          "observation_time_t": 1780668237.533473,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 6,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 6,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 7,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 5,
+              "rows": 419,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "8cfe9897d34ea24f2f53dbe2",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676689.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 542,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 543,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 228,
+              "rows": 8285,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "7d1e27396b572f00876f7d44",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780665388.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "1m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "00367f82ec60b5cb9c4da738",
+          "mint": "6fTz1eFaAddmV9gnxNu9XyFGFCrQWokRee43jdB4pump",
+          "observation_time_t": 1780683881.237927,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "03d237c0e20f8303f3714c1c",
+          "mint": "ACio4QLRszDEBXwXVNDSQe4TK4W9LERpZg4kvDo6pump",
+          "observation_time_t": 1780673414.668557,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 926,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 198,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 927,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 418,
+              "rows": 25705,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "07422899b31035e9d32398b5",
+          "mint": "5sbcwtHRTYaZoHtzhwUUx4fDX9kpeQsS7g9ttCT6pump",
+          "observation_time_t": 1780664689.041531,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 1,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "01da9cbe6fbbd163671b24bf",
+          "mint": "8J1hq3vCeRUuCJLeVaiJe5youZ2ZGKvu9PxGDkarpump",
+          "observation_time_t": 1780672747.002787,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 3,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 3,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 3,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 4,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 3,
+              "rows": 33,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "1a5e5cb653669ed5873c5145",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676749.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 887,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 3,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 888,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 325,
+              "rows": 10268,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "20302493b90d50b2fcc7a1b9",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780665448.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "2m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0ee904cd0c5682611f6c4a7c",
+          "mint": "Db7J1GJrGYUVrQyDzmUmtUEdKCBeGnK7N55KNphqpump",
+          "observation_time_t": 1780681922.939675,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 215,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "03d70733b9668bcdebaf2ee3",
+          "mint": "X9HCW5C3Xw4rJUcEoaw7eQtQ2FCBE9xyp4yZ3Ckpump",
+          "observation_time_t": 1780663171.799136,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 237,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 200,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 238,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 9,
+              "rows": 1220,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0a4aae5155638d9daae02d91",
+          "mint": "5FS7kWjRFeQQzwpfwVpuJscNVyd7ztdrACr7L6qUpump",
+          "observation_time_t": 1780661595.65458,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 1,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0045e3cb48b012318ceecfb7",
+          "mint": "FbHxBS7ZfCLksXG9ZouvS6CmGz9yq45a5GryySWjpump",
+          "observation_time_t": 1780684289.531787,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 8,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 8,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 6,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 9,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 7,
+              "rows": 298,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "9e82691779803ee57c277e80",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780678429.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1735,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 134,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1736,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 476,
+              "rows": 16204,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "14891a88345bfb9d014692eb",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780667128.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "30m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 40,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "12e48ab17698429a1127e484",
+          "mint": "24Ty7r2UaqLTgRHwTN7KLeffJNZQ96ik5yMKtCRdpump",
+          "observation_time_t": 1780671070.430792,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "124acdc36a54fa67939d700e",
+          "mint": "AEyAY2nhgLzFV5CWByE6aowSLnXfKBusnDTui5BKpump",
+          "observation_time_t": 1780662968.038269,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 77,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 112,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 78,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 5,
+              "rows": 598,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0218c88456ec884a0e12b30b",
+          "mint": "4zaAFXC6AvMSVyvFvvahTGGPMtPaVxXufSjUyKQgpump",
+          "observation_time_t": 1780673860.803495,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 2,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 2,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 2,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 3,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 3,
+              "rows": 78,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "0b046f6b27900614219c49fc",
+          "mint": "CSN3NbxBMjcwiEyB7Sb1htQmqxDT9pNUfHhv5k3Bpump",
+          "observation_time_t": 1780661169.294611,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "rpc_balance_observed",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 25,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 25,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 5,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 26,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 21,
+              "rows": 390,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "860573fe0180fd2b69d8bfe5",
+          "mint": "9Cs4DHZibUny9TTPwNxjbU82RpzTvXZtk3Vcmu3Upump",
+          "observation_time_t": 1780676659.519379,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 243,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 244,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 129,
+              "rows": 5301,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "f9b6dc78a3604ea81ed25ca8",
+          "mint": "JnC4w2eatKAh3e9u6KZBC1w3yLMrmC91hnnXuxrpump",
+          "observation_time_t": 1780665358.648083,
+          "trigger": "fixed_age",
+          "trigger_value": "30s",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "trade_derived_proxy",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 1,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 1,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 1,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 2,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 2,
+              "rows": 25,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        },
+        {
+          "observation_id": "003445a4d6fc5d9831aaa88d",
+          "mint": "6NmSLgU3kgTWBk2KsT9rDnzR8P5LJMTthkdLndFEpump",
+          "observation_time_t": 1780682589.907307,
+          "trigger": "fixed_age",
+          "trigger_value": "5m",
+          "launch_day": "2026-06-05",
+          "launch_regime": "jun5_8_pre_holdercap",
+          "ownership_level_at_t": "missing",
+          "passed": true,
+          "details": {
+            "events": {
+              "count": 0,
+              "post_t": 0
+            },
+            "curve": {
+              "count": 0,
+              "post_t": 0
+            },
+            "micro": {
+              "count": 0,
+              "post_t": 0
+            },
+            "ownership": {
+              "count": 0,
+              "post_t": 0
+            },
+            "graph_token": {
+              "count": 1,
+              "post_t": 0
+            },
+            "graph_wallet_prior": {
+              "wallets": 1,
+              "rows": 0,
+              "post_t": 0,
+              "last_n": 256
+            },
+            "global_completed_second_ok": true
+          }
+        }
+      ]
+    },
+    "causal_boundary_ok": true
+  },
+  "integrity_confirmations": {
+    "future_derived_ownership_classification_in_atomic_rows": 0,
+    "post_t_referenced_rows": 0,
+    "ordering_violations": 0,
+    "arbitrary_scan_order_wallet_truncation": "removed",
+    "heterogeneous_same_signature_events_incorrectly_collapsed": 0,
+    "events_v1_would_collapse_but_v2_preserves": 1332,
+    "red_cohort_eventual_membership_as_early_feature": 0,
+    "lifetime_wallet_aggregates_as_temporal_inputs": 0
+  },
+  "estimated_disk_bytes": 3816201137,
+  "estimated_disk_mb": 3639.413,
+  "artifacts": {
+    "sequence_events_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_events_v2.parquet",
+    "sequence_microstructure_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_microstructure_v2.parquet",
+    "sequence_ownership_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_ownership_v2.parquet",
+    "sequence_graph_token_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_token_v2.parquet",
+    "sequence_graph_wallet_prior_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_graph_wallet_prior_v2.parquet",
+    "sequence_curve_v2": "data/external/world_model/sequences/sequence_dataset_v2/sequence_curve_v2.parquet",
+    "observation_sequence_refs_v2": "data/external/world_model/sequences/sequence_dataset_v2/observation_sequence_refs_v2.parquet",
+    "model_input_contract_v2": "data/external/world_model/sequences/sequence_dataset_v2/MODEL_INPUT_CONTRACT_V2.json"
+  },
+  "labels": "not_generated",
+  "targets": "not_generated",
+  "training": "not_started",
+  "known_limitations": [
+    "Wallet-prior store keeps complete focal-wallet history; last-N / temporal windows apply only at dereference.",
+    "Priority-fee fields were not recovered in the freeze; left null.",
+    "Real bonding-curve reserves are not in local trade artifacts; left null.",
+    "Trade slots are unavailable on Pump trade parquet; left null.",
+    "RED-COHORT membership is intentionally excluded from temporal graph inputs.",
+    "Lifetime edges_wallet_token aggregates are not used as temporal inputs.",
+    "Global trade flow uses completed-second buckets only (<1s latency).",
+    "Ownership RPC rows remain sampled-tx evidence, not a full holder ledger.",
+    "sequence_dataset_v1 artifacts are retained but superseded for model input."
+  ]
+}

@@ -24,7 +24,7 @@ from trencher.data.world_model.pit_audit import build_pit_v4_audit
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
-from trencher.data.world_model.sequences import build_sequence_dataset_v1
+from trencher.data.world_model.sequences import build_sequence_dataset_v2
 
 logger = logging.getLogger(__name__)
 
@@ -256,20 +256,21 @@ def run_world_model_pipeline(
 
         if "sequences" in stages:
             logger.info(
-                "Building sequence dataset v1 (causal stores + refs; no labels)"
+                "Building sequence dataset v2 (causal stores + refs; no labels)"
             )
-            seq = build_sequence_dataset_v1(
+            seq = build_sequence_dataset_v2(
                 world_root=world_root,
                 manifest_dir=manifest_dir,
                 pump_root=external_root / "pumpfun_memecoin_corpus",
             )
-            summary["sequence_dataset_v1"] = {
+            summary["sequence_dataset_v2"] = {
                 "row_counts": seq.get("sequence_row_counts_by_modality"),
                 "observation_refs": (seq.get("observation_refs") or {}).get("rows"),
                 "causal_boundary_ok": (seq.get("causality_validation") or {}).get(
                     "causal_boundary_ok"
                 ),
                 "estimated_disk_mb": seq.get("estimated_disk_mb"),
+                "integrity_confirmations": seq.get("integrity_confirmations"),
             }
 
         if "report" in stages:
