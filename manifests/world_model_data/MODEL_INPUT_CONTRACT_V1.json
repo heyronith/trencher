@@ -1,0 +1,94 @@
+{
+  "contract_version": "model_input_contract_v1",
+  "generated_at": "2026-09-04T19:44:01.286449+00:00",
+  "pit_engine_version": "pit_v4",
+  "sequence_dataset_version": "sequence_dataset_v1",
+  "freeze_id": "world_model_freeze_v1",
+  "identifiers_not_structured_features": [
+    "mint",
+    "observation_id",
+    "source_freeze_version",
+    "pit_engine_version",
+    "observation_dataset_version",
+    "sequence_store_version",
+    "artifact_id",
+    "tx_signature",
+    "model_state_digest"
+  ],
+  "structured_encoder_forbidden": [
+    "mint_as_categorical_embedding",
+    "base58_address_as_tabular_string_feature",
+    "red_cohort_full_history_membership_at_earlier_T",
+    "lifetime_edges_wallet_token_aggregates",
+    "post_T_sequence_rows",
+    "graduation_or_outcome_labels"
+  ],
+  "graph_node_identities_allowed": [
+    "wallet_id (cross-token history is an intended TGN signal)",
+    "token_mint as graph node id (not tabular categorical feature)",
+    "creator_wallet as graph node id"
+  ],
+  "modality_stores": {
+    "token_events": "sequence_events_v1",
+    "microstructure": "sequence_microstructure_v1",
+    "ownership": "sequence_ownership_v1",
+    "graph_token": "sequence_graph_token_v1",
+    "graph_wallet_prior": "sequence_graph_wallet_prior_v1",
+    "curve_execution": "sequence_curve_v1",
+    "global": "pit/global + blocks_daily (referenced, last_completed_second)"
+  },
+  "observation_payload_composition": [
+    "observation metadata (identifiers)",
+    "structured PIT model_state summary (tabular/masks)",
+    "causal token event sequence via refs/cutoffs",
+    "causal graph history via token + wallet-prior refs",
+    "causal ownership / microstructure / curve / global modalities"
+  ],
+  "availability_quality_masks": [
+    "modality_mask_*",
+    "ownership_level_at_t",
+    "source_quality_flag",
+    "evidence_level"
+  ],
+  "provenance_debug_metadata": [
+    "store paths",
+    "construction stats",
+    "excluded_system_program_counts",
+    "duplicate_raw_event_rate"
+  ],
+  "training_window_presets": [
+    {
+      "name": "last_n_64",
+      "kind": "last_n",
+      "n": 64
+    },
+    {
+      "name": "last_n_256",
+      "kind": "last_n",
+      "n": 256
+    },
+    {
+      "name": "last_10s",
+      "kind": "last_seconds",
+      "seconds": 10
+    },
+    {
+      "name": "last_30s",
+      "kind": "last_seconds",
+      "seconds": 30
+    },
+    {
+      "name": "last_2m",
+      "kind": "last_seconds",
+      "seconds": 120
+    },
+    {
+      "name": "full_capped_4096",
+      "kind": "full_capped",
+      "cap": 4096
+    }
+  ],
+  "causal_invariant": "event_time_unix <= observation_time_t for every referenced row",
+  "labels": "not_generated",
+  "training": "not_started"
+}

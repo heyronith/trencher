@@ -347,7 +347,16 @@ def data_probe_world_model_sources(
     "stages",
     multiple=True,
     type=click.Choice(
-        ["probe", "plan", "acquire", "report", "freeze", "pit", "observations"]
+        [
+            "probe",
+            "plan",
+            "acquire",
+            "report",
+            "freeze",
+            "pit",
+            "observations",
+            "sequences",
+        ]
     ),
     help="Subset of pipeline stages (default: all)",
 )

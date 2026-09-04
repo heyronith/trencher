@@ -1,12 +1,22 @@
 {
-  "generated_at": "2026-09-04T17:21:03.559825+00:00",
+  "generated_at": "2026-09-04T19:43:28.285009+00:00",
   "stages": [
-    "observations"
+    "sequences"
   ],
-  "observation_dataset_v1": {
-    "tokens_n": 4000,
-    "observations_n": 51353,
-    "leakage_all_passed": true,
-    "estimated_disk_mb": 88.552
+  "sequence_dataset_v1": {
+    "row_counts": {
+      "events": 134864,
+      "curve": 102164,
+      "microstructure": 15241,
+      "ownership": 10797,
+      "graph_token": 143621,
+      "graph_wallet_prior": 3210201,
+      "global_trade_second_buckets": 2425001,
+      "global_launches": 798430,
+      "global_migrations": 5701
+    },
+    "observation_refs": 51353,
+    "causal_boundary_ok": true,
+    "estimated_disk_mb": 1035.025
   }
 }
