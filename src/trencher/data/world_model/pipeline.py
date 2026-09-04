@@ -19,7 +19,7 @@ from trencher.data.world_model.acquire.funding import run_native_sol_funding_acq
 from trencher.data.world_model.acquire.rpc import SolanaRpc
 from trencher.data.world_model.freeze import build_data_freeze
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
-from trencher.data.world_model.pit import materialize_pit_states_for_subset
+from trencher.data.world_model.pit_audit import build_pit_v2_audit
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
@@ -187,8 +187,9 @@ def run_world_model_pipeline(
             if not probe and (manifest_dir / "source_probe.json").exists():
                 probe = read_json(manifest_dir / "source_probe.json")
 
-        if "freeze" in stages or "report" in stages:
-            logger.info("Building ownership evidence + data freeze")
+        if "freeze" in stages:
+            # Explicit only — world_model_freeze_v1 stays frozen unless requested.
+            logger.info("Rebuilding data freeze manifest (explicit stage)")
             freeze = build_data_freeze(
                 world_root=world_root,
                 manifest_dir=manifest_dir,
@@ -197,6 +198,33 @@ def run_world_model_pipeline(
             summary["freeze_id"] = freeze.get("freeze_id")
             summary["fusion_coverage"] = freeze.get("fusion_coverage")
             summary["ownership_evidence_counts"] = freeze.get(
+                "ownership_evidence_counts"
+            )
+
+        if "pit" in stages or "report" in stages:
+            logger.info("Building PIT v2 audit (derived; freeze acquisition unchanged)")
+            audit = build_pit_v2_audit(
+                world_root=world_root,
+                manifest_dir=manifest_dir,
+                pump_root=external_root / "pumpfun_memecoin_corpus",
+                max_mints=50,
+            )
+            summary["pit_v2_audit"] = {
+                "truly_reconstructable_holder_state_count": audit.get(
+                    "truly_reconstructable_holder_state_count"
+                ),
+                "core_plus_any_genuine_ownership": audit.get(
+                    "core_plus_any_genuine_ownership"
+                ),
+                "core_plus_reconstructable_holder_state": audit.get(
+                    "core_plus_reconstructable_holder_state"
+                ),
+                "leakage_all_passed": (audit.get("leakage_tests") or {}).get(
+                    "all_passed"
+                ),
+            }
+            summary["fusion_coverage"] = audit.get("fusion_coverage")
+            summary["ownership_evidence_counts"] = audit.get(
                 "ownership_evidence_counts"
             )
 
@@ -213,19 +241,9 @@ def run_world_model_pipeline(
             write_reports(manifest_dir, report)
             summary["encoders"] = report.get("encoders")
             summary["world_model_dataset_ready"] = report.get("world_model_dataset_ready")
-            summary["fusion_reconstructable_ownership"] = report.get("metrics", {}).get(
-                "fusion_reconstructable_ownership"
-            )
-
-        if "pit" in stages or "report" in stages:
-            logger.info("Materializing PIT state sample")
-            pit_manifest = materialize_pit_states_for_subset(
-                world_root=world_root, max_mints=50
-            )
-            summary["pit"] = {
-                "mints_materialized": pit_manifest.get("mints_materialized"),
-                "path": pit_manifest.get("path"),
-            }
+            summary["fusion_holder_state_reconstructable"] = report.get(
+                "metrics", {}
+            ).get("fusion_holder_state_reconstructable")
 
     write_json(manifest_dir / "pipeline_summary.json", summary)
     return WorldModelResult(

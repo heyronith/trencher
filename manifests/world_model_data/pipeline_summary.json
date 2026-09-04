@@ -1,20 +1,26 @@
 {
-  "generated_at": "2026-09-04T11:07:23.107768+00:00",
+  "generated_at": "2026-09-04T11:25:56.531135+00:00",
   "stages": [
-    "freeze",
     "report",
     "pit"
   ],
-  "freeze_id": "world_model_freeze_v1",
+  "pit_v2_audit": {
+    "truly_reconstructable_holder_state_count": 14,
+    "core_plus_any_genuine_ownership": 3132,
+    "core_plus_reconstructable_holder_state": 13,
+    "leakage_all_passed": true
+  },
   "fusion_coverage": {
     "core_event_graph_micro_exec_market": 3133,
     "core_plus_any_genuine_ownership": 3132,
-    "core_plus_reconstructable_ownership": 287,
+    "core_plus_reconstructable_ownership": 13,
+    "core_plus_holder_state_reconstructable": 13,
     "with_true_native_sol_history": 84,
     "core_plus_native_sol": 46
   },
   "ownership_evidence_counts": {
-    "ledger_full_or_reconstructable": 317,
+    "holder_state_reconstructable": 14,
+    "transfer_ledger_observed_partial": 303,
     "rpc_balance_observed": 2845,
     "trade_derived_proxy": 1,
     "missing": 837
@@ -24,13 +30,9 @@
     "Wallet/Graph Encoder": "READY",
     "Token/Ownership/Curve Encoder": "READY",
     "Global Market Encoder": "READY",
-    "Fusion/world-state model": "PARTIAL",
+    "Fusion/world-state model": "MASKED",
     "prediction heads": "READY"
   },
   "world_model_dataset_ready": true,
-  "fusion_reconstructable_ownership": 287,
-  "pit": {
-    "mints_materialized": 50,
-    "path": "data/external/world_model/pit/pit_states_sample.parquet"
-  }
+  "fusion_holder_state_reconstructable": 13
 }

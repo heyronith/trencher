@@ -158,15 +158,25 @@ def build_coverage_report(
     native_n = int(counts.get("with_true_native_sol_history") or 0)
     recon_comp = composition.get("reconstructable_ownership") or {}
     any_comp = composition.get("any_genuine_ownership") or {}
-    overlap_n = recon_n  # full world-state fusion uses reconstructable ownership
-    overlap_grad = int(recon_comp.get("graduated") or 0)
-    overlap_nongrad = int(recon_comp.get("non_graduated") or 0)
     any_own_grad = int(any_comp.get("graduated") or 0)
     any_own_nongrad = int(any_comp.get("non_graduated") or 0)
+    holder_grad = int(recon_comp.get("graduated") or 0)
+    holder_nongrad = int(recon_comp.get("non_graduated") or 0)
+    holder_n = int(
+        counts.get("core_plus_holder_state_reconstructable")
+        or counts.get("core_plus_reconstructable_ownership")
+        or recon_n
+    )
     not_grad_proxy = bool(bias_proof.get("selection_is_not_graduation_proxy"))
     if not market_ok:
-        core_n = any_own_n = recon_n = overlap_n = 0
-        overlap_grad = overlap_nongrad = 0
+        core_n = 0
+        any_own_n = 0
+        recon_n = 0
+        holder_n = 0
+        any_own_grad = 0
+        any_own_nongrad = 0
+        holder_grad = 0
+        holder_nongrad = 0
 
     layers = [
         {
@@ -291,24 +301,12 @@ def build_coverage_report(
     )
 
     postgrad_ok = (post.get("outcomes_rows") or 0) >= 1000
-    # Full world-state Fusion READY requires reconstructable ownership ledgers,
-    # not sampled RPC token-balance observations alone.
-    fusion_trainable = (
-        recon_n >= 2_000
-        and overlap_nongrad >= 500
-        and overlap_grad >= 1
-        and not_grad_proxy
-        and native_sol > 0
-        and micro_tokens >= 2_000
-        and event_status == "READY"
-        and token_status == "READY"
-        and wallet_status in {"READY", "PARTIAL"}
-        and global_status == "READY"
-    )
-    if fusion_trainable:
-        fusion_status = "READY"
-    elif event_status == "READY" and postgrad_ok and (any_own_n > 0 or recon_n > 0):
-        fusion_status = "PARTIAL"
+    # Fusion is modality-masked / experimental — do not gate READY/PARTIAL on
+    # a hard requirement of 2,000 complete ownership ledgers.
+    if event_status == "READY" and (
+        (core_n > 0 and not_grad_proxy) or postgrad_ok
+    ):
+        fusion_status = "MASKED"
     else:
         fusion_status = "BLOCKED"
 
@@ -336,13 +334,17 @@ def build_coverage_report(
         "Real pool addresses for synthetic/null migrations without discovery",
         "Row-level Pump fee bps history (protocol metadata only)",
         (
-            f"Reconstructable-ownership multimodal overlap is {recon_n} tokens "
-            f"(any-genuine ownership including sampled RPC is {any_own_n}); "
-            "not the full 798k universe"
+            f"Holder-state reconstructable multimodal overlap is {holder_n} tokens "
+            f"(any-genuine ownership including sampled RPC / partial ledgers is "
+            f"{any_own_n}); not the full 798k universe"
         ),
         (
             "RPC pre/postTokenBalances observations are valid on-chain facts but "
             "are not a complete holder-distribution history"
+        ),
+        (
+            "Sparse BQ transfer rows are transfer_ledger_observed_partial — not "
+            "holder_state_reconstructable"
         ),
     ]
 
@@ -415,9 +417,16 @@ def build_coverage_report(
             "fusion_any_genuine_ownership_graduated": any_own_grad,
             "fusion_any_genuine_ownership_non_graduated": any_own_nongrad,
             "fusion_reconstructable_ownership": recon_n,
-            "fusion_overlap_tokens": overlap_n,
-            "fusion_overlap_graduated": overlap_grad,
-            "fusion_overlap_non_graduated": overlap_nongrad,
+            "fusion_holder_state_reconstructable": holder_n,
+            "fusion_holder_state_graduated": holder_grad,
+            "fusion_holder_state_non_graduated": holder_nongrad,
+            "fusion_overlap_tokens": any_own_n,
+            "fusion_overlap_graduated": any_own_grad,
+            "fusion_overlap_non_graduated": any_own_nongrad,
+            "fusion_overlap_note": (
+                "fusion_overlap_tokens reports core+any-genuine for masked fusion; "
+                "holder_state_reconstructable is reported separately"
+            ),
             "tokens_with_true_native_sol_history": native_n,
             "ownership_evidence_counts": own_counts,
             "selection_is_not_graduation_proxy": not_grad_proxy,
@@ -431,19 +440,21 @@ def build_coverage_report(
             "ownership_evidence_counts": own_counts,
             "availability_combo_top": fusion_truth.get("availability_combo_top"),
             "fusion_readiness_policy": fusion_truth.get("fusion_readiness_policy"),
+            "completeness_spec": fusion_truth.get("completeness_spec"),
             "prior_disagreement_note": fusion_truth.get("prior_disagreement_note"),
         },
         "fusion_trainability": {
             "overlap_definition": (
-                "core (event+graph+micro+exec+market) + reconstructable ownership "
-                "ledger (BigQuery Token Transfers); RPC sampled balances are a "
-                "separate usable modality, not full holder-state reconstruction"
+                "modality-masked fusion over core modalities with ownership "
+                "evidence levels; holder_state_reconstructable is a quality mask, "
+                "not a hard READY gate"
             ),
             "core_n": core_n,
             "any_genuine_ownership_n": any_own_n,
             "reconstructable_ownership_n": recon_n,
-            "overlap_n": overlap_n,
-            "ready_threshold": 2000,
+            "holder_state_reconstructable_n": holder_n,
+            "overlap_n": any_own_n,
+            "evaluation_mode": "modality_masked_experimental",
             "status": fusion_status,
         },
         "source_probe_decisions": {
@@ -454,11 +465,13 @@ def build_coverage_report(
         "encoders": encoders,
         "irrecoverable_fields": irrecoverable,
         "world_model_dataset_ready": core_ready
-        and encoders["Fusion/world-state model"] in {"READY", "PARTIAL"},
+        and encoders["Fusion/world-state model"] in {"READY", "PARTIAL", "MASKED"},
         "readiness_notes": [
             "READY requires meaningful trainability, not merely non-empty tables.",
-            "Fusion READY requires reconstructable ownership ledgers on a large "
-            "unbiased multimodal overlap — sampled RPC balances are insufficient.",
+            "Fusion is MASKED: evaluate experimentally with availability/quality "
+            "masks; do not gate on 2000 complete ownership ledgers.",
+            "holder_state_reconstructable requires documented completeness; "
+            "sparse BQ rows are transfer_ledger_observed_partial.",
             "SPL transfers are labeled spl_transfer, not genuine native-SOL funding.",
         ],
     }
@@ -502,10 +515,10 @@ def render_world_model_md(report: dict[str, Any]) -> str:
             f"{m.get('fusion_any_genuine_ownership')} "
             f"(graduated={m.get('fusion_any_genuine_ownership_graduated')}, "
             f"non-graduated={m.get('fusion_any_genuine_ownership_non_graduated')})",
-            f"- Fusion + reconstructable ownership (authoritative): "
-            f"{m.get('fusion_reconstructable_ownership')} "
-            f"(graduated={m.get('fusion_overlap_graduated')}, "
-            f"non-graduated={m.get('fusion_overlap_non_graduated')})",
+            f"- Fusion + reconstructable holder-state: "
+            f"{m.get('fusion_holder_state_reconstructable')} "
+            f"(graduated={m.get('fusion_holder_state_graduated')}, "
+            f"non-graduated={m.get('fusion_holder_state_non_graduated')})",
             f"- Tokens with true native-SOL history: "
             f"{m.get('tokens_with_true_native_sol_history')}",
             f"- Ownership evidence levels: {m.get('ownership_evidence_counts')}",

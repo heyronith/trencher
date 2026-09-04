@@ -104,19 +104,20 @@ def build_data_freeze(
             world_root / "bigquery" / "token_transfers_rich.parquet",
             source="bigquery.Token Transfers",
             quality="ledger",
-            ownership_evidence_level="ledger_full_or_reconstructable",
+            ownership_evidence_level="holder_state_or_partial_ledger",
             wallet_column="source",
             date_coverage="corpus window / day extracts",
             known_limitations=[
                 "Sparse for non-graduated Pump mints",
                 "Includes prior graduated-window union rows",
+                "Rows alone do not imply holder_state_reconstructable",
             ],
         ),
         "token_transfers_unbiased_days": _artifact(
             world_root / "bigquery" / "token_transfers_unbiased_days.parquet",
             source="bigquery.Token Transfers.day_partitions",
             quality="ledger_day_extracts",
-            ownership_evidence_level="ledger_full_or_reconstructable",
+            ownership_evidence_level="transfer_ledger_observed_partial",
             date_coverage="representative/unqueried day extracts",
         ),
         "rpc_token_balance_ownership": _artifact(
@@ -157,10 +158,14 @@ def build_data_freeze(
         "edges_wallet_token": _artifact(
             world_root / "graph" / "edges_wallet_token.parquet",
             source="pumpfun.trades",
-            quality="trade_participation",
+            quality="lifetime_aggregates_lineage_qa_only",
             ownership_evidence_level="trade_derived_proxy",
             mint_column="dst",
             wallet_column="src",
+            known_limitations=[
+                "Lifetime buys/sells/last_t MUST NOT be used as PIT inputs",
+                "PIT uses atomic_trades_subset.parquet with event_time <= T",
+            ],
         ),
         "daily_pump_network_context": _artifact(
             world_root / "global_context" / "daily_pump_network_context.parquet",
@@ -187,9 +192,9 @@ def build_data_freeze(
             "external_bulk_requires_explicit_request": True,
         },
         "schema_protocol_versions": {
-            "ownership_evidence": "v1",
-            "fusion_coverage_truth": "fusion_coverage_v2_ownership_evidence",
-            "pit_engine": "v1",
+            "ownership_evidence": "v2",
+            "fusion_coverage_truth": "fusion_coverage_v3_holder_completeness",
+            "pit_engine": "v2",
         },
         "bigquery_lifetime_bytes_billed": lifetime_billed,
         "bigquery_lifetime_gib_billed": round(lifetime_billed / (1024**3), 3),

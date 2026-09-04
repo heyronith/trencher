@@ -1,0 +1,189 @@
+{
+  "audit_id": "pit_v2",
+  "generated_at": "2026-09-04T11:27:36.517953+00:00",
+  "acquisition_freeze_id": "world_model_freeze_v1",
+  "acquisition_freeze_policy": "unchanged_append_only_no_new_external_data",
+  "ownership_evidence_counts": {
+    "holder_state_reconstructable": 14,
+    "transfer_ledger_observed_partial": 303,
+    "rpc_balance_observed": 2845,
+    "trade_derived_proxy": 1,
+    "missing": 837
+  },
+  "truly_reconstructable_holder_state_count": 14,
+  "core_plus_any_genuine_ownership": 3132,
+  "core_plus_reconstructable_holder_state": 13,
+  "core_event_graph_micro_exec_market": 3133,
+  "fusion_coverage": {
+    "core_event_graph_micro_exec_market": 3133,
+    "core_plus_any_genuine_ownership": 3132,
+    "core_plus_reconstructable_ownership": 13,
+    "core_plus_holder_state_reconstructable": 13,
+    "with_true_native_sol_history": 84,
+    "core_plus_native_sol": 46
+  },
+  "completeness_spec": {
+    "version": "ownership_completeness_v2",
+    "required_all": [
+      "bq_token_transfer_rows >= 20",
+      "distinct_tx_signatures >= 10",
+      "first_transfer_within_600s_of_detected_at",
+      "nonzero_reconstructed_balances >= 3",
+      "mintTo_present OR bq_token_transfer_rows >= 50"
+    ],
+    "considers": [
+      "coverage from mint/launch (detected_at) through observed transfers",
+      "mintTo / spl-transfer / burn balance-changing events",
+      "transaction/signature coverage",
+      "signed balance reconstruction conservation across accounts",
+      "optional agreement with Pump trade wallets and RPC balance observations"
+    ],
+    "explicitly_not_sufficient": [
+      "bq_token_transfer_rows > 0 alone",
+      "sparse day extracts without launch coverage",
+      "sampled RPC pre/postTokenBalances alone",
+      "trade participation proxy"
+    ]
+  },
+  "arbitrary_t_reconstruction": {
+    "engine_version": "pit_v2",
+    "mints_materialized": 50,
+    "rows_materialized": 400,
+    "age_offsets_sec": {
+      "launch": 0,
+      "10s": 10,
+      "30s": 30,
+      "1m": 60,
+      "2m": 120,
+      "5m": 300,
+      "10m": 600,
+      "30m": 1800
+    },
+    "coverage_mints_with_any_modality": {
+      "launch": 50,
+      "10s": 50,
+      "30s": 50,
+      "1m": 50,
+      "2m": 50,
+      "5m": 50,
+      "10m": 50,
+      "30m": 50
+    },
+    "path": "data/external/world_model/pit/pit_states_sample.parquet"
+  },
+  "leakage_tests": {
+    "n_mints": 5,
+    "all_passed": true,
+    "results": [
+      {
+        "mint": "12RXdXJgup4HXPQhFbnurbCFSE6gVU5L9Nhmq5v2pump",
+        "observation_time_t": 1782119195.211022,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_global_activity": true,
+          "post_t_graduation_migration_outcomes": true
+        },
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "a55896e7c5907cf0987e1b7ccbede7a625dad374395916e4718855b83ae7e9ec"
+      },
+      {
+        "mint": "12Tu2RdMn5fjxjATqcuzTXNHoqijzEjMkNTMptpzpump",
+        "observation_time_t": 1782942149.897906,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_global_activity": true,
+          "post_t_graduation_migration_outcomes": true
+        },
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "90b39af1d3095ff3b2a54bd30c0836b21b0cd2f1e2cdd4358d2f12fdc3cb39c6"
+      },
+      {
+        "mint": "12U4iEz9VyVtSD6EwuiKHCtAu2UFrMAv1CJC9VX9pump",
+        "observation_time_t": 1780785757.069348,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_global_activity": true,
+          "post_t_graduation_migration_outcomes": true
+        },
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "a38a524c9217817df5652591dec75ccb9e815f15b55a234a480c216e179062c9"
+      },
+      {
+        "mint": "12j59sjdg77YJveYNkoKBE6ZtQm3ZG6GcKG1eW3Npump",
+        "observation_time_t": 1783455000.776173,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_global_activity": true,
+          "post_t_graduation_migration_outcomes": true
+        },
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "d7d6fab48625d26e08d5e20d2960df5d1352d47bf243066a179ab33891bff476"
+      },
+      {
+        "mint": "1Daetjhfukhtuj6LFWwmGsNvoAMR4PskfCNwTLvpump",
+        "observation_time_t": 1781544623.116252,
+        "cases": {
+          "post_t_trades_on_existing_wallet_edge": true,
+          "post_t_new_trade_row": true,
+          "post_t_ownership_transfers": true,
+          "post_t_rpc_balance_observations": true,
+          "post_t_transaction_metadata": true,
+          "post_t_curve_observations": true,
+          "post_t_global_activity": true,
+          "post_t_graduation_migration_outcomes": true
+        },
+        "state_unchanged": true,
+        "passed": true,
+        "before_digest": "cf4e95372321c45b990808ece185d6c198a5e93842b5e15049e1f82996a34547"
+      }
+    ]
+  },
+  "fusion_readiness_policy": {
+    "evaluation_mode": "modality_masked_experimental",
+    "do_not_gate_on": "2000_complete_ownership_ledgers",
+    "holder_state_reconstructable_usable_as": "strong ownership modality when completeness test passes",
+    "partial_modalities_preserved": [
+      "holder_state_reconstructable",
+      "transfer_ledger_observed_partial",
+      "rpc_balance_observed",
+      "trade_derived_proxy",
+      "missing"
+    ],
+    "do_not_equate": "rpc_balance_observed != transfer_ledger_observed_partial != holder_state_reconstructable"
+  },
+  "known_remaining_limitations": [
+    "holder_state_reconstructable is rare under documented completeness; most BQ ledgers remain transfer_ledger_observed_partial.",
+    "RPC token-balance ownership is sampled-tx evidence only.",
+    "Lifetime SOL funding covers a wallet subset only.",
+    "Global same-day context uses rolling subset launches + mint trades; full-universe same-day aggregates are not used.",
+    "Frozen lifetime edges_wallet_token.parquet is lineage/QA only \u2014 never a PIT model input.",
+    "No supervised labels, training splits, or models in this audit."
+  ],
+  "labels": "not_generated",
+  "targets": "not_generated",
+  "training": "not_started"
+}
