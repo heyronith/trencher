@@ -332,3 +332,52 @@ def test_native_sol_parser_ignores_post_t_and_spl() -> None:
     }
     assert parse_system_sol_transfers("sig", spl_only, max_block_time=t) == []
 
+
+def test_rpc_token_balance_ownership_edges() -> None:
+    from trencher.data.world_model.acquire.rpc import (
+        _parse_tx,
+        extract_token_ownership_edges,
+    )
+
+    result = {
+        "slot": 1,
+        "blockTime": 100,
+        "meta": {
+            "err": None,
+            "fee": 5000,
+            "computeUnitsConsumed": 1,
+            "preBalances": [1, 1],
+            "postBalances": [1, 1],
+            "preTokenBalances": [
+                {
+                    "accountIndex": 0,
+                    "mint": "mintA",
+                    "owner": "w1",
+                    "uiTokenAmount": {"uiAmount": 0.0, "decimals": 6, "amount": "0"},
+                }
+            ],
+            "postTokenBalances": [
+                {
+                    "accountIndex": 0,
+                    "mint": "mintA",
+                    "owner": "w1",
+                    "uiTokenAmount": {
+                        "uiAmount": 10.0,
+                        "decimals": 6,
+                        "amount": "10000000",
+                    },
+                }
+            ],
+            "logMessages": [],
+            "innerInstructions": [],
+        },
+        "transaction": {"message": {"accountKeys": ["w1", "w2"]}},
+    }
+    parsed = _parse_tx("sigX", "mintA", result)
+    assert parsed["token_balance_change_count"] == 1
+    edges = extract_token_ownership_edges([parsed])
+    assert len(edges) == 1
+    assert edges[0]["edge_type"] == "rpc_token_balance_delta"
+    assert edges[0]["owner"] == "w1"
+    assert edges[0]["delta_ui_amount"] == 10.0
+

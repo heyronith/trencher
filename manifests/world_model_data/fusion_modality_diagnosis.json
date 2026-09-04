@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-09-04T05:24:55.173638+00:00",
+  "subset_n": 4000,
+  "fusion_complete": 3132,
+  "gap_to_target": 0,
+  "fusion_target": 2000,
+  "coverage": {
+    "event_curve": 3133,
+    "graph": 4000,
+    "ownership_spl": 3162,
+    "microstructure": 3133,
+    "execution": 3133,
+    "market": 4000
+  },
+  "blocker_combos": [
+    [
+      "complete",
+      3132
+    ],
+    [
+      "ownership+microstructure+execution+event_curve",
+      837
+    ],
+    [
+      "microstructure+execution+event_curve",
+      30
+    ],
+    [
+      "ownership",
+      1
+    ]
+  ],
+  "need_ownership_only": 1,
+  "limiting_modality": "ownership_spl",
+  "smallest_acquisition_set": {
+    "strategy": "Recover genuine SPL ownership for need_ownership_only mints via archival RPC token-balance parses (preferred) and/or partition-pruned BigQuery Token Transfers on unqueried days.",
+    "mints": 1,
+    "note": "Launch-day BQ partitions already scanned; residual BQ value is post-launch transfer days and is expected to unlock far fewer than 1.7k tokens alone."
+  }
+}

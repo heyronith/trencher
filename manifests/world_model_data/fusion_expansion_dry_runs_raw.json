@@ -1,0 +1,218 @@
+{
+  "generated_at": "2026-09-04T04:21:47.258278+00:00",
+  "need_own_only_mints": 2846,
+  "current_fusion_complete": 287,
+  "gap_to_2000": 1713,
+  "candidates": [
+    {
+      "name": "tt_day_2026-06-11",
+      "kind": "day_partition",
+      "day": "2026-06-11",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 960,
+      "estimated_bytes": 14189388005,
+      "estimated_gib": 13.2149,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-11 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-12 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-13",
+      "kind": "day_partition",
+      "day": "2026-06-13",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1170,
+      "estimated_bytes": 12892310675,
+      "estimated_gib": 12.0069,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-13 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-14 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-14",
+      "kind": "day_partition",
+      "day": "2026-06-14",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1170,
+      "estimated_bytes": 12777156713,
+      "estimated_gib": 11.8997,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-14 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-15 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-16",
+      "kind": "day_partition",
+      "day": "2026-06-16",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1390,
+      "estimated_bytes": 15451141317,
+      "estimated_gib": 14.39,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-16 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-17 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-17",
+      "kind": "day_partition",
+      "day": "2026-06-17",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1390,
+      "estimated_bytes": 14779909631,
+      "estimated_gib": 13.7649,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-17 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-18 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-19",
+      "kind": "day_partition",
+      "day": "2026-06-19",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1390,
+      "estimated_bytes": 13955397198,
+      "estimated_gib": 12.997,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-19 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-20 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-20",
+      "kind": "day_partition",
+      "day": "2026-06-20",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1390,
+      "estimated_bytes": 13730451286,
+      "estimated_gib": 12.7875,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-20 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-21 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-21",
+      "kind": "day_partition",
+      "day": "2026-06-21",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1390,
+      "estimated_bytes": 13102539771,
+      "estimated_gib": 12.2027,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-21 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-22 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-23",
+      "kind": "day_partition",
+      "day": "2026-06-23",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1607,
+      "estimated_bytes": 16616163362,
+      "estimated_gib": 15.475,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-23 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-24 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-24",
+      "kind": "day_partition",
+      "day": "2026-06-24",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1607,
+      "estimated_bytes": 16577729841,
+      "estimated_gib": 15.4392,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-24 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-25 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-25",
+      "kind": "day_partition",
+      "day": "2026-06-25",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1607,
+      "estimated_bytes": 17378257260,
+      "estimated_gib": 16.1848,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-25 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-26 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-27",
+      "kind": "day_partition",
+      "day": "2026-06-27",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1838,
+      "estimated_bytes": 16385860555,
+      "estimated_gib": 15.2605,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-27 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-28 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-28",
+      "kind": "day_partition",
+      "day": "2026-06-28",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 1838,
+      "estimated_bytes": 20486396315,
+      "estimated_gib": 19.0794,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-28 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-06-29 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-06-30",
+      "kind": "day_partition",
+      "day": "2026-06-30",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2016,
+      "estimated_bytes": 19805747487,
+      "estimated_gib": 18.4455,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-06-30 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-01 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-05",
+      "kind": "day_partition",
+      "day": "2026-07-05",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2386,
+      "estimated_bytes": 16966033241,
+      "estimated_gib": 15.8008,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-05 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-06 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-06",
+      "kind": "day_partition",
+      "day": "2026-07-06",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2386,
+      "estimated_bytes": 19139325714,
+      "estimated_gib": 17.8249,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-06 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-07 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-08",
+      "kind": "day_partition",
+      "day": "2026-07-08",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2586,
+      "estimated_bytes": 18381953844,
+      "estimated_gib": 17.1195,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-08 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-09 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-09",
+      "kind": "day_partition",
+      "day": "2026-07-09",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2586,
+      "estimated_bytes": 18400460404,
+      "estimated_gib": 17.1368,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-09 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-10 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-11",
+      "kind": "day_partition",
+      "day": "2026-07-11",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2750,
+      "estimated_bytes": 14517301033,
+      "estimated_gib": 13.5203,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-11 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-12 00:00:00')"
+    },
+    {
+      "name": "tt_day_2026-07-13",
+      "kind": "day_partition",
+      "day": "2026-07-13",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2750,
+      "estimated_bytes": 17861516996,
+      "estimated_gib": 16.6348,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n           t.authority, t.value, t.decimals, t.mint, t.transfer_type\n    FROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\n    INNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\n    WHERE t.block_timestamp >= TIMESTAMP('2026-07-13 00:00:00')\n      AND t.block_timestamp < TIMESTAMP('2026-07-14 00:00:00')"
+    },
+    {
+      "name": "tt_full_window_need_own",
+      "kind": "full_corpus_window",
+      "day": "2026-06-05..2026-07-14",
+      "target_mints": 2846,
+      "eligible_launched_on_or_before": 2846,
+      "estimated_bytes": 653557458146,
+      "estimated_gib": 608.6728,
+      "sql": "SELECT t.block_timestamp, t.block_slot, t.tx_signature, t.source, t.destination,\n       t.authority, t.value, t.decimals, t.mint, t.transfer_type\nFROM `bigquery-public-data.crypto_solana_mainnet_us.Token Transfers` t\nINNER JOIN `trencher1.world_model_tmp.fusion_need_own_mints` m USING (mint)\nWHERE t.block_timestamp >= TIMESTAMP('2026-06-05 00:00:00')\n  AND t.block_timestamp < TIMESTAMP('2026-07-15 00:00:00')"
+    }
+  ]
+}

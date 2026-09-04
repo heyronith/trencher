@@ -1,6 +1,6 @@
 # World Model Historical Data
 
-Generated at: `2026-09-04T03:28:30.696355+00:00`
+Generated at: `2026-09-04T05:25:08.742804+00:00`
 
 ## Coverage matrix
 
@@ -20,12 +20,13 @@ Generated at: `2026-09-04T03:28:30.696355+00:00`
 - True SPL transfer count: 562175
 - Mints with genuine ownership histories: 2936
 - Unbiased rich subset: 4000 (graduated=20, non-graduated=3980)
-- Fusion multimodal overlap: 284 (graduated=8, non-graduated=276)
+- Fusion multimodal overlap: 3116 (graduated=16, non-graduated=3100)
 - Selection is not a graduation proxy: True
 - Wallets with prior history: 1006640
 - SPL transfer edges (not native SOL funding): 525053
 - True native-SOL funding edges: 716
 - Wallets with native-SOL funding: 517
+- RPC token-balance ownership edges/mints: 5691 / 2845
 - Shared-funder graph edges (SPL): 337457
 - Shared native funder edges: 2115
 - Creator ownership transfer rows: 108199
@@ -41,7 +42,7 @@ Generated at: `2026-09-04T03:28:30.696355+00:00`
 - **Wallet/Graph Encoder**: `READY`
 - **Token/Ownership/Curve Encoder**: `READY`
 - **Global Market Encoder**: `READY`
-- **Fusion/world-state model**: `PARTIAL`
+- **Fusion/world-state model**: `READY`
 - **prediction heads**: `READY`
 
 **World-model dataset ready (strict core encoders):** True
@@ -53,7 +54,7 @@ Generated at: `2026-09-04T03:28:30.696355+00:00`
 - Solarchive txs/accounts for June–July 2026 (index ends 2025-12-05)
 - Real pool addresses for synthetic/null migrations without discovery
 - Row-level Pump fee bps history (protocol metadata only)
-- Complete fusion population is the multimodal overlap (284 tokens), not the full 798k universe
+- Complete fusion population is the multimodal overlap (3116 tokens), not the full 798k universe
 
 ## Source decisions
 

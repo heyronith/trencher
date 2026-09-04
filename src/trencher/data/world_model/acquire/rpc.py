@@ -156,6 +156,9 @@ def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
 
     fee = meta.get("fee")
     cu = meta.get("computeUnitsConsumed")
+    pre_tok = meta.get("preTokenBalances") or []
+    post_tok = meta.get("postTokenBalances") or []
+    token_balance_changes = _token_balance_deltas(pre_tok, post_tok, mint)
     return {
         "tx_signature": signature,
         "mint": mint,
@@ -170,10 +173,109 @@ def _parse_tx(signature: str, mint: str, result: Any) -> dict[str, Any]:
         "account_keys": keys[:64],
         "balance_change_count": len(balance_changes),
         "balance_changes": balance_changes[:64],
+        "token_balance_change_count": len(token_balance_changes),
+        "token_balance_changes": token_balance_changes[:64],
         "log_message_count": len(meta.get("logMessages") or []),
         "inner_instruction_groups": len(meta.get("innerInstructions") or []),
         "quality_flag": "rpc_getTransaction_observed",
     }
+
+
+def _ui_amount(entry: dict[str, Any]) -> float | None:
+    ui = (entry.get("uiTokenAmount") or {})
+    if ui.get("uiAmount") is not None:
+        return float(ui["uiAmount"])
+    amount = ui.get("amount")
+    decimals = ui.get("decimals")
+    if amount is None or decimals is None:
+        return None
+    try:
+        return float(amount) / (10 ** int(decimals))
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _token_balance_deltas(
+    pre_tok: list[dict[str, Any]],
+    post_tok: list[dict[str, Any]],
+    mint: str,
+) -> list[dict[str, Any]]:
+    """Genuine SPL token account balance deltas from runtime meta."""
+    pre_map = {}
+    for e in pre_tok:
+        if not isinstance(e, dict):
+            continue
+        if mint and e.get("mint") not in {None, mint}:
+            # keep all mints but prefer matching later
+            pass
+        key = (e.get("mint"), e.get("owner"), e.get("accountIndex"))
+        pre_map[key] = e
+    post_map = {}
+    for e in post_tok:
+        if not isinstance(e, dict):
+            continue
+        key = (e.get("mint"), e.get("owner"), e.get("accountIndex"))
+        post_map[key] = e
+    keys = set(pre_map) | set(post_map)
+    out = []
+    for key in keys:
+        m, owner, _idx = key
+        if mint and m != mint:
+            continue
+        pre_a = _ui_amount(pre_map[key]) if key in pre_map else 0.0
+        post_a = _ui_amount(post_map[key]) if key in post_map else 0.0
+        if pre_a is None or post_a is None:
+            continue
+        delta = post_a - pre_a
+        if delta == 0:
+            continue
+        out.append(
+            {
+                "mint": m,
+                "owner": owner,
+                "pre_ui_amount": pre_a,
+                "post_ui_amount": post_a,
+                "delta_ui_amount": delta,
+            }
+        )
+    return out
+
+
+def extract_token_ownership_edges(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Wallet ownership deltas from pre/post token balances (genuine ledger meta)."""
+    edges = []
+    for row in rows:
+        if not row.get("found"):
+            continue
+        changes = row.get("token_balance_changes") or []
+        if isinstance(changes, str):
+            try:
+                changes = json.loads(changes)
+            except json.JSONDecodeError:
+                changes = []
+        for c in changes:
+            owner = c.get("owner")
+            if not owner:
+                continue
+            edges.append(
+                {
+                    "edge_type": "rpc_token_balance_delta",
+                    "src": owner,
+                    "dst": row.get("mint") or c.get("mint"),
+                    "mint": row.get("mint") or c.get("mint"),
+                    "owner": owner,
+                    "delta_ui_amount": c.get("delta_ui_amount"),
+                    "pre_ui_amount": c.get("pre_ui_amount"),
+                    "post_ui_amount": c.get("post_ui_amount"),
+                    "tx_signature": row.get("tx_signature"),
+                    "slot": row.get("slot"),
+                    "block_time": row.get("block_time"),
+                    "source": "solana_rpc.getTransaction.meta.pre_post_token_balances",
+                    "provenance": "runtime_token_balance_meta",
+                    "quality_flag": "genuine_spl_token_balance_delta_observed",
+                }
+            )
+    return edges
 
 
 def extract_funding_edges(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -232,6 +334,13 @@ def _flush_rpc_rows(out_path: Path, rows: list[dict[str, Any]]) -> None:
             )
         elif "balance_changes_json" not in item:
             item["balance_changes_json"] = "[]"
+        if "token_balance_changes" in item:
+            tchanges = item.pop("token_balance_changes")
+            item["token_balance_changes_json"] = (
+                tchanges if isinstance(tchanges, str) else json.dumps(tchanges or [])
+            )
+        elif "token_balance_changes_json" not in item:
+            item["token_balance_changes_json"] = "[]"
         flat.append(item)
     pq.write_table(pa.Table.from_pylist(flat), out_path)
 
@@ -357,4 +466,144 @@ def run_rpc_acquisition(
     }
     write_json(checkpoint, {"n_done": len(done), "updated_at": utc_now()})
     write_json(out_dir / "rpc_manifest.json", payload)
+    return payload
+
+
+def run_rpc_ownership_acquisition(
+    *,
+    world_root: Path,
+    need_mints: set[str],
+    rpc: SolanaRpc | None = None,
+    skip_live: bool = False,
+    per_mint_signatures: int = 2,
+) -> dict[str, Any]:
+    """Re-fetch trade txs for need-own mints; parse genuine token balance deltas."""
+    out_dir = ensure_dir(world_root / "microstructure")
+    graph_dir = ensure_dir(world_root / "graph")
+    own_path = graph_dir / "edges_ownership_rpc_token_balances.parquet"
+    ck = out_dir / "rpc_ownership_checkpoint.json"
+    manifest = out_dir / "rpc_ownership_manifest.json"
+    if skip_live:
+        payload = {"skipped": True, "reason": "skip_live", "generated_at": utc_now()}
+        write_json(manifest, payload)
+        return payload
+
+    targets_path = out_dir / "signature_targets.parquet"
+    if not targets_path.exists():
+        payload = {"error": "missing signature_targets", "generated_at": utc_now()}
+        write_json(manifest, payload)
+        return payload
+
+    targets = pq.read_table(
+        targets_path, columns=["mint", "tx_signature", "event_time"]
+    ).to_pylist()
+    by_mint: dict[str, list[dict[str, Any]]] = {}
+    for row in targets:
+        mint = row.get("mint")
+        if mint not in need_mints or not row.get("tx_signature"):
+            continue
+        by_mint.setdefault(mint, []).append(row)
+    pending: list[dict[str, Any]] = []
+    for mint in sorted(by_mint):
+        rows = sorted(
+            by_mint[mint],
+            key=lambda r: (str(r.get("event_time") or ""), r.get("tx_signature") or ""),
+        )
+        pending.extend(rows[:per_mint_signatures])
+
+    done: set[str] = set()
+    existing: list[dict[str, Any]] = []
+    if own_path.exists() and pq.ParquetFile(own_path).metadata.num_rows:
+        existing = pq.read_table(own_path).to_pylist()
+        done = {e["tx_signature"] for e in existing if e.get("tx_signature")}
+    if ck.exists():
+        from trencher.data.world_model.io import read_json
+
+        done |= set(read_json(ck).get("completed_signatures", []))
+
+    rpc = rpc or SolanaRpc()
+    batch_size = 1 if rpc.provider == "solana_rpc" else RPC_BATCH_SIZE
+    tx_opts = {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}
+    new_edges: list[dict[str, Any]] = []
+    mints_unlocked: set[str] = {
+        e["mint"] for e in existing if e.get("mint")
+    }
+    attempted = 0
+    interrupted = None
+    pending = [p for p in pending if p["tx_signature"] not in done]
+    try:
+        for i in range(0, len(pending), batch_size):
+            chunk = pending[i : i + batch_size]
+            if batch_size == 1:
+                results = [
+                    rpc.call("getTransaction", [row["tx_signature"], tx_opts])
+                    for row in chunk
+                ]
+            else:
+                results = rpc.call_batch(
+                    [("getTransaction", [row["tx_signature"], tx_opts]) for row in chunk]
+                )
+            for row, result in zip(chunk, results, strict=True):
+                parsed = _parse_tx(row["tx_signature"], row.get("mint") or "", result)
+                done.add(row["tx_signature"])
+                attempted += 1
+                edges = extract_token_ownership_edges([parsed])
+                if edges:
+                    new_edges.extend(edges)
+                    if row.get("mint"):
+                        mints_unlocked.add(row["mint"])
+            if attempted % 100 < batch_size:
+                write_json(
+                    ck,
+                    {
+                        "completed_signatures": sorted(done)[-50_000:],
+                        "mints_unlocked": len(mints_unlocked),
+                        "updated_at": utc_now(),
+                        "attempted_session": attempted,
+                    },
+                )
+                merged = existing + new_edges
+                if merged:
+                    pq.write_table(pa.Table.from_pylist(merged), own_path)
+    except Exception as exc:  # noqa: BLE001
+        interrupted = str(exc)
+        logger.exception("RPC ownership acquisition interrupted")
+
+    merged = existing + new_edges
+    # de-dupe
+    by_key = {}
+    for e in merged:
+        key = (
+            e.get("tx_signature"),
+            e.get("owner"),
+            e.get("mint"),
+            e.get("delta_ui_amount"),
+        )
+        by_key[key] = e
+    final = list(by_key.values())
+    if final:
+        pq.write_table(pa.Table.from_pylist(final), own_path)
+    else:
+        pq.write_table(pa.table({"edge_type": pa.array([], pa.string())}), own_path)
+
+    payload = {
+        "generated_at": utc_now(),
+        "need_mints": len(need_mints),
+        "signatures_targeted": len(pending) + len(done),
+        "attempted_session": attempted,
+        "ownership_edges": len(final),
+        "mints_with_rpc_ownership": len({e.get("mint") for e in final if e.get("mint")}),
+        "mints_unlocked_session": len(mints_unlocked),
+        "interrupted": interrupted,
+        "path": file_provenance(
+            own_path, source="solana_rpc.getTransaction.token_balances"
+        ),
+        "quality_flag": "partial" if interrupted else "genuine_rpc_token_balances",
+        "notes": [
+            "Edges come from meta.preTokenBalances/postTokenBalances on real txs.",
+            "Not inferred from Pump trade event amounts.",
+        ],
+    }
+    write_json(ck, {"completed_signatures": sorted(done), "updated_at": utc_now()})
+    write_json(manifest, payload)
     return payload

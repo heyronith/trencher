@@ -145,7 +145,10 @@ def build_coverage_report(
 
     wt_path = graph / "edges_wallet_token.parquet"
     graph_mints = _mint_set(wt_path, "dst")
-    ownership_mints = _mint_set(tt_unbiased_path, "mint") or _mint_set(tt_path, "mint")
+    ownership_mints = _mint_set(tt_unbiased_path, "mint") | _mint_set(tt_path, "mint")
+    ownership_mints |= _mint_set(
+        graph / "edges_ownership_rpc_token_balances.parquet", "mint"
+    )
     ownership_mints &= subset_mints
     exec_path = world_root / "execution" / "execution_curve_states.parquet"
     event_mints = _mint_set(exec_path, "mint") or subset_mints
@@ -369,6 +372,12 @@ def build_coverage_report(
             "wallets_in_spl_transfers": spl_wallets,
             "true_native_sol_funding_edges": native_sol,
             "wallets_with_native_sol_funding": native_wallets,
+            "rpc_token_balance_ownership_edges": _rows(
+                graph / "edges_ownership_rpc_token_balances.parquet"
+            ),
+            "rpc_token_balance_ownership_mints": _unique_count(
+                graph / "edges_ownership_rpc_token_balances.parquet", "mint"
+            ),
             "shared_funder_graph_edges": shared_funder,
             "shared_native_funder_edges": shared_native,
             "creator_ownership_transfer_rows": creator_own,
@@ -393,6 +402,9 @@ def build_coverage_report(
                 "spl_transfer": spl_transfers,
                 "sol_balance_delta_proxy": rpc_funding,
                 "system_sol_transfer": native_sol,
+                "rpc_token_balance_delta": _rows(
+                    graph / "edges_ownership_rpc_token_balances.parquet"
+                ),
                 "shared_funder": shared_funder,
                 "shared_native_funder": shared_native,
                 "creator_related_transfer": creator_own,
@@ -473,6 +485,9 @@ def render_world_model_md(report: dict[str, Any]) -> str:
             f"- SPL transfer edges (not native SOL funding): {m.get('spl_transfer_edges')}",
             f"- True native-SOL funding edges: {m.get('true_native_sol_funding_edges')}",
             f"- Wallets with native-SOL funding: {m.get('wallets_with_native_sol_funding')}",
+            f"- RPC token-balance ownership edges/mints: "
+            f"{m.get('rpc_token_balance_ownership_edges')} / "
+            f"{m.get('rpc_token_balance_ownership_mints')}",
             f"- Shared-funder graph edges (SPL): {m.get('shared_funder_graph_edges')}",
             f"- Shared native funder edges: {m.get('shared_native_funder_edges')}",
             f"- Creator ownership transfer rows: {m.get('creator_ownership_transfer_rows')}",
