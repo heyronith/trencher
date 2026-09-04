@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-09-04T11:07:24.457553+00:00",
+  "source_of_truth": "data/external/world_model/universe/fusion_coverage_truth.parquet",
+  "definition_version": "fusion_coverage_v2_ownership_evidence",
+  "prior_disagreement_note": "coverage_report.json previously reported ~3116 while modality_matrix reported ~3132 due to a stale report snapshot; both used the same live intersection rule. This file is now the only authoritative count.",
+  "subset_n": 4000,
+  "counts": {
+    "core_event_graph_micro_exec_market": 3133,
+    "core_plus_any_genuine_ownership": 3132,
+    "core_plus_reconstructable_ownership": 287,
+    "with_true_native_sol_history": 84,
+    "core_plus_native_sol": 46
+  },
+  "composition": {
+    "core": {
+      "n": 3133,
+      "graduated": 16,
+      "non_graduated": 3117
+    },
+    "any_genuine_ownership": {
+      "n": 3132,
+      "graduated": 16,
+      "non_graduated": 3116
+    },
+    "reconstructable_ownership": {
+      "n": 287,
+      "graduated": 9,
+      "non_graduated": 278
+    }
+  },
+  "ownership_evidence_counts": {
+    "ledger_full_or_reconstructable": 317,
+    "rpc_balance_observed": 2845,
+    "trade_derived_proxy": 1,
+    "missing": 837
+  },
+  "availability_combo_top": [
+    [
+      "event+graph+micro+exec+market+own_rpc_balance_observed",
+      2806
+    ],
+    [
+      "graph+market+own_missing",
+      799
+    ],
+    [
+      "event+graph+micro+exec+market+own_ledger_full_or_reconstructable",
+      280
+    ],
+    [
+      "event+graph+micro+exec+market+own_rpc_balance_observed+native_sol",
+      39
+    ],
+    [
+      "graph+market+own_missing+native_sol",
+      38
+    ],
+    [
+      "graph+market+own_ledger_full_or_reconstructable",
+      30
+    ],
+    [
+      "event+graph+micro+exec+market+own_ledger_full_or_reconstructable+native_sol",
+      7
+    ],
+    [
+      "event+graph+micro+exec+market+own_trade_derived_proxy",
+      1
+    ]
+  ],
+  "fusion_readiness_policy": {
+    "full_world_state_fusion_requires": "core_plus_reconstructable_ownership",
+    "rpc_balance_observed_usable_as": "partial ownership evidence / modality mask, not full holder-state reconstruction",
+    "do_not_equate": "rpc_balance_observed != ledger_full_or_reconstructable"
+  }
+}

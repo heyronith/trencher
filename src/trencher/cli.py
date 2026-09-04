@@ -346,7 +346,7 @@ def data_probe_world_model_sources(
     "--stage",
     "stages",
     multiple=True,
-    type=click.Choice(["probe", "plan", "acquire", "report"]),
+    type=click.Choice(["probe", "plan", "acquire", "report", "freeze", "pit"]),
     help="Subset of pipeline stages (default: all)",
 )
 @click.option("--verbose", "-v", is_flag=True)

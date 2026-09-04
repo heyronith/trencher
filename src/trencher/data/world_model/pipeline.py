@@ -17,7 +17,9 @@ from trencher.data.world_model.acquire import (
 )
 from trencher.data.world_model.acquire.funding import run_native_sol_funding_acquisition
 from trencher.data.world_model.acquire.rpc import SolanaRpc
+from trencher.data.world_model.freeze import build_data_freeze
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
+from trencher.data.world_model.pit import materialize_pit_states_for_subset
 from trencher.data.world_model.planner import build_extraction_plan, write_plan
 from trencher.data.world_model.probe import run_source_probe
 from trencher.data.world_model.report import build_coverage_report, write_reports
@@ -48,7 +50,11 @@ def run_world_model_pipeline(
     max_trade_batches: int | None = None,
     stages: list[str] | None = None,
 ) -> WorldModelResult:
-    """Run selected stages: probe, plan, acquire, report (default: all)."""
+    """Run selected stages: probe, plan, acquire, report (default: all).
+
+    Report stage also builds the data freeze and a PIT sample.
+    Explicit ``freeze`` / ``pit`` stages can run without re-acquiring.
+    """
     stages = stages or ["probe", "plan", "acquire", "report"]
     manifest_dir = ensure_dir(manifest_dir or Path("manifests") / "world_model_data")
     world_root = ensure_dir(world_root or external_root / "world_model")
@@ -162,46 +168,64 @@ def run_world_model_pipeline(
         }
 
     report: dict[str, Any] = {}
-    if "report" in stages:
-        logger.info("Writing coverage report")
-        # Reload manifests if acquire skipped
-        if not local and (world_root / "local_acquisition_manifest.json").exists():
-            from trencher.data.world_model.io import read_json
+    need_report_inputs = "report" in stages
+    if need_report_inputs or "freeze" in stages or "pit" in stages:
+        from trencher.data.world_model.io import read_json
 
-            local = read_json(world_root / "local_acquisition_manifest.json")
-        if not gecko and (world_root / "gecko" / "gecko_manifest.json").exists():
-            from trencher.data.world_model.io import read_json
+        if need_report_inputs:
+            logger.info("Writing coverage report")
+            if not local and (world_root / "local_acquisition_manifest.json").exists():
+                local = read_json(world_root / "local_acquisition_manifest.json")
+            if not gecko and (world_root / "gecko" / "gecko_manifest.json").exists():
+                gecko = read_json(world_root / "gecko" / "gecko_manifest.json")
+            if not rpc and (world_root / "microstructure" / "rpc_manifest.json").exists():
+                rpc = read_json(world_root / "microstructure" / "rpc_manifest.json")
+            if not bq and (world_root / "bigquery" / "bigquery_manifest.json").exists():
+                bq = read_json(world_root / "bigquery" / "bigquery_manifest.json")
+            if not plan and (manifest_dir / "extraction_plan.json").exists():
+                plan = read_json(manifest_dir / "extraction_plan.json")
+            if not probe and (manifest_dir / "source_probe.json").exists():
+                probe = read_json(manifest_dir / "source_probe.json")
 
-            gecko = read_json(world_root / "gecko" / "gecko_manifest.json")
-        if not rpc and (world_root / "microstructure" / "rpc_manifest.json").exists():
-            from trencher.data.world_model.io import read_json
+        if "freeze" in stages or "report" in stages:
+            logger.info("Building ownership evidence + data freeze")
+            freeze = build_data_freeze(
+                world_root=world_root,
+                manifest_dir=manifest_dir,
+                external_root=external_root,
+            )
+            summary["freeze_id"] = freeze.get("freeze_id")
+            summary["fusion_coverage"] = freeze.get("fusion_coverage")
+            summary["ownership_evidence_counts"] = freeze.get(
+                "ownership_evidence_counts"
+            )
 
-            rpc = read_json(world_root / "microstructure" / "rpc_manifest.json")
-        if not bq and (world_root / "bigquery" / "bigquery_manifest.json").exists():
-            from trencher.data.world_model.io import read_json
+        if "report" in stages:
+            report = build_coverage_report(
+                world_root=world_root,
+                probe=probe,
+                plan=plan,
+                local=local,
+                gecko=gecko,
+                rpc=rpc,
+                bq=bq,
+            )
+            write_reports(manifest_dir, report)
+            summary["encoders"] = report.get("encoders")
+            summary["world_model_dataset_ready"] = report.get("world_model_dataset_ready")
+            summary["fusion_reconstructable_ownership"] = report.get("metrics", {}).get(
+                "fusion_reconstructable_ownership"
+            )
 
-            bq = read_json(world_root / "bigquery" / "bigquery_manifest.json")
-        if not plan and (manifest_dir / "extraction_plan.json").exists():
-            from trencher.data.world_model.io import read_json
-
-            plan = read_json(manifest_dir / "extraction_plan.json")
-        if not probe and (manifest_dir / "source_probe.json").exists():
-            from trencher.data.world_model.io import read_json
-
-            probe = read_json(manifest_dir / "source_probe.json")
-
-        report = build_coverage_report(
-            world_root=world_root,
-            probe=probe,
-            plan=plan,
-            local=local,
-            gecko=gecko,
-            rpc=rpc,
-            bq=bq,
-        )
-        write_reports(manifest_dir, report)
-        summary["encoders"] = report.get("encoders")
-        summary["world_model_dataset_ready"] = report.get("world_model_dataset_ready")
+        if "pit" in stages or "report" in stages:
+            logger.info("Materializing PIT state sample")
+            pit_manifest = materialize_pit_states_for_subset(
+                world_root=world_root, max_mints=50
+            )
+            summary["pit"] = {
+                "mints_materialized": pit_manifest.get("mints_materialized"),
+                "path": pit_manifest.get("path"),
+            }
 
     write_json(manifest_dir / "pipeline_summary.json", summary)
     return WorldModelResult(

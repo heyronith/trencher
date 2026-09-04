@@ -1,0 +1,261 @@
+{
+  "freeze_id": "world_model_freeze_v1",
+  "generated_at": "2026-09-04T11:07:26.344115+00:00",
+  "policy": {
+    "append_only_raw": true,
+    "no_further_bulk_acquisition": true,
+    "external_bulk_requires_explicit_request": true
+  },
+  "schema_protocol_versions": {
+    "ownership_evidence": "v1",
+    "fusion_coverage_truth": "fusion_coverage_v2_ownership_evidence",
+    "pit_engine": "v1"
+  },
+  "bigquery_lifetime_bytes_billed": 967495909376,
+  "bigquery_lifetime_gib_billed": 901.051,
+  "fusion_coverage": {
+    "core_event_graph_micro_exec_market": 3133,
+    "core_plus_any_genuine_ownership": 3132,
+    "core_plus_reconstructable_ownership": 287,
+    "with_true_native_sol_history": 84,
+    "core_plus_native_sol": 46
+  },
+  "ownership_evidence_counts": {
+    "ledger_full_or_reconstructable": 317,
+    "rpc_balance_observed": 2845,
+    "trade_derived_proxy": 1,
+    "missing": 837
+  },
+  "artifacts": {
+    "universe_tokens": {
+      "path": "data/external/world_model/universe/universe_tokens.parquet",
+      "source": "pumpfun.tokens",
+      "bytes": 72166290,
+      "sha256": "70e5a9020accb8ca40ca634bd4de5d657e3e6912b5081a7b432f3d12fe427fe0",
+      "written_at": "2026-09-04T11:07:24.484127+00:00",
+      "notes": null,
+      "row_count": 798430,
+      "quality": "authoritative_local",
+      "ownership_evidence_level": null,
+      "date_coverage": "2026-06-05..2026-07-14",
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 798430
+    },
+    "rich_subset_mints": {
+      "path": "data/external/world_model/universe/rich_subset_mints.parquet",
+      "source": "outcome_independent_stratified",
+      "bytes": 410142,
+      "sha256": "62210467d3ba2b09c0694ba95c0b1e7c21cd0701b02035e76315b1d4c5e82bc8",
+      "written_at": "2026-09-04T11:07:24.584154+00:00",
+      "notes": null,
+      "row_count": 4000,
+      "quality": "outcome_independent",
+      "ownership_evidence_level": null,
+      "date_coverage": "representative corpus days excl Jul 3",
+      "known_limitations": [
+        "Not the full 798k universe"
+      ],
+      "append_only": true,
+      "mint_count": 4000
+    },
+    "ownership_evidence": {
+      "path": "data/external/world_model/universe/ownership_evidence.parquet",
+      "source": "classified_multi_source",
+      "bytes": 198073,
+      "sha256": "39292ca8f55a8c6fb7a3555eebc6bf89548fbfabfd578cd5966059aa4d34acf4",
+      "written_at": "2026-09-04T11:07:24.585171+00:00",
+      "notes": null,
+      "row_count": 4000,
+      "quality": "evidence_leveled",
+      "ownership_evidence_level": "mixed",
+      "date_coverage": null,
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 4000
+    },
+    "fusion_coverage_truth": {
+      "path": "data/external/world_model/universe/fusion_coverage_truth.parquet",
+      "source": "deterministic_intersection",
+      "bytes": 195615,
+      "sha256": "78644ee8b764fc502d6c69f1578367f8a40062f9d507eb9362fda2a945ec152c",
+      "written_at": "2026-09-04T11:07:24.586030+00:00",
+      "notes": null,
+      "row_count": 4000,
+      "quality": "source_of_truth",
+      "ownership_evidence_level": null,
+      "date_coverage": null,
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 4000
+    },
+    "token_transfers_bq": {
+      "path": "data/external/world_model/bigquery/token_transfers_rich.parquet",
+      "source": "bigquery.Token Transfers",
+      "bytes": 78936561,
+      "sha256": "fe9c93bcc1656e63504bd82ed0107f9ae559b2ccb62a4fd9a2f87e53c1d1d574",
+      "written_at": "2026-09-04T11:07:24.616716+00:00",
+      "notes": null,
+      "row_count": 562175,
+      "quality": "ledger",
+      "ownership_evidence_level": "ledger_full_or_reconstructable",
+      "date_coverage": "corpus window / day extracts",
+      "known_limitations": [
+        "Sparse for non-graduated Pump mints",
+        "Includes prior graduated-window union rows"
+      ],
+      "append_only": true,
+      "mint_count": 2936,
+      "wallet_count": 154706
+    },
+    "token_transfers_unbiased_days": {
+      "path": "data/external/world_model/bigquery/token_transfers_unbiased_days.parquet",
+      "source": "bigquery.Token Transfers.day_partitions",
+      "bytes": 433068,
+      "sha256": "f7e386407f3c309f3bbb93d92c4d0e74feb49c7c5f77088775b25c02063d726c",
+      "written_at": "2026-09-04T11:07:24.682527+00:00",
+      "notes": null,
+      "row_count": 2472,
+      "quality": "ledger_day_extracts",
+      "ownership_evidence_level": "ledger_full_or_reconstructable",
+      "date_coverage": "representative/unqueried day extracts",
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 314
+    },
+    "rpc_token_balance_ownership": {
+      "path": "data/external/world_model/graph/edges_ownership_rpc_token_balances.parquet",
+      "source": "solana_rpc.getTransaction.token_balances",
+      "bytes": 1124219,
+      "sha256": "4d9f9c5ea26b73ede9bcd957461b5016d1e712f26979e522023c5bd26a51b82b",
+      "written_at": "2026-09-04T11:07:24.683926+00:00",
+      "notes": null,
+      "row_count": 5691,
+      "quality": "sampled_tx_observations",
+      "ownership_evidence_level": "rpc_balance_observed",
+      "date_coverage": null,
+      "known_limitations": [
+        "Typically one sampled trade signature per mint",
+        "Not a complete holder-distribution history"
+      ],
+      "append_only": true,
+      "mint_count": 2845,
+      "wallet_count": 4301
+    },
+    "native_sol_funding": {
+      "path": "data/external/world_model/graph/edges_funding_native_sol.parquet",
+      "source": "solana_rpc.system_program_transfer",
+      "bytes": 60421,
+      "sha256": "54176004c5b24ab1547668dd409a78351983964c200356bc42ae92bd4685169f",
+      "written_at": "2026-09-04T11:07:24.685564+00:00",
+      "notes": null,
+      "row_count": 716,
+      "quality": "native_sol_pre_T",
+      "ownership_evidence_level": null,
+      "date_coverage": null,
+      "known_limitations": [
+        "Creators/early wallets subset only"
+      ],
+      "append_only": true,
+      "mint_count": 84,
+      "wallet_count": 126
+    },
+    "rpc_transactions": {
+      "path": "data/external/world_model/microstructure/rpc_transactions.parquet",
+      "source": "solana_rpc.getTransaction",
+      "bytes": 15915614,
+      "sha256": "0ab34dbc6adff8d41bf93205df7b5e7967a3bca177e05ca46a25cd805c30ad07",
+      "written_at": "2026-09-04T11:07:24.692394+00:00",
+      "notes": null,
+      "row_count": 17741,
+      "quality": "archival_rpc_subset",
+      "ownership_evidence_level": null,
+      "date_coverage": "stratified signatures on rich subset",
+      "known_limitations": [
+        "Not full tx universe"
+      ],
+      "append_only": true,
+      "mint_count": 3215
+    },
+    "signature_targets": {
+      "path": "data/external/world_model/microstructure/signature_targets.parquet",
+      "source": "pumpfun.trades.stratified",
+      "bytes": 2272616,
+      "sha256": "9d7593d083a448626b34151b242abf755bf146f6ba7f528db675ece0648f32b4",
+      "written_at": "2026-09-04T11:07:24.695029+00:00",
+      "notes": null,
+      "row_count": 15241,
+      "quality": "stratified_per_token",
+      "ownership_evidence_level": null,
+      "date_coverage": null,
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 3133
+    },
+    "execution_curve_states": {
+      "path": "data/external/world_model/execution/execution_curve_states.parquet",
+      "source": "pumpfun.trades.curve",
+      "bytes": 7253585,
+      "sha256": "83346ee292222f69cc990f310be5e2410c4840c2bd292376b83c54a3cfa381ef",
+      "written_at": "2026-09-04T11:07:24.699078+00:00",
+      "notes": null,
+      "row_count": 102164,
+      "quality": "curve_observed_subset",
+      "ownership_evidence_level": null,
+      "date_coverage": null,
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 3133
+    },
+    "edges_wallet_token": {
+      "path": "data/external/world_model/graph/edges_wallet_token.parquet",
+      "source": "pumpfun.trades",
+      "bytes": 687396242,
+      "sha256": "b442f67a09c80503945e760b5fea1f258bf83f98144d9dddfd0c370312cdc401",
+      "written_at": "2026-09-04T11:07:24.945389+00:00",
+      "notes": null,
+      "row_count": 9644468,
+      "quality": "trade_participation",
+      "ownership_evidence_level": "trade_derived_proxy",
+      "date_coverage": null,
+      "known_limitations": [],
+      "append_only": true,
+      "mint_count": 617150,
+      "wallet_count": 1006640
+    },
+    "daily_pump_network_context": {
+      "path": "data/external/world_model/global_context/daily_pump_network_context.parquet",
+      "source": "pumpfun.aggregates",
+      "bytes": 3938,
+      "sha256": "3d054046cfc6a727c8e309f29e29218981fac5407b504e1492a42fce17e1f7e0",
+      "written_at": "2026-09-04T11:07:26.343819+00:00",
+      "notes": null,
+      "row_count": 38,
+      "quality": "derived_daily",
+      "ownership_evidence_level": null,
+      "date_coverage": "corpus window",
+      "known_limitations": [],
+      "append_only": true
+    },
+    "blocks_daily": {
+      "path": "data/external/world_model/bigquery/blocks_daily.parquet",
+      "source": "bigquery.Blocks",
+      "bytes": 3013,
+      "sha256": "d2ec7936c953de446e98da71aca4b8f256f51e54c99e2b36cffdfb442b8a1990",
+      "written_at": "2026-09-04T11:07:26.344066+00:00",
+      "notes": null,
+      "row_count": 61,
+      "quality": "network_context",
+      "ownership_evidence_level": null,
+      "date_coverage": "2026-06..2026-07",
+      "known_limitations": [],
+      "append_only": true
+    }
+  },
+  "known_limitations": [
+    "RPC ownership observations are sampled-tx facts, not full ledgers.",
+    "Reconstructable ownership multimodal overlap is much smaller than any-genuine-ownership overlap.",
+    "Solarchive has no June\u2013July 2026 coverage.",
+    "Native SOL funding covers a wallet subset only."
+  ]
+}

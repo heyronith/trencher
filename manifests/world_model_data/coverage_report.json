@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T05:25:08.742804+00:00",
+  "generated_at": "2026-09-04T11:07:26.564998+00:00",
   "layers": [
     {
       "layer": "transaction_microstructure",
@@ -119,9 +119,21 @@
     "unbiased_rich_subset_mints": 4000,
     "unbiased_subset_graduated": 20,
     "unbiased_subset_non_graduated": 3980,
-    "fusion_overlap_tokens": 3116,
-    "fusion_overlap_graduated": 16,
-    "fusion_overlap_non_graduated": 3100,
+    "fusion_core_without_ownership": 3133,
+    "fusion_any_genuine_ownership": 3132,
+    "fusion_any_genuine_ownership_graduated": 16,
+    "fusion_any_genuine_ownership_non_graduated": 3116,
+    "fusion_reconstructable_ownership": 287,
+    "fusion_overlap_tokens": 287,
+    "fusion_overlap_graduated": 9,
+    "fusion_overlap_non_graduated": 278,
+    "tokens_with_true_native_sol_history": 84,
+    "ownership_evidence_counts": {
+      "ledger_full_or_reconstructable": 317,
+      "rpc_balance_observed": 2845,
+      "trade_derived_proxy": 1,
+      "missing": 837
+    },
     "selection_is_not_graduation_proxy": true
   },
   "bias_proof": {
@@ -167,11 +179,88 @@
     },
     "jul3_included": false
   },
+  "fusion_coverage_truth": {
+    "definition_version": "fusion_coverage_v2_ownership_evidence",
+    "source_of_truth": "data/external/world_model/universe/fusion_coverage_truth.parquet",
+    "counts": {
+      "core_event_graph_micro_exec_market": 3133,
+      "core_plus_any_genuine_ownership": 3132,
+      "core_plus_reconstructable_ownership": 287,
+      "with_true_native_sol_history": 84,
+      "core_plus_native_sol": 46
+    },
+    "composition": {
+      "core": {
+        "n": 3133,
+        "graduated": 16,
+        "non_graduated": 3117
+      },
+      "any_genuine_ownership": {
+        "n": 3132,
+        "graduated": 16,
+        "non_graduated": 3116
+      },
+      "reconstructable_ownership": {
+        "n": 287,
+        "graduated": 9,
+        "non_graduated": 278
+      }
+    },
+    "ownership_evidence_counts": {
+      "ledger_full_or_reconstructable": 317,
+      "rpc_balance_observed": 2845,
+      "trade_derived_proxy": 1,
+      "missing": 837
+    },
+    "availability_combo_top": [
+      [
+        "event+graph+micro+exec+market+own_rpc_balance_observed",
+        2806
+      ],
+      [
+        "graph+market+own_missing",
+        799
+      ],
+      [
+        "event+graph+micro+exec+market+own_ledger_full_or_reconstructable",
+        280
+      ],
+      [
+        "event+graph+micro+exec+market+own_rpc_balance_observed+native_sol",
+        39
+      ],
+      [
+        "graph+market+own_missing+native_sol",
+        38
+      ],
+      [
+        "graph+market+own_ledger_full_or_reconstructable",
+        30
+      ],
+      [
+        "event+graph+micro+exec+market+own_ledger_full_or_reconstructable+native_sol",
+        7
+      ],
+      [
+        "event+graph+micro+exec+market+own_trade_derived_proxy",
+        1
+      ]
+    ],
+    "fusion_readiness_policy": {
+      "full_world_state_fusion_requires": "core_plus_reconstructable_ownership",
+      "rpc_balance_observed_usable_as": "partial ownership evidence / modality mask, not full holder-state reconstruction",
+      "do_not_equate": "rpc_balance_observed != ledger_full_or_reconstructable"
+    },
+    "prior_disagreement_note": "coverage_report.json previously reported ~3116 while modality_matrix reported ~3132 due to a stale report snapshot; both used the same live intersection rule. This file is now the only authoritative count."
+  },
   "fusion_trainability": {
-    "overlap_definition": "tokens in unbiased subset with event (curve/trades) + graph + SPL ownership + microstructure + global market context",
-    "overlap_n": 3116,
+    "overlap_definition": "core (event+graph+micro+exec+market) + reconstructable ownership ledger (BigQuery Token Transfers); RPC sampled balances are a separate usable modality, not full holder-state reconstruction",
+    "core_n": 3133,
+    "any_genuine_ownership_n": 3132,
+    "reconstructable_ownership_n": 287,
+    "overlap_n": 287,
     "ready_threshold": 2000,
-    "status": "READY"
+    "status": "PARTIAL"
   },
   "source_probe_decisions": {
     "bigquery": "usable_with_partition_filters",
@@ -183,7 +272,7 @@
     "Wallet/Graph Encoder": "READY",
     "Token/Ownership/Curve Encoder": "READY",
     "Global Market Encoder": "READY",
-    "Fusion/world-state model": "READY",
+    "Fusion/world-state model": "PARTIAL",
     "prediction heads": "READY"
   },
   "irrecoverable_fields": [
@@ -192,12 +281,13 @@
     "Solarchive txs/accounts for June\u2013July 2026 (index ends 2025-12-05)",
     "Real pool addresses for synthetic/null migrations without discovery",
     "Row-level Pump fee bps history (protocol metadata only)",
-    "Complete fusion population is the multimodal overlap (3116 tokens), not the full 798k universe"
+    "Reconstructable-ownership multimodal overlap is 287 tokens (any-genuine ownership including sampled RPC is 3132); not the full 798k universe",
+    "RPC pre/postTokenBalances observations are valid on-chain facts but are not a complete holder-distribution history"
   ],
   "world_model_dataset_ready": true,
   "readiness_notes": [
     "READY requires meaningful trainability, not merely non-empty tables.",
-    "Fusion READY requires a large unbiased multimodal overlap, not graduated-only tokens.",
+    "Fusion READY requires reconstructable ownership ledgers on a large unbiased multimodal overlap \u2014 sampled RPC balances are insufficient.",
     "SPL transfers are labeled spl_transfer, not genuine native-SOL funding."
   ]
 }

@@ -7,7 +7,8 @@ from typing import Any
 
 import pyarrow.parquet as pq
 
-from trencher.data.world_model.io import utc_now, write_json
+from trencher.data.world_model.io import read_json, utc_now, write_json
+from trencher.data.world_model.ownership import build_fusion_coverage_truth
 
 
 def _rows(path: Path) -> int:
@@ -139,43 +140,33 @@ def build_coverage_report(
     if not bias_proof:
         proof_path = world_root / "universe" / "unbiased_subset_bias_proof.json"
         if proof_path.exists():
-            from trencher.data.world_model.io import read_json
-
             bias_proof = read_json(proof_path)
 
-    wt_path = graph / "edges_wallet_token.parquet"
-    graph_mints = _mint_set(wt_path, "dst")
-    ownership_mints = _mint_set(tt_unbiased_path, "mint") | _mint_set(tt_path, "mint")
-    ownership_mints |= _mint_set(
-        graph / "edges_ownership_rpc_token_balances.parquet", "mint"
-    )
-    ownership_mints &= subset_mints
-    exec_path = world_root / "execution" / "execution_curve_states.parquet"
-    event_mints = _mint_set(exec_path, "mint") or subset_mints
     market_ok = global_days >= 20
-    fusion_overlap = subset_mints
-    if event_mints:
-        fusion_overlap &= event_mints
-    if graph_mints:
-        fusion_overlap &= graph_mints
-    if ownership_mints:
-        fusion_overlap &= ownership_mints
-    if micro_mints:
-        fusion_overlap &= micro_mints
-    if not market_ok:
-        fusion_overlap = set()
-    overlap_n = len(fusion_overlap)
-    overlap_grad = 0
-    if subset_path.exists() and "graduated" in (
-        pq.read_schema(subset_path).names if subset_path.exists() else []
-    ):
-        st = pq.read_table(subset_path, columns=["mint", "graduated"])
-        gmap = dict(
-            zip(st.column("mint").to_pylist(), st.column("graduated").to_pylist(), strict=True)
-        )
-        overlap_grad = sum(1 for m in fusion_overlap if gmap.get(m))
-    overlap_nongrad = overlap_n - overlap_grad
+    truth_path = world_root / "universe" / "fusion_coverage_truth.json"
+    if truth_path.exists():
+        fusion_truth = read_json(truth_path)
+    else:
+        fusion_truth = build_fusion_coverage_truth(world_root)["truth"]
+    counts = fusion_truth.get("counts") or {}
+    composition = fusion_truth.get("composition") or {}
+    own_counts = fusion_truth.get("ownership_evidence_counts") or {}
+    # Authoritative fusion populations (do not equate RPC sampled with ledger).
+    core_n = int(counts.get("core_event_graph_micro_exec_market") or 0)
+    any_own_n = int(counts.get("core_plus_any_genuine_ownership") or 0)
+    recon_n = int(counts.get("core_plus_reconstructable_ownership") or 0)
+    native_n = int(counts.get("with_true_native_sol_history") or 0)
+    recon_comp = composition.get("reconstructable_ownership") or {}
+    any_comp = composition.get("any_genuine_ownership") or {}
+    overlap_n = recon_n  # full world-state fusion uses reconstructable ownership
+    overlap_grad = int(recon_comp.get("graduated") or 0)
+    overlap_nongrad = int(recon_comp.get("non_graduated") or 0)
+    any_own_grad = int(any_comp.get("graduated") or 0)
+    any_own_nongrad = int(any_comp.get("non_graduated") or 0)
     not_grad_proxy = bool(bias_proof.get("selection_is_not_graduation_proxy"))
+    if not market_ok:
+        core_n = any_own_n = recon_n = overlap_n = 0
+        overlap_grad = overlap_nongrad = 0
 
     layers = [
         {
@@ -300,8 +291,10 @@ def build_coverage_report(
     )
 
     postgrad_ok = (post.get("outcomes_rows") or 0) >= 1000
+    # Full world-state Fusion READY requires reconstructable ownership ledgers,
+    # not sampled RPC token-balance observations alone.
     fusion_trainable = (
-        overlap_n >= 2_000
+        recon_n >= 2_000
         and overlap_nongrad >= 500
         and overlap_grad >= 1
         and not_grad_proxy
@@ -314,7 +307,7 @@ def build_coverage_report(
     )
     if fusion_trainable:
         fusion_status = "READY"
-    elif event_status == "READY" and postgrad_ok:
+    elif event_status == "READY" and postgrad_ok and (any_own_n > 0 or recon_n > 0):
         fusion_status = "PARTIAL"
     else:
         fusion_status = "BLOCKED"
@@ -343,8 +336,13 @@ def build_coverage_report(
         "Real pool addresses for synthetic/null migrations without discovery",
         "Row-level Pump fee bps history (protocol metadata only)",
         (
-            f"Complete fusion population is the multimodal overlap "
-            f"({overlap_n} tokens), not the full 798k universe"
+            f"Reconstructable-ownership multimodal overlap is {recon_n} tokens "
+            f"(any-genuine ownership including sampled RPC is {any_own_n}); "
+            "not the full 798k universe"
+        ),
+        (
+            "RPC pre/postTokenBalances observations are valid on-chain facts but "
+            "are not a complete holder-distribution history"
         ),
     ]
 
@@ -412,17 +410,38 @@ def build_coverage_report(
             "unbiased_rich_subset_mints": rich_mints or len(subset_mints),
             "unbiased_subset_graduated": subset_grad,
             "unbiased_subset_non_graduated": subset_nongrad,
+            "fusion_core_without_ownership": core_n,
+            "fusion_any_genuine_ownership": any_own_n,
+            "fusion_any_genuine_ownership_graduated": any_own_grad,
+            "fusion_any_genuine_ownership_non_graduated": any_own_nongrad,
+            "fusion_reconstructable_ownership": recon_n,
             "fusion_overlap_tokens": overlap_n,
             "fusion_overlap_graduated": overlap_grad,
             "fusion_overlap_non_graduated": overlap_nongrad,
+            "tokens_with_true_native_sol_history": native_n,
+            "ownership_evidence_counts": own_counts,
             "selection_is_not_graduation_proxy": not_grad_proxy,
         },
         "bias_proof": bias_proof,
+        "fusion_coverage_truth": {
+            "definition_version": fusion_truth.get("definition_version"),
+            "source_of_truth": fusion_truth.get("source_of_truth"),
+            "counts": counts,
+            "composition": composition,
+            "ownership_evidence_counts": own_counts,
+            "availability_combo_top": fusion_truth.get("availability_combo_top"),
+            "fusion_readiness_policy": fusion_truth.get("fusion_readiness_policy"),
+            "prior_disagreement_note": fusion_truth.get("prior_disagreement_note"),
+        },
         "fusion_trainability": {
             "overlap_definition": (
-                "tokens in unbiased subset with event (curve/trades) + graph "
-                "+ SPL ownership + microstructure + global market context"
+                "core (event+graph+micro+exec+market) + reconstructable ownership "
+                "ledger (BigQuery Token Transfers); RPC sampled balances are a "
+                "separate usable modality, not full holder-state reconstruction"
             ),
+            "core_n": core_n,
+            "any_genuine_ownership_n": any_own_n,
+            "reconstructable_ownership_n": recon_n,
             "overlap_n": overlap_n,
             "ready_threshold": 2000,
             "status": fusion_status,
@@ -438,7 +457,8 @@ def build_coverage_report(
         and encoders["Fusion/world-state model"] in {"READY", "PARTIAL"},
         "readiness_notes": [
             "READY requires meaningful trainability, not merely non-empty tables.",
-            "Fusion READY requires a large unbiased multimodal overlap, not graduated-only tokens.",
+            "Fusion READY requires reconstructable ownership ledgers on a large "
+            "unbiased multimodal overlap — sampled RPC balances are insufficient.",
             "SPL transfers are labeled spl_transfer, not genuine native-SOL funding.",
         ],
     }
@@ -476,9 +496,19 @@ def render_world_model_md(report: dict[str, Any]) -> str:
             f"- Unbiased rich subset: {m.get('unbiased_rich_subset_mints')} "
             f"(graduated={m.get('unbiased_subset_graduated')}, "
             f"non-graduated={m.get('unbiased_subset_non_graduated')})",
-            f"- Fusion multimodal overlap: {m.get('fusion_overlap_tokens')} "
+            f"- Fusion core (event+graph+micro+exec+market): "
+            f"{m.get('fusion_core_without_ownership')}",
+            f"- Fusion + any genuine ownership (incl. sampled RPC): "
+            f"{m.get('fusion_any_genuine_ownership')} "
+            f"(graduated={m.get('fusion_any_genuine_ownership_graduated')}, "
+            f"non-graduated={m.get('fusion_any_genuine_ownership_non_graduated')})",
+            f"- Fusion + reconstructable ownership (authoritative): "
+            f"{m.get('fusion_reconstructable_ownership')} "
             f"(graduated={m.get('fusion_overlap_graduated')}, "
             f"non-graduated={m.get('fusion_overlap_non_graduated')})",
+            f"- Tokens with true native-SOL history: "
+            f"{m.get('tokens_with_true_native_sol_history')}",
+            f"- Ownership evidence levels: {m.get('ownership_evidence_counts')}",
             f"- Selection is not a graduation proxy: "
             f"{m.get('selection_is_not_graduation_proxy')}",
             f"- Wallets with prior history: {m.get('wallets_with_prior_history')}",
