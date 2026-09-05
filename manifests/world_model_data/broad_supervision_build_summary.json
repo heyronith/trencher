@@ -1,0 +1,291 @@
+{
+  "generated_at": "2026-09-05T03:34:40.545874+00:00",
+  "phases": [
+    "audit"
+  ],
+  "broad_root": "data/external/world_model/broad",
+  "pump_root": "data/external/pumpfun_memecoin_corpus",
+  "world_root": "data/external/world_model",
+  "timings_sec": {
+    "audit": 506.38119158400514
+  },
+  "metas": {
+    "audit": {
+      "audit_id": "BROAD_SUPERVISION_AUDIT_V1",
+      "generated_at": "2026-09-05T03:43:06.874000+00:00",
+      "freeze_id": "world_model_freeze_v1",
+      "contract_version": "BROAD_SUPERVISION_CONTRACT_V1",
+      "population_counts": {
+        "launch_population": 798430,
+        "event_curve_population": 622303,
+        "price_target_population": 596338,
+        "graduation_event_population": 798430,
+        "has_migration_evidence_metadata": 5697
+      },
+      "sequence_counts": {
+        "event_rows": 26886634,
+        "curve_rows": 26886634,
+        "creator_rows": 55686561,
+        "excluded_system_program_rows": null
+      },
+      "observation_counts": {
+        "tokens_n": 622303,
+        "observations_n": 8449949,
+        "projected": {
+          "tokens": 622303,
+          "fixed_age_obs_if_all_emitted": 6223030,
+          "event_count_obs_upper_bound": 6223030,
+          "total_upper_bound_before_dedupe": 12446060,
+          "note": "Actual count is lower after coincident-time dedupe and when tokens have fewer than 512 trades."
+        },
+        "actual": {
+          "tokens": 622303,
+          "observations": 8449949,
+          "duplicate_time_collisions_removed": 0
+        }
+      },
+      "target_counts": {
+        "observations_processed": 8449949,
+        "primary_explosion_events": 49836,
+        "mints_with_primary_explosion": 49836,
+        "explosion_definition_rows": 1789191
+      },
+      "disk": {
+        "population_bytes": 73859743,
+        "sequences_bytes": 20664014523,
+        "observations_bytes": 4103783880,
+        "targets_bytes": 9591427442,
+        "total_bytes": 34433085588,
+        "total_mb": 32837.949
+      },
+      "build_timings_sec": {},
+      "explosion_scale_audit": {
+        "rich_4k_primary_explosion_events": 222,
+        "broad_primary_explosion_events": 49836,
+        "broad_distinct_tokens_with_primary": 49836,
+        "scale_factor_vs_rich": 224.48648648648648,
+        "imminence_positives_by_horizon": {
+          "10": 77297,
+          "30": 109114,
+          "60": 120638,
+          "120": 128367,
+          "300": 140230
+        },
+        "pre_explosion_observations": 159768,
+        "observations_scanned_for_sufficiency": 8449949,
+        "price_target_available_observations": 7124293
+      },
+      "graduation_decision": {
+        "generated_at": "2026-09-05T03:34:43.231862+00:00",
+        "decision_id": "broad_graduation_censor_v1",
+        "tracking_expires_at_is_proven_graduation_tracking_end": false,
+        "retain_conservative_v3_graduation_treatment": true,
+        "rationale": [
+          "tracking_expires_at - detected_at is uniform +48h (mode=172800s, uniform=True)",
+          "87 graduations occur after tracking_expires_at \u2014 field cannot be a hard graduation-observation end",
+          "KNOWN_ISSUES.md is silent on tracking_expires_at",
+          "README claims continuous collection over a fixed 39-day window (Jun 5 \u2013 Jul 14, 2026), not a 48h per-token follow window",
+          "Therefore do not treat tracking_expires_at as migration-source coverage end; keep target_dataset_v3 compute_graduation + target_source_coverage_v2 absence semantics unchanged"
+        ],
+        "policy": {
+          "absence_of_migration": "censored_unless_migration_source_coverage_proves_negative",
+          "use_tracking_expires_at_as_coverage_end": false,
+          "reuse_compute_graduation": true,
+          "reuse_target_source_coverage_v2": true,
+          "target_value_semantics": "unchanged_from_target_dataset_v3"
+        },
+        "investigation": {
+          "tokens_n": 798430,
+          "rows_with_detected_and_expire": 798430,
+          "null_detected_at": 0,
+          "null_tracking_expires_at": 0,
+          "delta_sec_mode": 172800,
+          "delta_sec_mode_count": 798430,
+          "unique_delta_sec_values": 1,
+          "uniform_plus_48h": true,
+          "expected_tracking_window_sec": 172800,
+          "graduated_n": 5689,
+          "grads_after_tracking_expires": 87,
+          "grads_at_or_before_tracking_expires": 5602,
+          "known_issues_mentions_tracking_expires_at": false,
+          "readme_claims_39_day_continuous_collection": true,
+          "known_issues_path": "data/external/pumpfun_memecoin_corpus/KNOWN_ISSUES.md",
+          "readme_path": "data/external/pumpfun_memecoin_corpus/README.md"
+        }
+      },
+      "rich_vs_broad_capability_matrix": [
+        {
+          "capability": "event_history_sequences",
+          "rich_4k": true,
+          "broad": true,
+          "notes": "Broad uses full Pump trades; rich uses atomic subset"
+        },
+        {
+          "capability": "curve_reserve_trajectory",
+          "rich_4k": true,
+          "broad": true,
+          "notes": "Broad from trade reserves; rich also has execution_curve_states"
+        },
+        {
+          "capability": "creator_prior_launches",
+          "rich_4k": "graph_edges_partial",
+          "broad": true,
+          "notes": "Broad reconstructs from tokens timeline (no past_rugs leakage)"
+        },
+        {
+          "capability": "microstructure_rpc",
+          "rich_4k": true,
+          "broad": false,
+          "notes": "RPC sampled on rich subset only"
+        },
+        {
+          "capability": "ownership_ledger_bq",
+          "rich_4k": "partial",
+          "broad": false,
+          "notes": "BQ transfers limited; broad ownership targets sparse/unavailable"
+        },
+        {
+          "capability": "wallet_prior_graph",
+          "rich_4k": true,
+          "broad": false,
+          "notes": "Not in broad event/curve package"
+        },
+        {
+          "capability": "pit_model_state_json",
+          "rich_4k": true,
+          "broad": false,
+          "notes": "Broad stores index + sequence refs only"
+        },
+        {
+          "capability": "price_return_barrier_targets",
+          "rich_4k": true,
+          "broad": true,
+          "notes": "Same compute_* semantics"
+        },
+        {
+          "capability": "graduation_targets",
+          "rich_4k": true,
+          "broad": true,
+          "notes": "Conservative v3 absence censoring retained"
+        },
+        {
+          "capability": "explosion_hazard",
+          "rich_4k": "marginal",
+          "broad": "scale_audit",
+          "notes": "Broad increases independent explosion events"
+        }
+      ],
+      "supervision_sufficiency": [
+        {
+          "head": "returns_h300",
+          "valid_observations": 973601,
+          "unique_tokens_with_valid_supervision": 122695,
+          "positive_observations": 288713,
+          "distinct_positive_tokens": 63726,
+          "independent_events": 122695,
+          "censored_observations": 6148904,
+          "unavailable_observations": 1327444,
+          "prevalence_among_valid_observations": 0.29654139632149107,
+          "prevalence_among_valid_tokens": 0.5193854680304821,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 973601,
+          "independent_event_count": 122695,
+          "prevalence": 0.29654139632149107,
+          "population": "broad_event_curve"
+        },
+        {
+          "head": "barrier_u100_l30_h3600",
+          "valid_observations": 1485269,
+          "unique_tokens_with_valid_supervision": 269007,
+          "positive_observations": 236815,
+          "distinct_positive_tokens": 72786,
+          "independent_events": 72786,
+          "censored_observations": 6964680,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.15944249829492166,
+          "prevalence_among_valid_tokens": 0.270572884720472,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 1485269,
+          "independent_event_count": 72786,
+          "prevalence": 0.15944249829492166,
+          "population": "broad_event_curve"
+        },
+        {
+          "head": "survival_24h",
+          "valid_observations": 8024475,
+          "unique_tokens_with_valid_supervision": 592798,
+          "positive_observations": 66263,
+          "distinct_positive_tokens": 4412,
+          "independent_events": 592798,
+          "censored_observations": 425474,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.00825761186868923,
+          "prevalence_among_valid_tokens": 0.007442670184447316,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 8024475,
+          "independent_event_count": 592798,
+          "prevalence": 0.00825761186868923,
+          "population": "broad_event_curve"
+        },
+        {
+          "head": "graduation",
+          "valid_observations": 68938,
+          "unique_tokens_with_valid_supervision": 4150,
+          "positive_observations": 47121,
+          "distinct_positive_tokens": 4018,
+          "independent_events": 4018,
+          "censored_observations": 8381011,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.6835272273637181,
+          "prevalence_among_valid_tokens": 0.9681927710843373,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Conservative v3 absence censoring retained on broad.",
+          "observations": 68938,
+          "independent_event_count": 4018,
+          "prevalence": 0.6835272273637181,
+          "population": "broad_event_curve"
+        },
+        {
+          "head": "explosion_onset_primary",
+          "valid_observations": 849819,
+          "unique_tokens_with_valid_supervision": 49836,
+          "positive_observations": 120638,
+          "distinct_positive_tokens": 47887,
+          "independent_events": 49836,
+          "censored_observations": 0,
+          "unavailable_observations": 7600130,
+          "prevalence_among_valid_observations": 0.14195728737531169,
+          "prevalence_among_valid_tokens": 0.9608917248575327,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 849819,
+          "independent_event_count": 49836,
+          "prevalence": 0.14195728737531169,
+          "population": "broad_event_curve"
+        },
+        {
+          "head": "holder_state_targets",
+          "valid_observations": 85,
+          "unique_tokens_with_valid_supervision": 6,
+          "positive_observations": 85,
+          "distinct_positive_tokens": 6,
+          "independent_events": 6,
+          "censored_observations": 0,
+          "unavailable_observations": 8449864,
+          "prevalence_among_valid_observations": 1.0,
+          "prevalence_among_valid_tokens": 1.0,
+          "recommendation": "still_sparse_ownership",
+          "notes": "",
+          "observations": 85,
+          "independent_event_count": 6,
+          "prevalence": 1.0,
+          "population": "broad_event_curve"
+        }
+      ],
+      "sufficiency_field_contract_version": "supervision_sufficiency_v2"
+    }
+  }
+}

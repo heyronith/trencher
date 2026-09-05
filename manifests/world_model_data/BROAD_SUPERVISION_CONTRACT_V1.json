@@ -1,0 +1,41 @@
+{
+  "contract_version": "BROAD_SUPERVISION_CONTRACT_V1",
+  "generated_at": "2026-09-05T03:34:40.546266+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "scope": "broad_event_curve_supervision",
+  "frozen_semantics_not_modified": [
+    "world_model_freeze_v1",
+    "pit_v4",
+    "observation_dataset_v1",
+    "sequence_dataset_v2",
+    "model_input_contract_v2",
+    "target_dataset_v3_target_values",
+    "target_contract_v3",
+    "target_source_coverage_v2"
+  ],
+  "artifacts": {
+    "population": "broad_population_v1.parquet",
+    "sequences": [
+      "broad_sequence_events_v1/",
+      "broad_sequence_curve_v1/",
+      "broad_sequence_creator_v1/"
+    ],
+    "observations": [
+      "broad_observation_index_v1/",
+      "broad_observation_sequence_refs_v1/"
+    ],
+    "targets": "broad_targets_v1/"
+  },
+  "population_policy": {
+    "outcome_independent": true,
+    "no_preferential_graduate_sampling": true,
+    "preserve_all_event_curve_tokens": true
+  },
+  "graduation_policy": {
+    "retain_conservative_v3": true,
+    "tracking_expires_at_as_coverage_end": false
+  },
+  "no_splits": true,
+  "no_training": true,
+  "no_external_acquisition": true
+}

@@ -276,6 +276,20 @@ def build_broad_supervision_audit_v1(
     seq_meta = phase_metas.get("sequences") or {}
     obs_meta = phase_metas.get("observations") or {}
     tgt_meta = phase_metas.get("targets") or {}
+    # When audit is re-run alone, recover counts from on-disk manifests.
+    if not obs_meta:
+        obs_meta = _read_json(broad_root / "broad_observation_index_v1" / "manifest.json")
+    if not tgt_meta:
+        tgt_meta = _read_json(broad_root / "broad_targets_v1" / "broad_targets_manifest.json")
+    events_manifest = _read_json(broad_root / "broad_sequence_events_v1" / "manifest.json")
+    creator_manifest = _read_json(
+        broad_root / "broad_sequence_creator_v1" / "manifest.json"
+    )
+    if not seq_meta:
+        seq_meta = {
+            "events": events_manifest,
+            "creator": creator_manifest,
+        }
 
     audit = {
         "audit_id": AUDIT_ID,
@@ -284,12 +298,16 @@ def build_broad_supervision_audit_v1(
         "contract_version": CONTRACT_ID,
         "population_counts": pop_counts,
         "sequence_counts": {
-            "event_rows": (seq_meta.get("events") or {}).get("deduped_event_rows"),
-            "curve_rows": (seq_meta.get("events") or {}).get("curve_rows"),
-            "creator_rows": (seq_meta.get("creator") or {}).get("rows"),
-            "excluded_system_program_rows": (seq_meta.get("events") or {}).get(
+            "event_rows": (seq_meta.get("events") or seq_meta).get("deduped_event_rows")
+            or events_manifest.get("deduped_event_rows"),
+            "curve_rows": (seq_meta.get("events") or seq_meta).get("curve_rows")
+            or events_manifest.get("curve_rows"),
+            "creator_rows": (seq_meta.get("creator") or {}).get("rows")
+            or creator_manifest.get("rows"),
+            "excluded_system_program_rows": (seq_meta.get("events") or seq_meta).get(
                 "excluded_system_program_rows"
-            ),
+            )
+            or events_manifest.get("excluded_system_program_rows"),
         },
         "observation_counts": {
             "tokens_n": obs_meta.get("tokens_n"),
