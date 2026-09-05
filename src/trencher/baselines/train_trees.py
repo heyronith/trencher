@@ -16,6 +16,7 @@ from trencher.baselines.dataset import (
     merge_eligibility_into_targets,
     walkforward_mask,
 )
+from trencher.baselines.exec_overlay import merge_impact_into_targets
 from trencher.baselines.metrics import (
     binary_metrics,
     decile_trading_table,
@@ -35,6 +36,7 @@ from trencher.baselines.targets import (
     extract_binary_labels,
     extract_regression_labels,
 )
+from trencher.baselines.trading import trading_arrays_from_targets
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 from trencher.data.world_model.splits.walkforward import build_walkforward_folds
 
@@ -87,7 +89,7 @@ def train_lightgbm_head(
     out_dir: Path,
     tag: str,
     num_boost_round: int = 400,
-    early_stopping_rounds: int = 40,
+    early_stopping_rounds: int | None = 40,
     seed: int = 0,
     scale_pos_weight: float | None = None,
     use_gpu: bool = False,
@@ -129,55 +131,59 @@ def train_lightgbm_head(
         params["alpha"] = 0.5  # unused unless quantile
 
     dtrain = lgb.Dataset(X_train, label=y_train)
-    dval = lgb.Dataset(X_val, label=y_val, reference=dtrain)
+    valid_sets = []
+    valid_names = []
+    if X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0:
+        dval = lgb.Dataset(X_val, label=y_val, reference=dtrain)
+        valid_sets = [dval]
+        valid_names = ["val"]
     cb = BoostingProgressCallback(emitter, num_boost_round)
-    callbacks = [
-        lgb.early_stopping(early_stopping_rounds, verbose=False),
-        lgb.log_evaluation(period=0),
-        cb,
-    ]
+    callbacks = [lgb.log_evaluation(period=0), cb]
+    if early_stopping_rounds and valid_sets:
+        callbacks.insert(0, lgb.early_stopping(early_stopping_rounds, verbose=False))
+    train_kwargs: dict[str, Any] = {
+        "params": params,
+        "train_set": dtrain,
+        "num_boost_round": num_boost_round,
+        "callbacks": callbacks,
+    }
+    if valid_sets:
+        train_kwargs["valid_sets"] = valid_sets
+        train_kwargs["valid_names"] = valid_names
     try:
-        booster = lgb.train(
-            params,
-            dtrain,
-            num_boost_round=num_boost_round,
-            valid_sets=[dval],
-            valid_names=["val"],
-            callbacks=callbacks,
-        )
+        booster = lgb.train(**train_kwargs)
     except Exception:
         if use_gpu:
             params.pop("device", None)
             params.pop("gpu_platform_id", None)
             params.pop("gpu_device_id", None)
-            booster = lgb.train(
-                params,
-                dtrain,
-                num_boost_round=num_boost_round,
-                valid_sets=[dval],
-                valid_names=["val"],
-                callbacks=callbacks,
-            )
+            train_kwargs["params"] = params
+            booster = lgb.train(**train_kwargs)
         else:
             raise
+    best_it = int(booster.best_iteration or booster.current_iteration() or num_boost_round)
     emitter.complete(
         message="COMPLETE",
-        best_iteration=booster.best_iteration,
+        best_iteration=best_it,
         actual_iterations=booster.current_iteration(),
     )
     model_path = out_dir / "model.txt"
     booster.save_model(str(model_path))
-    raw = booster.predict(X_val, num_iteration=booster.best_iteration)
+    if X_val is not None and len(X_val) > 0:
+        raw = booster.predict(X_val, num_iteration=best_it)
+    else:
+        raw = np.array([], dtype=np.float64)
     return {
         "family": "lightgbm",
         "model_path": str(model_path),
         "checksum": _checksum(model_path),
-        "best_iteration": int(booster.best_iteration or 0),
+        "best_iteration": best_it,
         "actual_iterations": int(booster.current_iteration()),
         "planned_iterations": num_boost_round,
         "raw_val_pred": np.asarray(raw, dtype=np.float64),
         "runtime_sec": time.time() - t0,
         "params": params,
+        "early_stopping_rounds": early_stopping_rounds,
     }
 
 
@@ -191,7 +197,7 @@ def train_xgboost_head(
     out_dir: Path,
     tag: str,
     num_boost_round: int = 400,
-    early_stopping_rounds: int = 40,
+    early_stopping_rounds: int | None = 40,
     seed: int = 0,
     scale_pos_weight: float | None = None,
     use_gpu: bool = True,
@@ -228,7 +234,8 @@ def train_xgboost_head(
         params["eval_metric"] = "mae"
 
     dtrain = xgb.DMatrix(X_train, label=y_train)
-    dval = xgb.DMatrix(X_val, label=y_val)
+    has_val = X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0
+    dval = xgb.DMatrix(X_val, label=y_val) if has_val else None
 
     class _CB(xgb.callback.TrainingCallback):
         def __init__(self) -> None:
@@ -239,7 +246,6 @@ def train_xgboost_head(
             it = epoch + 1
             msg = f"iter={it}/{num_boost_round}"
             if evals_log:
-                # evals_log[data][metric] -> list
                 for _dn, metrics in evals_log.items():
                     for mn, vals in metrics.items():
                         msg += f" {mn}={vals[-1]:.6g}"
@@ -255,33 +261,41 @@ def train_xgboost_head(
             )
             return False
 
-    booster = xgb.train(
-        params,
-        dtrain,
-        num_boost_round=num_boost_round,
-        evals=[(dval, "val")],
-        early_stopping_rounds=early_stopping_rounds,
-        callbacks=[_CB()],
-        verbose_eval=False,
-    )
+    train_kwargs: dict[str, Any] = {
+        "params": params,
+        "dtrain": dtrain,
+        "num_boost_round": num_boost_round,
+        "callbacks": [_CB()],
+        "verbose_eval": False,
+    }
+    if has_val and dval is not None:
+        train_kwargs["evals"] = [(dval, "val")]
+        if early_stopping_rounds:
+            train_kwargs["early_stopping_rounds"] = early_stopping_rounds
+    booster = xgb.train(**train_kwargs)
+    best_it = int(getattr(booster, "best_iteration", None) or (booster.num_boosted_rounds() - 1))
     emitter.complete(
         message="COMPLETE",
-        best_iteration=getattr(booster, "best_iteration", None),
+        best_iteration=best_it,
         actual_iterations=booster.num_boosted_rounds(),
     )
     model_path = out_dir / "model.json"
     booster.save_model(str(model_path))
-    raw = booster.predict(dval, iteration_range=(0, (booster.best_iteration or 0) + 1))
+    if has_val and dval is not None:
+        raw = booster.predict(dval, iteration_range=(0, best_it + 1))
+    else:
+        raw = np.array([], dtype=np.float64)
     return {
         "family": "xgboost",
         "model_path": str(model_path),
         "checksum": _checksum(model_path),
-        "best_iteration": int(getattr(booster, "best_iteration", 0) or 0),
+        "best_iteration": best_it,
         "actual_iterations": int(booster.num_boosted_rounds()),
         "planned_iterations": num_boost_round,
         "raw_val_pred": np.asarray(raw, dtype=np.float64),
         "runtime_sec": time.time() - t0,
         "params": params,
+        "early_stopping_rounds": early_stopping_rounds,
     }
 
 
@@ -295,7 +309,7 @@ def train_catboost_head(
     out_dir: Path,
     tag: str,
     num_boost_round: int = 400,
-    early_stopping_rounds: int = 40,
+    early_stopping_rounds: int | None = 40,
     seed: int = 0,
     class_weights: list[float] | None = None,
     use_gpu: bool = True,
@@ -305,19 +319,24 @@ def train_catboost_head(
     emitter = ProgressEmitter(tag, status_path=out_dir / "progress.json")
     emitter.emit(1, message="start", force=True)
     t0 = time.time()
-    common = {
+    common: dict[str, Any] = {
         "iterations": num_boost_round,
         "learning_rate": 0.05,
         "depth": 8,
         "random_seed": seed,
-        "od_type": "Iter",
-        "od_wait": early_stopping_rounds,
-        "verbose": False,
         "allow_writing_files": False,
         "task_type": "GPU" if use_gpu else "CPU",
+        "metric_period": max(1, num_boost_round // 20),
+        "logging_level": "Verbose" if use_gpu else "Silent",
     }
+    if early_stopping_rounds:
+        common["od_type"] = "Iter"
+        common["od_wait"] = int(early_stopping_rounds)
+    else:
+        common["verbose"] = bool(use_gpu)
     train_pool = Pool(X_train, y_train)
-    val_pool = Pool(X_val, y_val)
+    has_val = X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0
+    val_pool = Pool(X_val, y_val) if has_val else None
 
     class _CB:
         def after_iteration(self, info):  # noqa: ANN001
@@ -326,7 +345,6 @@ def train_catboost_head(
             metrics = getattr(info, "metrics", None) or {}
             best = None
             if metrics:
-                # metrics['validation']['Logloss'] etc
                 for _split, m in metrics.items():
                     for name, vals in m.items():
                         if vals:
@@ -339,16 +357,18 @@ def train_catboost_head(
                 current_iteration=it,
                 best_metric=best,
             )
-            return True  # continue
+            return True
 
     if kind in ("binary", "multiclass"):
         params = dict(common)
         if kind == "binary":
             params["loss_function"] = "Logloss"
-            # PRAUC requires both classes in eval set; fall back to Logloss
-            n_pos = float(np.sum(y_val >= 0.5))
-            n_neg = float(len(y_val) - n_pos)
-            params["eval_metric"] = "PRAUC" if n_pos > 0 and n_neg > 0 else "Logloss"
+            if has_val:
+                n_pos = float(np.sum(np.asarray(y_val) >= 0.5))
+                n_neg = float(len(y_val) - n_pos)
+                params["eval_metric"] = "PRAUC" if n_pos > 0 and n_neg > 0 else "Logloss"
+            else:
+                params["eval_metric"] = "Logloss"
             if class_weights is not None:
                 params["class_weights"] = class_weights
         else:
@@ -359,31 +379,52 @@ def train_catboost_head(
         params = dict(common)
         model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **common)
 
-    # CatBoost GPU rejects user callbacks. Prefer GPU fit with coarse progress;
-    # fall back to CPU+callbacks if GPU fit fails.
+    fit_kwargs: dict[str, Any] = {}
+    if has_val and val_pool is not None:
+        fit_kwargs["eval_set"] = val_pool
+
     if use_gpu:
-        emitter.emit(10, message="gpu fit start", force=True)
+        emitter.emit(
+            10,
+            message="gpu fit (native CatBoost logging; no user callbacks)",
+            force=True,
+        )
         try:
-            model.fit(train_pool, eval_set=val_pool)
+            model.fit(train_pool, **fit_kwargs)
             trees = int(model.tree_count_ or num_boost_round)
             emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
         except Exception as exc:  # noqa: BLE001
-            emitter.emit(15, message=f"gpu failed ({type(exc).__name__}); CPU+callbacks", force=True)
-            cpu_common = {**common, "task_type": "CPU"}
+            emitter.emit(
+                15,
+                message=f"gpu failed ({type(exc).__name__}); CPU+callbacks",
+                force=True,
+            )
+            cpu_common = {
+                **common,
+                "task_type": "CPU",
+                "logging_level": "Silent",
+                "verbose": False,
+            }
             if kind in ("binary", "multiclass"):
-                model = CatBoostClassifier(**{**params, "task_type": "CPU"})
+                model = CatBoostClassifier(**{**params, **cpu_common, "task_type": "CPU"})
             else:
-                model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **cpu_common)
-            model.fit(train_pool, eval_set=val_pool, callbacks=[_CB()])
+                model = CatBoostRegressor(
+                    loss_function="MAE", eval_metric="MAE", **cpu_common
+                )
+            cb_kwargs = dict(fit_kwargs)
+            cb_kwargs["callbacks"] = [_CB()]
+            model.fit(train_pool, **cb_kwargs)
     else:
-        model.fit(train_pool, eval_set=val_pool, callbacks=[_CB()])
+        cb_kwargs = dict(fit_kwargs)
+        cb_kwargs["callbacks"] = [_CB()]
+        model.fit(train_pool, **cb_kwargs)
 
     if kind in ("binary", "multiclass"):
-        raw = model.predict_proba(X_val)
-        if kind == "binary":
+        raw = model.predict_proba(X_val) if has_val else np.array([])
+        if kind == "binary" and has_val:
             raw = raw[:, 1]
     else:
-        raw = model.predict(X_val)
+        raw = model.predict(X_val) if has_val else np.array([])
 
     emitter.complete(
         message="COMPLETE",
@@ -396,13 +437,15 @@ def train_catboost_head(
         "family": "catboost",
         "model_path": str(model_path),
         "checksum": _checksum(model_path),
-        "best_iteration": int(model.get_best_iteration() or 0),
+        "best_iteration": int(model.get_best_iteration() or model.tree_count_ or 0),
         "actual_iterations": int(model.tree_count_),
         "planned_iterations": num_boost_round,
         "raw_val_pred": np.asarray(raw, dtype=np.float64),
         "runtime_sec": time.time() - t0,
         "params": common,
+        "early_stopping_rounds": early_stopping_rounds,
     }
+
 
 
 def run_family_core_suite(
@@ -415,14 +458,17 @@ def run_family_core_suite(
     max_partitions: int | None = None,
     use_gpu: bool = False,
     smoke: bool = False,
+    protocol_version: str = "v2",
 ) -> dict[str, Any]:
-    """Walk-forward HPO-lite + final fit on full train, evaluate permanent val."""
+    """V2: wf1+wf2 selection only; permanent val is evaluation-only."""
     refuse_test_split("val")
     world_root = Path(world_root)
     split_root = Path(split_root or world_root / "splits" / "split_v1")
     artifacts_root = ensure_dir(Path(artifacts_root) / family)
     cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
-    folds = build_walkforward_folds(cutoffs)["folds"]
+    all_folds = build_walkforward_folds(cutoffs)["folds"]
+    # Permanent val [q70,q85) must never enter selection / early stopping.
+    selection_folds = [f for f in all_folds if f["fold_id"] in ("wf_fold_1", "wf_fold_2")]
 
     overall = ProgressEmitter(
         f"{family} overall", status_path=artifacts_root / "overall_progress.json"
@@ -431,7 +477,6 @@ def run_family_core_suite(
     if smoke:
         heads = [h for h in heads if h.head_id in ("explosion_60s", "return_5m")]
         max_partitions = max_partitions or 2
-    # trees skip pure TTE heads (handled by survival module)
     heads = [h for h in heads if h.kind in ("binary", "regression", "multiclass")]
 
     train_bundle = load_joined_matrices(
@@ -446,10 +491,36 @@ def run_family_core_suite(
         split="val",
         max_partitions=max_partitions,
     )
+    # Side-load impact-adjusted exec fields for trading tables (eval only).
+    merge_impact_into_targets(val_bundle["targets"], val_bundle["meta"], world_root)
 
-    total_runs = len(heads) * (len(folds) + 1)  # folds + final
+    total_runs = len(heads) * (len(selection_folds) + 1)
     done_runs = 0
     overall.emit(1, message="start", force=True)
+    eval_only_proof = {
+        "protocol_version": protocol_version,
+        "label": "final_full_population_validation_control"
+        if protocol_version == "v2"
+        else "legacy",
+        "selection_folds": [f["fold_id"] for f in selection_folds],
+        "excluded_from_selection": ["wf_fold_3", "permanent_val_q70_q85"],
+        "permanent_val_used_for": [
+            "final_score_once",
+            "trading_tables",
+            "slice_reports",
+        ],
+        "permanent_val_forbidden_for": [
+            "early_stopping",
+            "best_iteration_selection",
+            "hyperparameter_selection",
+            "threshold_selection",
+            "calibration_fitting",
+            "model_family_selection",
+        ],
+        "calibration": "platt_on_chronological_train_holdout_only",
+        "final_fit": "fixed_iterations_from_wf1_wf2_median_no_es_on_permanent_val",
+        "permanent_test_q85_plus": "untouched",
+    }
     results: dict[str, Any] = {
         "family": family,
         "generated_at": utc_now(),
@@ -461,9 +532,11 @@ def run_family_core_suite(
         "feature_n": len(train_bundle["feature_names"]),
         "smoke": smoke,
         "use_gpu": use_gpu,
+        "protocol_version": protocol_version,
+        "eval_only_proof": eval_only_proof,
     }
 
-    rounds = 50 if smoke else 400
+    planned_rounds = 50 if smoke else 400
 
     for spec in heads:
         head_dir = ensure_dir(artifacts_root / spec.head_id)
@@ -473,19 +546,17 @@ def run_family_core_suite(
         Xva_all = val_bundle["X"]
 
         fold_summaries = []
-        for fold in folds:
+        best_iters: list[int] = []
+        for fold in selection_folds:
             tr_m = walkforward_mask(train_bundle["meta"], fold, "train") & elig_tr
-            # fold val is within train timeline for folds 1–2; fold 3 val is permanent val window
-            if fold["fold_id"] == "wf_fold_3":
-                va_m = elig_va.copy()
-                X_va_f, y_va_f = Xva_all[va_m], y_va[va_m]
-            else:
-                va_m = walkforward_mask(train_bundle["meta"], fold, "val") & elig_tr
-                X_va_f, y_va_f = Xtr_all[va_m], y_tr[va_m]
+            va_m = walkforward_mask(train_bundle["meta"], fold, "val") & elig_tr
+            X_va_f, y_va_f = Xtr_all[va_m], y_tr[va_m]
             X_tr_f, y_tr_f = Xtr_all[tr_m], y_tr[tr_m]
             if X_tr_f.shape[0] < 50 or X_va_f.shape[0] < 20:
                 done_runs += 1
-                overall.update(done_runs, total_runs, message=f"skip {spec.head_id} {fold['fold_id']}")
+                overall.update(
+                    done_runs, total_runs, message=f"skip {spec.head_id} {fold['fold_id']}"
+                )
                 continue
 
             spw = None
@@ -498,66 +569,52 @@ def run_family_core_suite(
 
             tag = f"{family} {spec.head_id} {fold['fold_id']}"
             fdir = ensure_dir(head_dir / fold["fold_id"])
+            common_kw = dict(
+                X_train=X_tr_f,
+                y_train=y_tr_f,
+                X_val=X_va_f,
+                y_val=y_va_f,
+                kind=kind,
+                out_dir=fdir,
+                tag=tag,
+                num_boost_round=planned_rounds,
+                seed=seed,
+                use_gpu=use_gpu,
+            )
             if family == "lightgbm":
-                art = train_lightgbm_head(
-                    X_train=X_tr_f,
-                    y_train=y_tr_f,
-                    X_val=X_va_f,
-                    y_val=y_va_f,
-                    kind=kind,
-                    out_dir=fdir,
-                    tag=tag,
-                    num_boost_round=rounds,
-                    seed=seed,
-                    scale_pos_weight=spw,
-                    use_gpu=use_gpu,
-                )
+                art = train_lightgbm_head(**common_kw, scale_pos_weight=spw)
             elif family == "xgboost":
-                art = train_xgboost_head(
-                    X_train=X_tr_f,
-                    y_train=y_tr_f,
-                    X_val=X_va_f,
-                    y_val=y_va_f,
-                    kind=kind,
-                    out_dir=fdir,
-                    tag=tag,
-                    num_boost_round=rounds,
-                    seed=seed,
-                    scale_pos_weight=spw,
-                    use_gpu=use_gpu,
-                )
+                art = train_xgboost_head(**common_kw, scale_pos_weight=spw)
             else:
                 art = train_catboost_head(
-                    X_train=X_tr_f,
-                    y_train=y_tr_f,
-                    X_val=X_va_f,
-                    y_val=y_va_f,
-                    kind=kind,
-                    out_dir=fdir,
-                    tag=tag,
-                    num_boost_round=rounds,
-                    seed=seed,
-                    class_weights=cw if kind == "binary" else None,
-                    use_gpu=use_gpu,
+                    **common_kw, class_weights=cw if kind == "binary" else None
                 )
+            bi = int(art["best_iteration"] or art["actual_iterations"] or planned_rounds)
+            best_iters.append(max(bi, 1))
             fold_summaries.append(
                 {
                     "fold_id": fold["fold_id"],
                     "train_n": int(X_tr_f.shape[0]),
                     "val_n": int(X_va_f.shape[0]),
-                    "best_iteration": art["best_iteration"],
+                    "best_iteration": bi,
                     "runtime_sec": art["runtime_sec"],
+                    "dev_val_window": fold["rule"],
                 }
             )
             done_runs += 1
             overall.update(done_runs, total_runs, message=f"done {tag}")
 
-        # Final fit: full eligible train, evaluate permanent val
+        if best_iters:
+            fixed_iters = int(np.median(np.asarray(best_iters, dtype=np.float64)))
+        else:
+            fixed_iters = planned_rounds
+        fixed_iters = max(fixed_iters, 10 if smoke else 50)
+
+        # Final fit: train-only chrono calib split; NO early stopping on permanent val.
         tr_m = elig_tr
         va_m = elig_va
         X_tr_f, y_tr_f = Xtr_all[tr_m], y_tr[tr_m]
         X_va_f, y_va_f = Xva_all[va_m], y_va[va_m]
-        # chronological calib slice inside train
         times = np.array(
             [
                 float(m["observation_time_t"] or 0.0)
@@ -580,108 +637,84 @@ def run_family_core_suite(
 
         tag = f"{family} {spec.head_id} final_fit"
         fdir = ensure_dir(head_dir / "final_fit")
+        # Use cal slice only as optional monitor set; no ES / no permanent val in fit.
+        common_kw = dict(
+            X_train=X_fit,
+            y_train=y_fit,
+            X_val=X_cal,
+            y_val=y_cal,
+            kind=kind,
+            out_dir=fdir,
+            tag=tag,
+            num_boost_round=fixed_iters,
+            early_stopping_rounds=None,
+            seed=seed,
+            use_gpu=use_gpu,
+        )
         if family == "lightgbm":
-            art = train_lightgbm_head(
-                X_train=X_fit,
-                y_train=y_fit,
-                X_val=X_va_f,
-                y_val=y_va_f,
-                kind=kind,
-                out_dir=fdir,
-                tag=tag,
-                num_boost_round=rounds,
-                seed=seed,
-                scale_pos_weight=spw,
-                use_gpu=use_gpu,
-            )
+            art = train_lightgbm_head(**common_kw, scale_pos_weight=spw)
         elif family == "xgboost":
-            art = train_xgboost_head(
-                X_train=X_fit,
-                y_train=y_fit,
-                X_val=X_va_f,
-                y_val=y_va_f,
-                kind=kind,
-                out_dir=fdir,
-                tag=tag,
-                num_boost_round=rounds,
-                seed=seed,
-                scale_pos_weight=spw,
-                use_gpu=use_gpu,
-            )
+            art = train_xgboost_head(**common_kw, scale_pos_weight=spw)
         else:
             art = train_catboost_head(
-                X_train=X_fit,
-                y_train=y_fit,
-                X_val=X_va_f,
-                y_val=y_va_f,
-                kind=kind,
-                out_dir=fdir,
-                tag=tag,
-                num_boost_round=rounds,
-                seed=seed,
-                class_weights=cw if kind == "binary" else None,
-                use_gpu=use_gpu,
+                **common_kw, class_weights=cw if kind == "binary" else None
             )
 
         metrics: dict[str, Any] = {}
         calib_info = None
-        pred = art["raw_val_pred"]
-        if kind == "binary":
-            # calibrate on train calib slice predictions
-            # re-predict calib with stored model is complex; use simple identity + platt on val-free cal
-            # For binary logistic outputs, use cal set via retrain-free: scores on X_cal
-            # Reload quickly
-            if family == "lightgbm":
-                import lightgbm as lgb
+        # Score permanent val exactly once (evaluation-only).
+        if family == "lightgbm":
+            import lightgbm as lgb
 
-                booster = lgb.Booster(model_file=art["model_path"])
-                cal_scores = booster.predict(X_cal, num_iteration=booster.best_iteration)
-                val_scores = booster.predict(X_va_f, num_iteration=booster.best_iteration)
-            elif family == "xgboost":
-                import xgboost as xgb
+            booster = lgb.Booster(model_file=art["model_path"])
+            n_it = int(art["best_iteration"] or fixed_iters)
+            cal_scores = booster.predict(X_cal, num_iteration=n_it)
+            val_scores = booster.predict(X_va_f, num_iteration=n_it)
+            pred = val_scores
+        elif family == "xgboost":
+            import xgboost as xgb
 
-                booster = xgb.Booster()
-                booster.load_model(art["model_path"])
-                cal_scores = booster.predict(xgb.DMatrix(X_cal))
-                val_scores = booster.predict(xgb.DMatrix(X_va_f))
-            else:
-                from catboost import CatBoostClassifier
+            booster = xgb.Booster()
+            booster.load_model(art["model_path"])
+            n_it = int(art["best_iteration"] or fixed_iters)
+            cal_scores = booster.predict(xgb.DMatrix(X_cal), iteration_range=(0, n_it + 1))
+            val_scores = booster.predict(xgb.DMatrix(X_va_f), iteration_range=(0, n_it + 1))
+            pred = val_scores
+        else:
+            from catboost import CatBoostClassifier, CatBoostRegressor
 
+            if kind in ("binary", "multiclass"):
                 model = CatBoostClassifier()
                 model.load_model(art["model_path"])
-                cal_scores = model.predict_proba(X_cal)[:, 1]
-                val_scores = model.predict_proba(X_va_f)[:, 1]
+                cal_scores = model.predict_proba(X_cal)
+                val_scores = model.predict_proba(X_va_f)
+                if kind == "binary":
+                    cal_scores = cal_scores[:, 1]
+                    val_scores = val_scores[:, 1]
+                pred = val_scores
+            else:
+                model = CatBoostRegressor()
+                model.load_model(art["model_path"])
+                cal_scores = model.predict(X_cal)
+                pred = model.predict(X_va_f)
+                val_scores = pred
+
+        if kind == "binary":
             cal = PlattCalibrator().fit(cal_scores, y_cal)
             write_json(fdir / "calibration.json", cal.to_dict())
             calib_info = cal.to_dict()
             metrics["raw"] = binary_metrics(y_va_f, val_scores)
             metrics["calibrated"] = binary_metrics(y_va_f, cal.transform(val_scores))
-            # trading usefulness on val
             tgt_va = [t for t, e in zip(val_bundle["targets"], elig_va, strict=True) if e]
-            gross = np.array(
-                [t.get("h300_simple_return") if np.isfinite(t.get("h300_simple_return") or np.nan) else np.nan for t in tgt_va],
-                dtype=np.float64,
-            )
-            # impact-adjusted if exec available
-            impact = np.array(
-                [
-                    (t.get("exec_1p0sol_net_return")
-                     if t.get("exec_1p0sol_net_return") is not None
-                     else np.nan)
-                    for t in tgt_va
-                ],
-                dtype=np.float64,
-            )
-            mfe = np.array([t.get("h300_mfe") if t.get("h300_mfe") is not None else np.nan for t in tgt_va], dtype=np.float64)
-            mae = np.array([t.get("h300_mae") if t.get("h300_mae") is not None else np.nan for t in tgt_va], dtype=np.float64)
-            expl = y_va_f.astype(np.float64)
+            trade = trading_arrays_from_targets(tgt_va)
             metrics["trading_deciles"] = decile_trading_table(
                 cal.transform(val_scores),
-                gross_return=gross,
-                impact_adj_return=impact,
-                mfe=mfe,
-                mae=mae,
-                explosion=expl,
+                gross_return=trade["gross_return"],
+                entry_impact_adjusted_return=trade["entry_impact_adjusted_return"],
+                curve_impact_adjusted_return=trade["curve_impact_adjusted_return"],
+                mfe=trade["mfe"],
+                mae=trade["mae"],
+                explosion=y_va_f.astype(np.float64),
             )
             meta_va = [m for m, e in zip(val_bundle["meta"], elig_va, strict=True) if e]
             creator_flags = load_creator_flags(split_root / "eval_creator_flags.parquet")
@@ -696,16 +729,13 @@ def run_family_core_suite(
             meta_va = [m for m, e in zip(val_bundle["meta"], elig_va, strict=True) if e]
             metrics["slices"] = slice_regression_metrics(y_va_f, pred, meta_va)
         else:
-            # multiclass: logloss
-            if pred.ndim == 1:
+            if getattr(pred, "ndim", 1) == 1:
                 metrics["note"] = "multiclass_pred_1d"
             else:
-                # clip
                 p = np.clip(pred, 1e-7, 1 - 1e-7)
                 p = p / p.sum(axis=1, keepdims=True)
                 ll = -np.mean(np.log(p[np.arange(len(y_va_f)), y_va_f.astype(int)]))
                 metrics["multiclass_logloss"] = float(ll)
-                # upper-first PR
                 upper = (y_va_f == 0).astype(int)
                 metrics["upper_first"] = binary_metrics(upper, p[:, 0])
 
@@ -719,6 +749,9 @@ def run_family_core_suite(
                 "runtime_sec": art["runtime_sec"],
                 "checksum": art["checksum"],
                 "best_iteration": art["best_iteration"],
+                "fixed_iterations_from_selection": fixed_iters,
+                "selection_best_iters": best_iters,
+                "eval_only_proof": eval_only_proof,
             },
         )
         results["heads"][spec.head_id] = {
@@ -726,10 +759,14 @@ def run_family_core_suite(
             "counts_train": counts_tr,
             "counts_val": counts_va,
             "folds": fold_summaries,
+            "selection_best_iters": best_iters,
+            "fixed_iterations": fixed_iters,
             "final": {
                 "runtime_sec": art["runtime_sec"],
                 "checksum": art["checksum"],
                 "best_iteration": art["best_iteration"],
+                "fixed_iterations": fixed_iters,
+                "early_stopping_rounds": None,
                 "metrics": metrics,
                 "calibration": calib_info,
             },

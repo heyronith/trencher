@@ -121,6 +121,42 @@ def load_graph_by_mint(world_root: Path) -> dict[str, dict[str, np.ndarray]]:
     return packed
 
 
+def load_wallet_prior_by_mint(world_root: Path) -> dict[str, dict[str, np.ndarray]]:
+    """Causal wallet-prior history from frozen ``edges_wallet_token`` (mint=dst).
+
+    Uses ``first_t`` as the causal timestamp (wallet's first observed interaction
+    with the mint). Aggregates buy/sell SOL as prior activity mass.
+    """
+    path = world_root / "graph" / "edges_wallet_token.parquet"
+    if not path.exists():
+        return {}
+    schema = set(pq.read_schema(path).names)
+    # dst is mint in this store
+    mint_col = "dst" if "dst" in schema else ("mint" if "mint" in schema else None)
+    t_col = "first_t" if "first_t" in schema else ("last_t" if "last_t" in schema else None)
+    if mint_col is None or t_col is None:
+        return {}
+    cols = [c for c in (mint_col, t_col, "buy_sol", "sell_sol", "buys", "sells", "src") if c in schema]
+    table = pq.read_table(path, columns=cols)
+    buckets: dict[str, list[tuple[float, float]]] = {}
+    for r in table.to_pylist():
+        mint = str(r.get(mint_col) or "")
+        ts = r.get(t_col)
+        if not mint or ts is None:
+            continue
+        t = float(ts)
+        sol = float(r.get("buy_sol") or 0.0) + float(r.get("sell_sol") or 0.0)
+        buckets.setdefault(mint, []).append((t, sol))
+    packed: dict[str, dict[str, np.ndarray]] = {}
+    for mint, rows in buckets.items():
+        rows.sort(key=lambda x: x[0])
+        packed[mint] = {
+            "times": np.array([r[0] for r in rows], dtype=np.float64),
+            "sol_amount": np.array([r[1] for r in rows], dtype=np.float64),
+        }
+    return packed
+
+
 def causal_slice_arrays(
     pack: dict[str, Any] | None, T: float
 ) -> dict[str, np.ndarray] | None:

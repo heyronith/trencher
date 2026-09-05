@@ -174,7 +174,9 @@ def decile_trading_table(
     scores: np.ndarray,
     *,
     gross_return: np.ndarray | None = None,
-    impact_adj_return: np.ndarray | None = None,
+    entry_impact_adjusted_return: np.ndarray | None = None,
+    curve_impact_adjusted_return: np.ndarray | None = None,
+    impact_adj_return: np.ndarray | None = None,  # legacy alias → entry
     mfe: np.ndarray | None = None,
     mae: np.ndarray | None = None,
     explosion: np.ndarray | None = None,
@@ -183,6 +185,8 @@ def decile_trading_table(
     n = s.size
     if n == 0:
         return []
+    if entry_impact_adjusted_return is None and impact_adj_return is not None:
+        entry_impact_adjusted_return = impact_adj_return
     order = np.argsort(-s)
     edges = [int(round(i * n / 10)) for i in range(11)]
     rows = []
@@ -193,13 +197,20 @@ def decile_trading_table(
         rec: dict[str, Any] = {"decile": d + 1, "n": int(idx.size)}
         if gross_return is not None:
             rec["gross_return_mean"] = float(np.nanmean(gross_return[idx]))
-        if impact_adj_return is not None:
-            rec["impact_adj_return_mean"] = float(np.nanmean(impact_adj_return[idx]))
+        if entry_impact_adjusted_return is not None:
+            rec["entry_impact_adjusted_return_mean"] = float(
+                np.nanmean(entry_impact_adjusted_return[idx])
+            )
+        if curve_impact_adjusted_return is not None:
+            rec["curve_impact_adjusted_return_mean"] = float(
+                np.nanmean(curve_impact_adjusted_return[idx])
+            )
         if mfe is not None:
             rec["mfe_mean"] = float(np.nanmean(mfe[idx]))
         if mae is not None:
             rec["mae_mean"] = float(np.nanmean(mae[idx]))
         if explosion is not None:
             rec["explosion_rate"] = float(np.nanmean(explosion[idx]))
+        rec["net_return"] = "unavailable_no_row_level_fees"
         rows.append(rec)
     return rows

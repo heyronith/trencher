@@ -98,5 +98,7 @@
       "catboost": "https://modal.com/apps/ronithworks/main/ap-StPPuL4ThG3P1BUMPXanXb"
     },
     "note": "32 mint-partition Modal population (~889k feature rows / ~732k train / ~157k val); permanent TEST never accessed"
-  }
+  },
+  "label": "provisional_32_partition_development_run",
+  "superseded_by": "BASELINE_AUDIT_V2"
 }

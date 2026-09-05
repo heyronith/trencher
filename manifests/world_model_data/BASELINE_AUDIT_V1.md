@@ -1,3 +1,5 @@
+> **Label:** `provisional_32_partition_development_run` (preserved; see BASELINE_AUDIT_V2 for final freeze).
+
 # BASELINE_AUDIT_V1
 
 Generated: `2026-09-05T22:05:47.390805+00:00`

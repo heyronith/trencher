@@ -136,6 +136,40 @@ def test_cindex_basic() -> None:
     assert c is not None and c > 0.5
 
 
+def test_trading_keeps_zero() -> None:
+    from trencher.baselines.trading import as_float_keep_zero, trading_arrays_from_targets
+
+    assert as_float_keep_zero(0.0) == 0.0
+    assert as_float_keep_zero(0) == 0.0
+    assert np.isnan(as_float_keep_zero(None))
+    rows = [{"h300_simple_return": 0.0, "h300_mfe": 0.0, "h300_mae": 0.0}]
+    arr = trading_arrays_from_targets(rows)
+    assert arr["gross_return"][0] == 0.0
+
+
+def test_feature_dims_broad_and_rich() -> None:
+    from trencher.baselines.feature_spec import (
+        all_feature_names,
+        broad_feature_names,
+        rich_additive_feature_names,
+    )
+
+    assert len(broad_feature_names()) == 124
+    rich_n = len(rich_additive_feature_names())
+    assert rich_n > 0
+    assert len(all_feature_names(include_rich=True)) == 124 + rich_n
+
+
+def test_v2_contract_eval_only() -> None:
+    from trencher.baselines.audit_v2 import build_baseline_contract_v2
+
+    c = build_baseline_contract_v2()
+    assert c["label"] == "final_full_population_validation_control"
+    assert c["v1_label"] == "provisional_32_partition_development_run"
+    assert c["split_discipline"]["wf_fold_3"] == "not_used_for_tuning"
+    assert c["split_discipline"]["permanent_test"] == "FORBIDDEN"
+
+
 def test_progress_emitter(tmp_path: Path) -> None:
     p = ProgressEmitter("LightGBM explosion_60s fold_1", status_path=tmp_path / "p.json")
     p.update(37, 100, message="iter")

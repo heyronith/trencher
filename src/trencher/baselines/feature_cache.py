@@ -29,6 +29,7 @@ from trencher.baselines.rich_index import (
     load_graph_by_mint,
     load_micro_by_mint,
     load_ownership_by_mint,
+    load_wallet_prior_by_mint,
 )
 from trencher.baselines.split_guard import PermanentTestAccessError, refuse_test_split
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
@@ -99,8 +100,13 @@ def build_baseline_features_v1(
     max_partitions: int | None = None,
     progress: ProgressEmitter | None = None,
     include_rich: bool = False,
+    resume: bool = True,
 ) -> dict[str, Any]:
-    """Build feature cache for train+val only (never test)."""
+    """Build feature cache for train+val only (never test).
+
+    When ``resume=True``, existing ``by_mint_partition/*/features.parquet``
+    files are skipped so completed partitions are not rebuilt.
+    """
     world_root = Path(world_root)
     split_root = Path(split_root or world_root / "splits" / "split_v1")
     out_root = ensure_dir(feature_cache_root(split_root=split_root))
@@ -119,6 +125,7 @@ def build_baseline_features_v1(
     micro_by_mint = load_micro_by_mint(world_root) if include_rich else {}
     own_by_mint = load_ownership_by_mint(world_root) if include_rich else {}
     graph_by_mint = load_graph_by_mint(world_root) if include_rich else {}
+    wallet_prior_by_mint = load_wallet_prior_by_mint(world_root) if include_rich else {}
     assign_dir = split_root / "observation_assignments_broad"
     assign_parts = sorted(assign_dir.glob("part-*.parquet"))
     if max_partitions is not None:
@@ -173,8 +180,29 @@ def build_baseline_features_v1(
 
     total = max(len(mps), 1)
     rows_written = 0
+    rows_resumed = 0
+    partitions_skipped = 0
+    partitions_built = 0
     for pi, mp in enumerate(mps):
         obs_rows = by_mp[mp]
+        part_dir = out_parts / mp
+        out_path = part_dir / "features.parquet"
+        if resume and out_path.exists():
+            try:
+                n_exist = pq.ParquetFile(out_path).metadata.num_rows
+            except Exception:  # noqa: BLE001
+                n_exist = 0
+            rows_written += int(n_exist)
+            rows_resumed += int(n_exist)
+            partitions_skipped += 1
+            progress.update(
+                pi + 1,
+                total,
+                message=f"skip existing {pi+1}/{total} mp={mp} rows={rows_written}",
+                rows_written=rows_written,
+                partitions_skipped=partitions_skipped,
+            )
+            continue
         # refs
         ref_path = refs_root / mp / "part.parquet"
         refs_by_oid: dict[str, dict[str, Any]] = {}
@@ -271,7 +299,9 @@ def build_baseline_features_v1(
                         micro=causal_slice_arrays(micro_by_mint.get(mint), T),
                         ownership=causal_slice_arrays(own_by_mint.get(mint), T),
                         graph=causal_slice_arrays(graph_by_mint.get(mint), T),
-                        wallet_prior=None,
+                        wallet_prior=causal_slice_arrays(
+                            wallet_prior_by_mint.get(mint), T
+                        ),
                     )
                 )
 
@@ -304,12 +334,15 @@ def build_baseline_features_v1(
                 compression="zstd",
             )
             rows_written += len(feat_rows)
+            partitions_built += 1
 
         progress.update(
             pi + 1,
             total,
             message=f"partition {pi+1}/{total} mp={mp} rows={rows_written}",
             rows_written=rows_written,
+            partitions_built=partitions_built,
+            partitions_skipped=partitions_skipped,
         )
 
     if n_skipped_test == 0:
@@ -320,7 +353,11 @@ def build_baseline_features_v1(
         "feature_cache_version": FEATURE_CACHE_VERSION,
         "generated_at": utc_now(),
         "rows_written": rows_written,
+        "rows_resumed": rows_resumed,
         "partitions": len(mps),
+        "partitions_built": partitions_built,
+        "partitions_skipped": partitions_skipped,
+        "resume": resume,
         "feature_n": len(feature_names),
         "skipped_test_rows": n_skipped_test,
         "populations": list(populations),
