@@ -582,19 +582,30 @@ def _write_sorted_partition(
     return entity, n
 
 
+CREATOR_PRIOR_CAP = 256  # most-recent causal priors only (outcome-independent)
+
+
 def build_broad_sequence_creator_v1(
     *,
     broad_root: Path,
     pump_root: Path,
     population_path: Path,
+    prior_cap: int = CREATOR_PRIOR_CAP,
 ) -> dict[str, Any]:
     """Causal prior launches per creator from tokens (no creator_past_* leakage).
 
     Only launches with ``detected_at < current mint detected_at`` are included.
-    Reconstructs from the tokens table sorted by creator + detected_at rather
-    than using ``creator_past_tokens`` / ``creator_past_rugs`` aggregates.
+    Keeps at most ``prior_cap`` most-recent priors per mint to avoid quadratic
+    blow-up for prolific creators (deterministic, outcome-independent).
     """
     out_root = ensure_dir(broad_root / CREATOR_STORE)
+    # Fresh rebuild of creator store.
+    for child in list(out_root.iterdir()):
+        if child.is_dir():
+            shutil.rmtree(child, ignore_errors=True)
+        elif child.name != "manifest.json":
+            child.unlink(missing_ok=True)
+
     pop = pq.read_table(
         population_path,
         columns=["mint", "detected_at_unix", "creator", "event_curve_population"],
@@ -611,7 +622,9 @@ def build_broad_sequence_creator_v1(
         if not mint or not creator or det is None:
             continue
         by_creator[str(creator)].append(
-            (float(det), str(mint), row.get("is_mayhem_mode"))
+            (float(det), str(mint), row.get("is_mayhem_mode")
+            if isinstance(row.get("is_mayhem_mode"), bool)
+            else None)
         )
     for creator in by_creator:
         by_creator[creator].sort(key=lambda x: (x[0], x[1]))
@@ -644,43 +657,63 @@ def build_broad_sequence_creator_v1(
         if m and c
     }
 
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    # Stream by mint partition to bound peak memory.
+    mints_by_part: dict[str, list[str]] = defaultdict(list)
     for mint in event_mints:
-        creator = creator_by_mint.get(mint)
-        det = det_by_mint.get(mint)
-        if creator is None or det is None:
-            continue
-        priors = by_creator.get(creator) or []
-        prior_rank = 0
-        for p_det, p_mint, p_mayhem in priors:
-            if p_det >= det:
-                break
-            if p_mint == mint:
-                continue
-            prior_rank += 1
-            part = mint_partition(mint)
-            buckets[part].append(
-                {
-                    "mint": mint,
-                    "event_time_unix": p_det,
-                    "order_key": f"{p_det:.6f}|{p_mint}",
-                    "creator": creator,
-                    "prior_mint": p_mint,
-                    "prior_detected_at_unix": p_det,
-                    "prior_rank": prior_rank,
-                    "prior_is_mayhem_mode": p_mayhem,
-                    "source": "tokens_table_creator_timeline",
-                    "source_quality_flag": "launch_time_fields_only",
-                    "mint_partition": part,
-                }
-            )
+        mints_by_part[mint_partition(mint)].append(mint)
 
     entity_rows: list[dict[str, Any]] = []
     total = 0
-    for part, rows in sorted(buckets.items()):
+    capped_mints = 0
+    for part in sorted(mints_by_part):
+        rows: list[dict[str, Any]] = []
+        for mint in mints_by_part[part]:
+            creator = creator_by_mint.get(mint)
+            det = det_by_mint.get(mint)
+            if creator is None or det is None:
+                continue
+            priors = by_creator.get(creator) or []
+            # Collect causal priors then keep most-recent ``prior_cap``.
+            causal: list[tuple[float, str, bool | None]] = []
+            for p_det, p_mint, p_mayhem in priors:
+                if p_det >= det:
+                    break
+                if p_mint == mint:
+                    continue
+                causal.append((p_det, p_mint, p_mayhem))
+            if len(causal) > prior_cap:
+                capped_mints += 1
+                causal = causal[-prior_cap:]
+            for i, (p_det, p_mint, p_mayhem) in enumerate(causal, start=1):
+                rows.append(
+                    {
+                        "mint": mint,
+                        "event_time_unix": p_det,
+                        "order_key": f"{p_det:.6f}|{p_mint}",
+                        "creator": creator,
+                        "prior_mint": p_mint,
+                        "prior_detected_at_unix": p_det,
+                        "prior_rank": i,
+                        "prior_is_mayhem_mode": p_mayhem,
+                        "source": "tokens_table_creator_timeline",
+                        "source_quality_flag": "launch_time_fields_only",
+                        "mint_partition": part,
+                    }
+                )
         ent, n = _write_sorted_partition(out_root / part, rows)
+        # Re-write with compression if non-empty
+        part_file = out_root / part / "part.parquet"
+        if part_file.exists() and pq.ParquetFile(part_file).metadata.num_rows:
+            pq.write_table(
+                pq.read_table(part_file),
+                part_file,
+                compression="zstd",
+                compression_level=3,
+            )
         entity_rows.extend(ent)
         total += n
+        logger.info("creator partition %s rows=%d", part, n)
+
     idx_path = out_root / ENTITY_INDEX_NAME
     if entity_rows:
         pq.write_table(pa.Table.from_pylist(entity_rows), idx_path)
@@ -692,8 +725,11 @@ def build_broad_sequence_creator_v1(
         "store": CREATOR_STORE,
         "rows": total,
         "entities": len(entity_rows),
+        "prior_cap": prior_cap,
+        "mints_truncated_to_prior_cap": capped_mints,
         "policy": (
             "Causal prior launches only (detected_at < current). "
+            f"At most {prior_cap} most-recent priors per mint. "
             "Does NOT use creator_past_rugs / lifetime outcome aggregates."
         ),
         "entity_index_semantics": (
@@ -750,7 +786,10 @@ def build_broad_sequences_v1(
     logger.info("Building broad sequences for %d event_curve mints", len(mints))
 
     events_root = broad_root / EVENTS_STORE
+    curve_root = broad_root / CURVE_STORE
     staging_root = broad_root / "_staging_events"
+    events_idx = events_root / ENTITY_INDEX_NAME
+    curve_idx = curve_root / ENTITY_INDEX_NAME
     existing_parts = (
         sum(
             1
@@ -765,7 +804,29 @@ def build_broad_sequences_v1(
         if staging_root.exists()
         else 0
     )
-    if existing_parts >= 200 or staging_left:
+    if events_idx.exists() and curve_idx.exists() and staging_left == 0:
+        logger.info(
+            "Events+curve indexes present (%d parts); rebuilding creator only",
+            existing_parts,
+        )
+        events_meta = {
+            "resumed_skip_events_curve": True,
+            "deduped_event_rows": None,
+            "entities": pq.ParquetFile(events_idx).metadata.num_rows,
+            "price_capable_mint_set": set(),
+        }
+        # Refresh price flags from existing population column if present.
+        pop = pq.read_table(population_path, columns=["mint", "price_target_population"])
+        events_meta["price_capable_mint_set"] = {
+            str(m)
+            for m, f in zip(
+                pop.column("mint").to_pylist(),
+                pop.column("price_target_population").to_pylist(),
+                strict=True,
+            )
+            if f and m
+        }
+    elif existing_parts >= 200 or staging_left:
         logger.info(
             "Resuming sequences: existing_event_parts=%d staging_left=%d",
             existing_parts,
