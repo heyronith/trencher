@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 FUTURE_PATH_VERSION = "future_market_path_v1"
 # Default dataset dirname used only when callers do not pass out_dir.
-TARGET_DATASET_VERSION = "target_dataset_v2"
+TARGET_DATASET_VERSION = "target_dataset_v3"
 
 
 def _round_amt(x: Any, ndigits: int) -> float | None:

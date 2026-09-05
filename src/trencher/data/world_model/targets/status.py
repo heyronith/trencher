@@ -71,6 +71,8 @@ BARRIER_PAIRS: tuple[tuple[float, float, str], ...] = (
 POSITION_SIZES_SOL: tuple[float, ...] = (0.1, 0.5, 1.0, 2.0, 5.0)
 
 INACTIVITY_CONFIRMATION_GAP_SEC = 1800.0  # 30 minutes
+# Survival negatives require source coverage across [T+H, T+H+confirmation].
+SURVIVAL_NEGATIVE_CONFIRMATION_SEC = INACTIVITY_CONFIRMATION_GAP_SEC
 
 # July 3 2026 collection outage (UTC day).
 OUTAGE_START_UNIX = 1783036800.0  # 2026-07-03 00:00:00 UTC
@@ -99,6 +101,12 @@ def status_contract() -> dict[str, Any]:
             {"upper": u, "lower": lo, "id": i} for u, lo, i in BARRIER_PAIRS
         ],
         "inactivity_confirmation_gap_sec": INACTIVITY_CONFIRMATION_GAP_SEC,
+        "survival_negative_confirmation_sec": SURVIVAL_NEGATIVE_CONFIRMATION_SEC,
+        "survival_positive_definition": "genuine_activity_at_or_after_T_plus_H",
+        "survival_negative_definition": (
+            "no_activity_at_or_after_T_plus_H_and_source_covers_"
+            "[T+H, T+H+confirmation]"
+        ),
         "outage_window_unix": {
             "start": OUTAGE_START_UNIX,
             "end": OUTAGE_END_UNIX,

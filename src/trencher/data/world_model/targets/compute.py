@@ -19,7 +19,6 @@ from trencher.data.world_model.targets.status import (
     EXPLOSION_IMMINENCE_HORIZONS_SEC,
     HORIZONS_SEC,
     INACTIVITY_CONFIRMATION_GAP_SEC,
-    OUTAGE_END_UNIX,
     POSITION_SIZES_SOL,
     STATUS_KNOWN_SOURCE_OUTAGE,
     STATUS_MIGRATION_REGIME_UNAVAILABLE,
@@ -30,6 +29,7 @@ from trencher.data.world_model.targets.status import (
     STATUS_VALID_NEGATIVE,
     STATUS_VALID_POSITIVE,
     SURVIVAL_HORIZONS_SEC,
+    SURVIVAL_NEGATIVE_CONFIRMATION_SEC,
     crosses_outage,
 )
 
@@ -338,11 +338,12 @@ def compute_activity_survival(
     coverage: Any,
     migration_unix: float | None = None,
 ) -> dict[str, Any]:
-    """Survival-to-H: last genuine future activity >= T+H.
+    """Survival-to-H with confirmation-gated negatives.
 
-    Positive only when activity is observed at or after the horizon.
-    Negatives require pump-trade *source* coverage through T+H — never the
-    mint's own last_path_t. Jul 3 outage cannot create a death label.
+    Positive: any genuine future trade with event_time >= T+H.
+    Negative: no such trade AND Pump-trade source covers
+    [T+H, T+H+SURVIVAL_NEGATIVE_CONFIRMATION_SEC] with no unresolved gap.
+    Do not require continuous coverage from T to H for negatives.
     """
     del migration_unix  # unused; kept for call-site compatibility
     t = arr["t"]
@@ -356,45 +357,22 @@ def compute_activity_survival(
     )
     out["last_valid_future_trade_time"] = last_valid_trade
     out["survival_definition"] = "last_genuine_future_activity_ge_T_plus_H"
+    out["survival_negative_confirmation_sec"] = SURVIVAL_NEGATIVE_CONFIRMATION_SEC
 
     trade_cov = coverage.pump_trades
     for h in SURVIVAL_HORIZONS_SEC:
         horizon_t = T + float(h)
-        # Positive: demonstrably active at/beyond horizon.
+        # Positive resolved immediately by any genuine activity at/after H.
         if last_valid_trade is not None and last_valid_trade >= horizon_t:
             out[f"surv_h{h}_status"] = STATUS_VALID_POSITIVE
             out[f"surv_h{h}_active"] = True
             continue
 
-        # Absence of activity at/after horizon — needs source coverage.
-        resolved_later = (
-            last_valid_trade is not None and last_valid_trade >= OUTAGE_END_UNIX
-        )
-        absence = trade_cov.absence_status(
-            T,
-            horizon_t,
-            resolved_by_later_observation=resolved_later
-            and trade_cov.covers_through(horizon_t),
-        )
-        # If outage intersects confirmation but post-outage coverage reaches
-        # horizon_t with no activity >= horizon_t, still need covers_through.
-        if absence == STATUS_KNOWN_SOURCE_OUTAGE:
-            # Resolve when source covers horizon after outage and we can see
-            # there is no activity >= horizon_t.
-            if trade_cov.covers_through(horizon_t) and (
-                last_valid_trade is None or last_valid_trade < horizon_t
-            ):
-                # covers_through alone isn't enough if gap sits inside (T, H].
-                if not trade_cov.covers_window(T, horizon_t):
-                    out[f"surv_h{h}_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-                    out[f"surv_h{h}_active"] = None
-                    continue
-            else:
-                out[f"surv_h{h}_status"] = STATUS_KNOWN_SOURCE_OUTAGE
-                out[f"surv_h{h}_active"] = None
-                continue
-
-        if absence == STATUS_VALID_NEGATIVE or trade_cov.covers_window(T, horizon_t):
+        # Negative confirmation window starts at H, not at T.
+        confirm_start = horizon_t
+        confirm_end = horizon_t + SURVIVAL_NEGATIVE_CONFIRMATION_SEC
+        absence = trade_cov.absence_status(confirm_start, confirm_end)
+        if absence == STATUS_VALID_NEGATIVE:
             out[f"surv_h{h}_status"] = STATUS_VALID_NEGATIVE
             out[f"surv_h{h}_active"] = False
         else:
@@ -415,11 +393,7 @@ def compute_activity_survival(
     else:
         last_ft = float(last_valid_trade)
         confirm_end = last_ft + INACTIVITY_CONFIRMATION_GAP_SEC
-        st = trade_cov.absence_status(
-            last_ft,
-            confirm_end,
-            resolved_by_later_observation=False,
-        )
+        st = trade_cov.absence_status(last_ft, confirm_end)
         if st == STATUS_VALID_NEGATIVE:
             out["time_to_inactivity_sec"] = last_ft - T
             out["time_to_inactivity_status"] = STATUS_VALID_POSITIVE

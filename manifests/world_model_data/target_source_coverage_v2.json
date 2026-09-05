@@ -1,0 +1,116 @@
+{
+  "manifest_version": "target_source_coverage_v2",
+  "generated_at": "2026-09-05T00:37:25.291671+00:00",
+  "corpus_window_unix": {
+    "start": 1780646400.0,
+    "end": 1784073600.0
+  },
+  "outage_window_unix": {
+    "start": 1783036800.0,
+    "end": 1783123200.0,
+    "day": "2026-07-03",
+    "applies_to": [
+      "pumpfun_trades"
+    ],
+    "note": "KNOWN_ISSUES documents Jul 3 as a websocket trade-collection outage (zero trades). Do not automatically inherit onto migrations or post-grad without local evidence."
+  },
+  "sources": {
+    "pump_trades": {
+      "source_id": "pumpfun_trades",
+      "coverage_basis": "frozen_global_trade_second_buckets_plus_documented_jul3_outage",
+      "coverage_evidence": [
+        "data/external/world_model/pit/global/trade_second_buckets.parquet",
+        "trade_second_bucket_rows=2425001",
+        "KNOWN_ISSUES.md \u00a73.4/\u00a75.5 Jul 3 websocket collection outage (zero trades)",
+        "feasibility/reconstruction.json caveats: Jul 3 2026 collection outage",
+        "corpus_window=1780646400.0..1784073600.0"
+      ],
+      "coverage_confidence": "high",
+      "supports_absence_negatives": true,
+      "intervals": [
+        {
+          "start": 1780650748.0,
+          "end": 1783036800.0
+        },
+        {
+          "start": 1783123200.0,
+          "end": 1784041375.0
+        }
+      ],
+      "known_gaps": [
+        {
+          "start": 1783036800.0,
+          "end": 1783123200.0
+        }
+      ],
+      "event_span": {
+        "min": 1780650748.0,
+        "max": 1784041375.0,
+        "n": 2425001
+      },
+      "notes": "Pump trade collection coverage from frozen global second buckets. Jul 3 gap is documented specifically for trades."
+    },
+    "migrations": {
+      "source_id": "migrations",
+      "coverage_basis": "event_presence_only_continuous_collection_unproven",
+      "coverage_evidence": [
+        "data/external/world_model/pit/global/migrations_timeline.parquet",
+        "KNOWN_ISSUES.md \u00a74.55: pool_address may be synthetic/backfilled \u2014 does not invalidate migrated_at as an event time",
+        "feasibility/reconstruction.json: migrations.migrated_at is a graduation evidence field; pool_address partially synthetic is a separate caveat",
+        "No local documentation proves continuous migration-event collection coverage equivalent to the trade websocket stream",
+        "Jul 3 outage is documented for trades, not migrations \u2014 not inherited",
+        "reviewed:data/external/pumpfun_memecoin_corpus/KNOWN_ISSUES.md"
+      ],
+      "coverage_confidence": "insufficient",
+      "supports_absence_negatives": false,
+      "intervals": [],
+      "known_gaps": [],
+      "event_span": {
+        "min": 1781010518.921759,
+        "max": 1784042552.622963,
+        "n": 5701
+      },
+      "notes": "migrated_at event timestamps remain valid event evidence. Absence-based graduation negatives are censored unless a later observed migration proves a shorter-horizon negative/positive. Min/max migrated_at is recorded as event_span only, not coverage."
+    },
+    "postgrad_snapshots": {
+      "source_id": "postgard_snapshots",
+      "coverage_basis": "graduated_subset_snapshot_event_span_not_full_collection",
+      "coverage_evidence": [
+        "data/external/pumpfun_memecoin_corpus/postgard_snapshots.parquet",
+        "KNOWN_ISSUES.md: postgard_snapshots covers graduated subset (~5701 mints), not full launch universe",
+        "Jul 3 trade websocket outage not documented as applying to postgard snapshot collection \u2014 not inherited",
+        "feasibility/reconstruction.json: post_graduation_trajectory = partial"
+      ],
+      "coverage_confidence": "low",
+      "supports_absence_negatives": false,
+      "intervals": [],
+      "known_gaps": [],
+      "event_span": {
+        "min": 1781010532.504717,
+        "max": 1784042866.443891,
+        "n": 1392133
+      },
+      "notes": "Post-grad marks remain usable where snapshots exist. Do not treat event min/max as proven continuous coverage, and do not fabricate a Jul 3 gap without local evidence."
+    },
+    "ownership": {
+      "source_id": "ownership_evidence",
+      "coverage_basis": "mint_level_sparse_evidence_flags_only",
+      "coverage_evidence": [
+        "data/external/world_model/universe/ownership_evidence.parquet",
+        "No continuous time-indexed holder ledger for most mints in freeze"
+      ],
+      "coverage_confidence": "insufficient",
+      "supports_absence_negatives": false,
+      "intervals": [],
+      "known_gaps": [],
+      "event_span": null,
+      "notes": "Ownership targets remain sparse by design."
+    }
+  },
+  "policy": {
+    "absence_targets_use_source_coverage_not_mint_last_event": true,
+    "event_min_max_is_not_collection_coverage": true,
+    "jul3_outage_never_creates_death_labels": true,
+    "synthetic_pool_address_does_not_invalidate_migrated_at": true
+  }
+}

@@ -1,7 +1,9 @@
-"""Centralized LABEL-ONLY source coverage registry.
+"""Centralized LABEL-ONLY source coverage registry (v2 evidence model).
 
-Absence-based targets (survival, persistence zeros, graduation negatives)
-must use these source intervals — never a mint's own last event time.
+Absence-based targets must use these source intervals — never a mint's own
+last event time. Coverage intervals are annotated with basis/evidence/
+confidence so first/last event timestamps are not silently treated as
+proven continuous collection coverage.
 """
 
 from __future__ import annotations
@@ -26,7 +28,13 @@ from trencher.data.world_model.targets.status import (
 )
 from trencher.data.world_model.targets.timeutil import to_unix
 
-COVERAGE_MANIFEST_VERSION = "target_source_coverage_v1"
+COVERAGE_MANIFEST_VERSION = "target_source_coverage_v2"
+
+# Confidence levels for absence-based negatives.
+CONFIDENCE_HIGH = "high"
+CONFIDENCE_MEDIUM = "medium"
+CONFIDENCE_LOW = "low"
+CONFIDENCE_INSUFFICIENT = "insufficient"
 
 
 @dataclass(frozen=True)
@@ -50,24 +58,22 @@ class SourceCoverage:
     intervals: list[TimeInterval] = field(default_factory=list)
     known_gaps: list[TimeInterval] = field(default_factory=list)
     notes: str = ""
+    coverage_basis: str = ""
+    coverage_evidence: list[str] = field(default_factory=list)
+    coverage_confidence: str = CONFIDENCE_INSUFFICIENT
+    supports_absence_negatives: bool = False
+    event_span: dict[str, float | None] | None = None
 
     def covers_through(self, t: float) -> bool:
-        """True if some interval includes time t (source observes at t)."""
         return any(iv.contains(t) for iv in self.intervals)
 
     def covers_window(self, t0: float, t1: float) -> bool:
-        """True if [t0, t1] lies entirely inside the union of coverage intervals.
-
-        Gaps (including Jul 3 outage) mean the window is not fully covered.
-        """
         if t1 < t0:
             return False
-        # Walk coverage: every point in [t0,t1] must fall in some interval.
-        # Conservative: require a single interval that covers the whole window,
-        # or a chain of contiguous intervals without gaps inside [t0,t1].
+        if not self.supports_absence_negatives or not self.intervals:
+            return False
         if any(iv.covers_range(t0, t1) for iv in self.intervals):
             return True
-        # Merge intervals and check gap-free coverage of [t0,t1].
         merged = _merge_intervals(self.intervals)
         return any(iv.covers_range(t0, t1) for iv in merged)
 
@@ -84,15 +90,29 @@ class SourceCoverage:
         """Status when no event was observed in/through a window.
 
         Never returns valid_positive. valid_negative only when the source
-        fully covers the confirmation window so absence is observable.
+        fully covers the confirmation window with sufficient confidence.
         """
+        if not self.supports_absence_negatives:
+            # Cannot prove continuous collection coverage → censor absences.
+            if self.intersects_known_gap(t0, t1) and not resolved_by_later_observation:
+                return STATUS_KNOWN_SOURCE_OUTAGE
+            return STATUS_RIGHT_CENSORED
+
         if self.covers_window(t0, t1):
             return STATUS_VALID_NEGATIVE
         if self.intersects_known_gap(t0, t1) and not resolved_by_later_observation:
             return STATUS_KNOWN_SOURCE_OUTAGE
-        if crosses_outage(t0, t1) and not resolved_by_later_observation:
+        if (
+            crosses_outage(t0, t1)
+            and self.known_gaps
+            and not resolved_by_later_observation
+            and any(
+                g.start == OUTAGE_START_UNIX and g.end == OUTAGE_END_UNIX
+                for g in self.known_gaps
+            )
+        ):
+            # Only treat global Jul 3 as outage when this source declares that gap.
             return STATUS_KNOWN_SOURCE_OUTAGE
-        # Prefer source-boundary when t1 is past the last covered instant.
         last_end = max((iv.end for iv in self.intervals), default=None)
         if last_end is not None and t1 > last_end:
             return STATUS_SOURCE_BOUNDARY_UNAVAILABLE
@@ -101,8 +121,13 @@ class SourceCoverage:
     def to_dict(self) -> dict[str, Any]:
         return {
             "source_id": self.source_id,
+            "coverage_basis": self.coverage_basis,
+            "coverage_evidence": list(self.coverage_evidence),
+            "coverage_confidence": self.coverage_confidence,
+            "supports_absence_negatives": self.supports_absence_negatives,
             "intervals": [asdict(iv) for iv in self.intervals],
             "known_gaps": [asdict(g) for g in self.known_gaps],
+            "event_span": self.event_span,
             "notes": self.notes,
         }
 
@@ -123,8 +148,6 @@ def _merge_intervals(intervals: list[TimeInterval]) -> list[TimeInterval]:
 
 @dataclass
 class SourceCoverageRegistry:
-    """All label-relevant source coverage planes."""
-
     pump_trades: SourceCoverage
     migrations: SourceCoverage
     postgrad_snapshots: SourceCoverage
@@ -143,6 +166,12 @@ class SourceCoverageRegistry:
                 "start": OUTAGE_START_UNIX,
                 "end": OUTAGE_END_UNIX,
                 "day": "2026-07-03",
+                "applies_to": ["pumpfun_trades"],
+                "note": (
+                    "KNOWN_ISSUES documents Jul 3 as a websocket trade-collection "
+                    "outage (zero trades). Do not automatically inherit onto "
+                    "migrations or post-grad without local evidence."
+                ),
             },
             "sources": {
                 "pump_trades": self.pump_trades.to_dict(),
@@ -152,7 +181,9 @@ class SourceCoverageRegistry:
             },
             "policy": {
                 "absence_targets_use_source_coverage_not_mint_last_event": True,
-                "jul3_outage_never_creates_death_or_graduation_negative": True,
+                "event_min_max_is_not_collection_coverage": True,
+                "jul3_outage_never_creates_death_labels": True,
+                "synthetic_pool_address_does_not_invalidate_migrated_at": True,
             },
         }
 
@@ -162,7 +193,6 @@ def _jul3_gap() -> TimeInterval:
 
 
 def _split_around_outage(start: float, end: float) -> list[TimeInterval]:
-    """Coverage intervals excluding the Jul 3 collection outage."""
     gap = _jul3_gap()
     if end <= start:
         return []
@@ -176,37 +206,61 @@ def _split_around_outage(start: float, end: float) -> list[TimeInterval]:
     return out
 
 
+def _event_span(times: list[float]) -> dict[str, float | None]:
+    if not times:
+        return {"min": None, "max": None, "n": 0}
+    return {"min": float(min(times)), "max": float(max(times)), "n": len(times)}
+
+
 def build_source_coverage_registry(
     *,
     world_root: Path,
     pump_root: Path | None = None,
 ) -> SourceCoverageRegistry:
-    """Derive coverage from frozen corpus / world-model indexes."""
+    """Derive evidence-annotated coverage from frozen local documentation."""
     pump_root = pump_root or Path("data/external/pumpfun_memecoin_corpus")
     gap = _jul3_gap()
+    known_issues = pump_root / "KNOWN_ISSUES.md"
+    known_issues_exists = known_issues.exists()
 
+    # --- Pump trades: high confidence ---
     trade_start = CORPUS_START_UNIX
     trade_end = CORPUS_END_UNIX
     buckets = world_root / "pit" / "global" / "trade_second_buckets.parquet"
+    bucket_rows = 0
     if buckets.exists() and pq.ParquetFile(buckets).metadata.num_rows:
         secs = pq.read_table(buckets, columns=["second_unix"]).column(0).to_pylist()
         if secs:
             trade_start = float(min(secs))
-            # Buckets are second starts; coverage extends through end of last second.
             trade_end = float(max(secs)) + 1.0
+            bucket_rows = len(secs)
 
     pump_trades = SourceCoverage(
         source_id="pumpfun_trades",
         intervals=_split_around_outage(trade_start, trade_end),
         known_gaps=[gap],
+        coverage_basis=(
+            "frozen_global_trade_second_buckets_plus_documented_jul3_outage"
+        ),
+        coverage_evidence=[
+            str(buckets) if buckets.exists() else "corpus_window_fallback",
+            f"trade_second_bucket_rows={bucket_rows}",
+            "KNOWN_ISSUES.md §3.4/§5.5 Jul 3 websocket collection outage (zero trades)",
+            "feasibility/reconstruction.json caveats: Jul 3 2026 collection outage",
+            f"corpus_window={CORPUS_START_UNIX}..{CORPUS_END_UNIX}",
+        ],
+        coverage_confidence=CONFIDENCE_HIGH,
+        supports_absence_negatives=True,
+        event_span={"min": trade_start, "max": trade_end, "n": bucket_rows},
         notes=(
-            "Pump trade corpus coverage from frozen second buckets / corpus window. "
-            "Jul 3 2026 is a known collection outage (zero trades)."
+            "Pump trade collection coverage from frozen global second buckets. "
+            "Jul 3 gap is documented specifically for trades."
         ),
     )
 
-    mig_start = CORPUS_START_UNIX
-    mig_end = CORPUS_END_UNIX
+    # --- Migrations: do NOT treat min/max migrated_at as continuous coverage ---
+    mig_times: list[float] = []
+    mig_source_path = None
     for path in (
         world_root / "pit" / "global" / "migrations_timeline.parquet",
         world_root / "universe" / "migrations.parquet",
@@ -222,57 +276,93 @@ def build_source_coverage_registry(
         )
         if tcol is None:
             continue
-        times = [
+        raw = [
             to_unix(x)
             for x in pq.read_table(path, columns=[tcol]).column(0).to_pylist()
         ]
-        times = [t for t in times if t is not None]
-        if times:
-            mig_start = float(min(times))
-            mig_end = float(max(times))
-            break
+        mig_times = [t for t in raw if t is not None]
+        mig_source_path = str(path)
+        break
+
+    mig_evidence = [
+        mig_source_path or "migrations_path_missing",
+        "KNOWN_ISSUES.md §4.55: pool_address may be synthetic/backfilled — "
+        "does not invalidate migrated_at as an event time",
+        "feasibility/reconstruction.json: migrations.migrated_at is a graduation "
+        "evidence field; pool_address partially synthetic is a separate caveat",
+        "No local documentation proves continuous migration-event collection "
+        "coverage equivalent to the trade websocket stream",
+        "Jul 3 outage is documented for trades, not migrations — not inherited",
+    ]
+    if known_issues_exists:
+        mig_evidence.append(f"reviewed:{known_issues}")
 
     migrations = SourceCoverage(
         source_id="migrations",
-        intervals=_split_around_outage(mig_start, mig_end),
-        known_gaps=[gap],
+        # Empty intervals: continuous collection coverage not proven.
+        intervals=[],
+        known_gaps=[],
+        coverage_basis="event_presence_only_continuous_collection_unproven",
+        coverage_evidence=mig_evidence,
+        coverage_confidence=CONFIDENCE_INSUFFICIENT,
+        supports_absence_negatives=False,
+        event_span=_event_span(mig_times),
         notes=(
-            "Migration-event source coverage from frozen migrations timeline. "
-            "Graduation negatives require migration source covering through T+H, "
-            "not the token's own trade activity."
+            "migrated_at event timestamps remain valid event evidence. "
+            "Absence-based graduation negatives are censored unless a later "
+            "observed migration proves a shorter-horizon negative/positive. "
+            "Min/max migrated_at is recorded as event_span only, not coverage."
         ),
     )
 
-    pg_start = CORPUS_START_UNIX
-    pg_end = CORPUS_END_UNIX
+    # --- Post-grad snapshots: event span; do not inherit Jul 3 trade gap ---
+    pg_times: list[float] = []
     pg_path = pump_root / "postgard_snapshots.parquet"
     if pg_path.exists():
-        times = [
+        raw = [
             to_unix(x)
             for x in pq.read_table(pg_path, columns=["snapshot_time"])
             .column(0)
             .to_pylist()
         ]
-        times = [t for t in times if t is not None]
-        if times:
-            pg_start = float(min(times))
-            pg_end = float(max(times))
+        pg_times = [t for t in raw if t is not None]
 
     postgrad = SourceCoverage(
         source_id="postgard_snapshots",
-        intervals=_split_around_outage(pg_start, pg_end),
-        known_gaps=[gap],
-        notes="Genuine post-grad snapshot coverage only; not fabricated continuity.",
+        intervals=[],
+        known_gaps=[],
+        coverage_basis="graduated_subset_snapshot_event_span_not_full_collection",
+        coverage_evidence=[
+            str(pg_path) if pg_path.exists() else "postgard_snapshots_missing",
+            "KNOWN_ISSUES.md: postgard_snapshots covers graduated subset (~5701 mints), "
+            "not full launch universe",
+            "Jul 3 trade websocket outage not documented as applying to postgard "
+            "snapshot collection — not inherited",
+            "feasibility/reconstruction.json: post_graduation_trajectory = partial",
+        ],
+        coverage_confidence=CONFIDENCE_LOW,
+        supports_absence_negatives=False,
+        event_span=_event_span(pg_times),
+        notes=(
+            "Post-grad marks remain usable where snapshots exist. "
+            "Do not treat event min/max as proven continuous coverage, and do "
+            "not fabricate a Jul 3 gap without local evidence."
+        ),
     )
 
     ownership = SourceCoverage(
         source_id="ownership_evidence",
-        intervals=[],  # mint-level sparse; no continuous time series in freeze
-        known_gaps=[gap],
-        notes=(
-            "Ownership targets remain sparse; no continuous holder ledger path "
-            "for most mints in the freeze."
-        ),
+        intervals=[],
+        known_gaps=[],
+        coverage_basis="mint_level_sparse_evidence_flags_only",
+        coverage_evidence=[
+            str(world_root / "universe" / "ownership_evidence.parquet"),
+            "No continuous time-indexed holder ledger for most mints in freeze",
+        ],
+        coverage_confidence=CONFIDENCE_INSUFFICIENT,
+        supports_absence_negatives=False,
+        event_span=None,
+        notes="Ownership targets remain sparse by design.",
     )
 
     return SourceCoverageRegistry(

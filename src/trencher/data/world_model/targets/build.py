@@ -1,7 +1,7 @@
-"""Build target_dataset_v2 artifacts, contracts, and audits.
+"""Build target_dataset_v3 artifacts, contracts, and audits.
 
-``target_dataset_v1`` artifacts are preserved on disk for audit history and are
-not overwritten by this module.
+``target_dataset_v1`` / ``target_dataset_v2`` artifacts are preserved on disk
+for audit history and are not overwritten by this module.
 """
 
 from __future__ import annotations
@@ -70,7 +70,8 @@ logger = logging.getLogger(__name__)
 
 TARGET_DATASET_V1 = "target_dataset_v1"
 TARGET_DATASET_V2 = "target_dataset_v2"
-TARGET_CONTRACT_VERSION = "target_contract_v2"
+TARGET_DATASET_V3 = "target_dataset_v3"
+TARGET_CONTRACT_VERSION = "target_contract_v3"
 PIT_ENGINE_VERSION = "pit_v4"
 OBSERVATION_DATASET_VERSION = "observation_dataset_v1"
 SEQUENCE_DATASET_VERSION = "sequence_dataset_v2"
@@ -85,7 +86,7 @@ INPUT_MODULES_FORBIDDEN_TO_IMPORT_TARGETS = (
 )
 
 
-def build_target_contract_v2() -> dict[str, Any]:
+def build_target_contract_v3() -> dict[str, Any]:
     return {
         "contract_version": TARGET_CONTRACT_VERSION,
         "generated_at": utc_now(),
@@ -94,14 +95,18 @@ def build_target_contract_v2() -> dict[str, Any]:
         "observation_dataset_version": OBSERVATION_DATASET_VERSION,
         "sequence_dataset_version": SEQUENCE_DATASET_VERSION,
         "model_input_contract_version": MODEL_INPUT_CONTRACT_VERSION,
-        "target_dataset_version": TARGET_DATASET_V2,
-        "supersedes": TARGET_DATASET_V1,
+        "target_dataset_version": TARGET_DATASET_V3,
+        "supersedes": TARGET_DATASET_V2,
+        "preserves": [TARGET_DATASET_V1, TARGET_DATASET_V2],
         "label_only": True,
         "causal_rule": "everything knowable at T -> outcomes strictly after T (event_time > T)",
         "survival_definition": "last_genuine_future_activity_ge_T_plus_H",
+        "survival_negative_confirmation_sec": 1800,
+        "survival_negative_window": "[T+H, T+H+confirmation]",
         "absence_policy": (
-            "No-event/absence targets use centralized source coverage registry; "
-            "never mint last_path_t; Jul 3 outage never creates death labels."
+            "No-event/absence targets use evidence-annotated source coverage; "
+            "never mint last_path_t; never equate event min/max with collection "
+            "coverage; Jul 3 outage never creates death labels."
         ),
         "isolation": {
             "pit_input_modules_must_not_import_targets": True,
@@ -134,16 +139,26 @@ def build_target_contract_v2() -> dict[str, Any]:
         "training": "not_started",
         "artifacts": [
             "future_market_path_v1.parquet",
-            "observation_targets_v2.parquet",
-            "future_path_refs_v2.parquet",
+            "observation_targets_v3.parquet",
+            "future_path_refs_v3.parquet",
             "explosion_events_v1.parquet",
             "explosion_detector_config_v1.json",
-            "target_source_coverage_v1.json",
-            "TARGET_CONTRACT_V2.json",
-            "TARGET_DATASET_V2_AUDIT.json",
-            "EXPLOSION_TARGET_AUDIT_V2.json",
+            "target_source_coverage_v2.json",
+            "TARGET_CONTRACT_V3.json",
+            "TARGET_DATASET_V3_AUDIT.json",
+            "EXPLOSION_TARGET_AUDIT_V3.json",
         ],
     }
+
+
+def build_target_contract_v2() -> dict[str, Any]:
+    """Frozen v2 contract builder retained for reference."""
+    c = build_target_contract_v3()
+    c["contract_version"] = "target_contract_v2"
+    c["target_dataset_version"] = TARGET_DATASET_V2
+    c["supersedes"] = TARGET_DATASET_V1
+    return c
+
 
 
 def assert_input_modules_do_not_import_targets(package_dir: Path | None = None) -> dict[str, Any]:
@@ -224,23 +239,31 @@ def _sufficiency(
 
 
 def build_target_dataset_v1(**_kwargs: Any) -> dict[str, Any]:
-    """v1 artifacts are frozen for audit history — use ``build_target_dataset_v2``."""
+    """v1 artifacts are frozen for audit history."""
     raise RuntimeError(
-        "target_dataset_v1 is frozen; call build_target_dataset_v2 "
-        "(v1 artifacts remain under data/.../target_dataset_v1/)."
+        "target_dataset_v1 is frozen; call build_target_dataset_v3 "
+        "(v1/v2 artifacts remain under data/.../targets/)."
     )
 
 
-def build_target_dataset_v2(
+def build_target_dataset_v2(**_kwargs: Any) -> dict[str, Any]:
+    """v2 artifacts are frozen for audit history — use ``build_target_dataset_v3``."""
+    raise RuntimeError(
+        "target_dataset_v2 is frozen; call build_target_dataset_v3 "
+        "(v1/v2 artifacts remain under data/.../targets/)."
+    )
+
+
+def build_target_dataset_v3(
     *,
     world_root: Path,
     manifest_dir: Path,
     pump_root: Path | None = None,
     observation_index_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Materialize label-only targets v2 for all approved observations."""
+    """Materialize label-only targets v3 for all approved observations."""
     pump_root = pump_root or Path("data/external/pumpfun_memecoin_corpus")
-    out_dir = ensure_dir(world_root / "targets" / TARGET_DATASET_V2)
+    out_dir = ensure_dir(world_root / "targets" / TARGET_DATASET_V3)
     manifest_dir = ensure_dir(manifest_dir)
 
     obs_path = observation_index_path or (
@@ -252,7 +275,7 @@ def build_target_dataset_v2(
     observations = pq.read_table(obs_path).to_pylist()
     mints = {r["mint"] for r in observations if r.get("mint")}
     logger.info(
-        "Building target_dataset_v2 for %d observations / %d mints",
+        "Building target_dataset_v3 for %d observations / %d mints",
         len(observations),
         len(mints),
     )
@@ -261,9 +284,9 @@ def build_target_dataset_v2(
         world_root=world_root, pump_root=pump_root
     )
     cov_manifest = write_coverage_manifest(
-        coverage, out_dir / "target_source_coverage_v1.json"
+        coverage, out_dir / "target_source_coverage_v2.json"
     )
-    write_json(manifest_dir / "target_source_coverage_v1.json", cov_manifest)
+    write_json(manifest_dir / "target_source_coverage_v2.json", cov_manifest)
 
     # 1) Future market path (label-only; schema unchanged)
     path_meta = build_future_market_path_v1(
@@ -316,7 +339,7 @@ def build_target_dataset_v2(
     write_json(out_dir / "explosion_detector_config_v1.json", det_cfg)
     write_json(manifest_dir / "explosion_detector_config_v1.json", det_cfg)
 
-    logger.info("Computing observation-level targets (v2 semantics)")
+    logger.info("Computing observation-level targets (v3 semantics)")
     target_rows: list[dict[str, Any]] = []
     ref_rows: list[dict[str, Any]] = []
 
@@ -341,7 +364,7 @@ def build_target_dataset_v2(
             "trigger_value": obs.get("trigger_value"),
             "launch_day": obs.get("launch_day"),
             "launch_regime": obs.get("launch_regime"),
-            "target_dataset_version": TARGET_DATASET_V2,
+            "target_dataset_version": TARGET_DATASET_V3,
             "label_only": True,
         }
 
@@ -422,15 +445,15 @@ def build_target_dataset_v2(
             }
         )
 
-    targets_path = out_dir / "observation_targets_v2.parquet"
-    refs_path = out_dir / "future_path_refs_v2.parquet"
-    logger.info("Writing observation_targets_v2 (%d rows)", len(target_rows))
+    targets_path = out_dir / "observation_targets_v3.parquet"
+    refs_path = out_dir / "future_path_refs_v3.parquet"
+    logger.info("Writing observation_targets_v3 (%d rows)", len(target_rows))
     pq.write_table(pa.Table.from_pylist(target_rows), targets_path)
     pq.write_table(pa.Table.from_pylist(ref_rows), refs_path)
 
-    contract = build_target_contract_v2()
-    write_json(out_dir / "TARGET_CONTRACT_V2.json", contract)
-    write_json(manifest_dir / "TARGET_CONTRACT_V2.json", contract)
+    contract = build_target_contract_v3()
+    write_json(out_dir / "TARGET_CONTRACT_V3.json", contract)
+    write_json(manifest_dir / "TARGET_CONTRACT_V3.json", contract)
 
     isolation = assert_input_modules_do_not_import_targets()
     audit = _build_audit(
@@ -448,22 +471,23 @@ def build_target_dataset_v2(
         world_root=world_root,
         manifest_dir=manifest_dir,
     )
-    write_json(out_dir / "TARGET_DATASET_V2_AUDIT.json", audit)
-    write_json(manifest_dir / "TARGET_DATASET_V2_AUDIT.json", audit)
-    write_json(out_dir / "EXPLOSION_TARGET_AUDIT_V2.json", audit["explosion_audit"])
+    write_json(out_dir / "TARGET_DATASET_V3_AUDIT.json", audit)
+    write_json(manifest_dir / "TARGET_DATASET_V3_AUDIT.json", audit)
+    write_json(out_dir / "EXPLOSION_TARGET_AUDIT_V3.json", audit["explosion_audit"])
     write_json(
-        manifest_dir / "EXPLOSION_TARGET_AUDIT_V2.json", audit["explosion_audit"]
+        manifest_dir / "EXPLOSION_TARGET_AUDIT_V3.json", audit["explosion_audit"]
     )
-    _write_audit_markdown(manifest_dir / "TARGET_DATASET_V2_AUDIT.md", audit)
+    _write_audit_markdown(manifest_dir / "TARGET_DATASET_V3_AUDIT.md", audit)
     _write_explosion_markdown(
-        manifest_dir / "EXPLOSION_TARGET_AUDIT_V2.md", audit["explosion_audit"]
+        manifest_dir / "EXPLOSION_TARGET_AUDIT_V3.md", audit["explosion_audit"]
     )
     write_json(
         out_dir / "target_dataset_manifest.json",
         {
             "generated_at": utc_now(),
-            "version": TARGET_DATASET_V2,
-            "supersedes": TARGET_DATASET_V1,
+            "version": TARGET_DATASET_V3,
+            "supersedes": TARGET_DATASET_V2,
+            "preserves": [TARGET_DATASET_V1, TARGET_DATASET_V2],
             "artifacts": {
                 "future_market_path": file_provenance(
                     path_parquet, source="targets"
@@ -474,7 +498,7 @@ def build_target_dataset_v2(
                 "future_path_refs": file_provenance(refs_path, source="targets"),
                 "explosion_events": file_provenance(expl_path, source="targets"),
                 "source_coverage": file_provenance(
-                    out_dir / "target_source_coverage_v1.json", source="targets"
+                    out_dir / "target_source_coverage_v2.json", source="targets"
                 ),
             },
         },
@@ -965,15 +989,21 @@ def _build_audit(
         ],
     }
 
-    v1_compare = _compare_to_v1_audit(manifest_dir, survival_stats, grad_stats)
+    v2_compare = _compare_to_prior_audit(
+        manifest_dir / "TARGET_DATASET_V2_AUDIT.json",
+        survival_v2=survival_stats,
+        grad_v2=grad_stats,
+        label="v2",
+    )
 
     return {
-        "audit_id": TARGET_DATASET_V2,
+        "audit_id": TARGET_DATASET_V3,
         "generated_at": utc_now(),
         "acquisition_freeze_id": FREEZE_ID,
         "pit_engine_version": PIT_ENGINE_VERSION,
         "observation_dataset_version": OBSERVATION_DATASET_VERSION,
-        "supersedes": TARGET_DATASET_V1,
+        "supersedes": TARGET_DATASET_V2,
+        "preserves": [TARGET_DATASET_V1, TARGET_DATASET_V2],
         "observations_processed": n_obs,
         "unique_tokens": len(mints),
         "reference_price_coverage": {
@@ -1003,7 +1033,7 @@ def _build_audit(
         },
         "isolation_proof": isolation,
         "supervision_sufficiency": sufficiency,
-        "v1_comparison": v1_compare,
+        "v2_comparison": v2_compare,
         "estimated_disk_bytes": disk,
         "estimated_disk_mb": disk / (1024 * 1024),
         "artifacts": {
@@ -1012,9 +1042,55 @@ def _build_audit(
             "explosion_events": str(expl_path),
             "out_dir": str(out_dir),
             "v1_preserved": str(world_root / "targets" / TARGET_DATASET_V1),
+            "v2_preserved": str(world_root / "targets" / TARGET_DATASET_V2),
         },
         "chronological_splits": "not_created",
         "training": "not_started",
+    }
+
+
+def _compare_to_prior_audit(
+    prior_path: Path,
+    *,
+    survival_v2: dict[str, Any],
+    grad_v2: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    if not prior_path.exists():
+        return {"available": False, "prior": label}
+    prior = read_json(prior_path)
+    surv_cmp = {}
+    for h, st in survival_v2.items():
+        ps = (prior.get("survival") or {}).get(h) or {}
+        surv_cmp[h] = {
+            f"{label}_positive": ps.get("positive"),
+            "v3_positive": st.get("positive"),
+            f"{label}_negative": ps.get("negative"),
+            "v3_negative": st.get("negative"),
+            f"{label}_censored": ps.get("censored"),
+            "v3_censored": st.get("censored"),
+            f"{label}_outage": ps.get("outage"),
+            "v3_outage": st.get("outage"),
+        }
+    grad_cmp = {}
+    for h, st in grad_v2.items():
+        pg = ((prior.get("graduation") or {}).get("by_horizon") or {}).get(h) or {}
+        grad_cmp[h] = {
+            f"{label}_positives": pg.get("positives"),
+            "v3_positives": st.get("positives"),
+            f"{label}_negatives": pg.get("negatives"),
+            "v3_negatives": st.get("negatives"),
+            f"{label}_censored": pg.get("censored"),
+            "v3_censored": st.get("censored"),
+        }
+    return {
+        "available": True,
+        "prior": label,
+        "survival": surv_cmp,
+        "graduation": grad_cmp,
+        f"{label}_explosion_events": (prior.get("explosion_audit") or {}).get(
+            "independent_explosion_events"
+        ),
     }
 
 
@@ -1023,49 +1099,24 @@ def _compare_to_v1_audit(
     survival_v2: dict[str, Any],
     grad_v2: dict[str, Any],
 ) -> dict[str, Any]:
-    v1_path = manifest_dir / "TARGET_DATASET_V1_AUDIT.json"
-    if not v1_path.exists():
-        return {"available": False}
-    v1 = read_json(v1_path)
-    surv_cmp = {}
-    for h, st in survival_v2.items():
-        v1s = (v1.get("survival") or {}).get(h) or {}
-        surv_cmp[h] = {
-            "v1_positive": v1s.get("positive"),
-            "v2_positive": st.get("positive"),
-            "v1_negative": v1s.get("negative"),
-            "v2_negative": st.get("negative"),
-            "v1_censored": v1s.get("censored"),
-            "v2_censored": st.get("censored"),
-            "v2_outage": st.get("outage"),
-        }
-    grad_cmp = {}
-    for h, st in grad_v2.items():
-        v1g = ((v1.get("graduation") or {}).get("by_horizon") or {}).get(h) or {}
-        grad_cmp[h] = {
-            "v1_positives": v1g.get("positives"),
-            "v2_positives": st.get("positives"),
-            "v2_negatives": st.get("negatives"),
-            "v2_censored": st.get("censored"),
-        }
-    return {
-        "available": True,
-        "survival": surv_cmp,
-        "graduation": grad_cmp,
-        "v1_explosion_events": (v1.get("explosion_audit") or {}).get(
-            "independent_explosion_events"
-        ),
-    }
+    """Backward-compatible alias (unused by v3). """
+    return _compare_to_prior_audit(
+        manifest_dir / "TARGET_DATASET_V1_AUDIT.json",
+        survival_v2=survival_v2,
+        grad_v2=grad_v2,
+        label="v1",
+    )
 
 
 def _write_audit_markdown(path: Path, audit: dict[str, Any]) -> None:
     expl = audit["explosion_audit"]
     lines = [
-        f"# Target Dataset v2 (`{audit['audit_id']}`)",
+        f"# Target Dataset v3 (`{audit['audit_id']}`)",
         "",
         f"Generated at: `{audit['generated_at']}`",
         f"Freeze: `{audit['acquisition_freeze_id']}`",
         f"Supersedes: `{audit.get('supersedes')}`",
+        f"Preserves: `{audit.get('preserves')}`",
         f"Observations: **{audit['observations_processed']}**",
         f"Unique tokens: **{audit['unique_tokens']}**",
         (
@@ -1075,7 +1126,7 @@ def _write_audit_markdown(path: Path, audit: dict[str, Any]) -> None:
         ),
         f"Disk MB: **{audit['estimated_disk_mb']:.1f}**",
         "",
-        "## Survival (last activity >= T+H)",
+        "## Survival (activity >= T+H; negatives need H..H+30m coverage)",
         (
             f"- positive counts monotonic nonincreasing: "
             f"**{audit.get('survival_positive_counts_monotonic_nonincreasing')}**"

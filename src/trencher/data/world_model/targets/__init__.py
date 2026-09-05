@@ -3,6 +3,6 @@
 PIT / observation / sequence input modules must NEVER import this package.
 """
 
-from trencher.data.world_model.targets.build import build_target_dataset_v2
+from trencher.data.world_model.targets.build import build_target_dataset_v3
 
-__all__ = ["build_target_dataset_v2"]
+__all__ = ["build_target_dataset_v3"]
