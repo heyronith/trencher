@@ -25,3 +25,11 @@ htmlcov/
 .vscode/
 *.swp
 .DS_Store
+
+# Baseline model artifacts / large matrices (manifests stay committed)
+/artifacts/baselines/
+/data/external/world_model/baselines/
+*.lgb
+*.cbm
+*.ubj
+*.joblib

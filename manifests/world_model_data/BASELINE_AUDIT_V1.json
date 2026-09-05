@@ -1,0 +1,82 @@
+{
+  "audit_version": "BASELINE_AUDIT_V1",
+  "generated_at": "2026-09-05T20:19:10.504576+00:00",
+  "contract": "BASELINE_CONTRACT_V1",
+  "acceptance": {
+    "no_permanent_test_access": true,
+    "no_post_T_features": true,
+    "no_identifiers_in_predictive_features": true,
+    "train_only_stats_calibration": true,
+    "censored_targets_handled": true,
+    "population_prevalence_on_val": true,
+    "deterministic_seed": true
+  },
+  "feature_n": 124,
+  "feature_families": [
+    "events",
+    "curve",
+    "creator",
+    "global",
+    "rich_additive"
+  ],
+  "results_summary": {
+    "lightgbm": {
+      "heads": [
+        "explosion_60s",
+        "explosion_300s",
+        "barrier_u25_l15_5m",
+        "barrier_u100_l30_1h",
+        "return_5m",
+        "return_1h",
+        "survival_30m",
+        "survival_24h"
+      ],
+      "train_n": 47443,
+      "val_n": 9595
+    },
+    "xgboost": {
+      "heads": [
+        "explosion_60s",
+        "explosion_300s",
+        "barrier_u25_l15_5m",
+        "barrier_u100_l30_1h",
+        "return_5m",
+        "return_1h",
+        "survival_30m",
+        "survival_24h"
+      ],
+      "train_n": 47443,
+      "val_n": 9595
+    },
+    "catboost": {
+      "heads": [
+        "explosion_60s",
+        "explosion_300s",
+        "barrier_u25_l15_5m",
+        "barrier_u100_l30_1h",
+        "return_5m",
+        "return_1h",
+        "survival_30m",
+        "survival_24h"
+      ],
+      "train_n": 47443,
+      "val_n": 9595
+    },
+    "survival": {
+      "heads": [
+        "explosion_tte",
+        "graduation_tte"
+      ],
+      "train_n": 47443,
+      "val_n": 9595
+    }
+  },
+  "modal_usage": {
+    "app": "trencher-baselines-v1",
+    "volume": "trencher-world-model-v1",
+    "artifacts_volume": "trencher-baseline-artifacts-v1",
+    "status": "syncing_splits_and_selective_broad_32_partitions",
+    "local_validation": "2_partition_all_core_heads_no_test_access",
+    "note": "Full population GPU fits launch on Modal after volume sync; local numbers are pipeline validation only"
+  }
+}

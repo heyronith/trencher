@@ -404,5 +404,11 @@ def data_recover_world_model_data(
     click.echo(f"Data: {result.world_root}")
 
 
+# Baseline controls (features local-smoke; full training on Modal)
+from trencher.baselines.cli import baselines  # noqa: E402
+
+main.add_command(baselines)
+
+
 if __name__ == "__main__":
     main()

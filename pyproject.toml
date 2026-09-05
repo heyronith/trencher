@@ -22,6 +22,14 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.9",
 ]
+baselines = [
+    "catboost>=1.2",
+    "lifelines>=0.29",
+    "lightgbm>=4.5",
+    "modal>=0.73",
+    "scikit-learn>=1.5",
+    "xgboost>=2.1",
+]
 
 [project.scripts]
 trencher = "trencher.cli:main"
@@ -40,6 +48,11 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/trencher/baselines/**" = ["E501"]
+"modal_apps/**" = ["E501"]
+"tests/test_baselines_v1.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

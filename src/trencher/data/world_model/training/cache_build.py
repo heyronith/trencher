@@ -401,7 +401,7 @@ def build_training_cache_v1(
                     np.asarray(vals, dtype=np.float64)
                 )
 
-        for path, cols in (
+        for store_path, store_cols in (
             (
                 world_root
                 / "sequences"
@@ -436,7 +436,7 @@ def build_training_cache_v1(
                 ["prior_rank"],
             ),
         ):
-            path = Path(path)
+            path = Path(store_path)
             if path.is_dir():
                 rparts = sorted(path.rglob("part.parquet"))[:16]
             elif path.exists():
@@ -449,7 +449,7 @@ def build_training_cache_v1(
             if "mint" not in sch0:
                 stats = fit_column_stats_from_table(
                     rparts[0],
-                    numeric_columns=[c for c in cols if c in sch0],
+                    numeric_columns=[c for c in store_cols if c in sch0],
                     time_column="event_time_unix"
                     if "event_time_unix" in sch0
                     else None,
@@ -463,7 +463,7 @@ def build_training_cache_v1(
             extra = fit_sequence_transforms_from_unique_rows(
                 sequence_parts=rparts,
                 train_mints=train_mints,
-                numeric_columns=[c for c in cols if c in sch0],
+                numeric_columns=[c for c in store_cols if c in sch0],
                 max_event_time=q70,
                 max_rows_per_part=400_000,
             )
@@ -475,12 +475,23 @@ def build_training_cache_v1(
             if "pre_ui_amount" in sch0 and "post_ui_amount" in sch0:
                 table = pq.read_table(
                     rparts[0],
-                    columns=["mint", "event_time_unix", "pre_ui_amount", "post_ui_amount"],
+                    columns=[
+                        "mint",
+                        "event_time_unix",
+                        "pre_ui_amount",
+                        "post_ui_amount",
+                    ],
                 )
                 mints = [str(m) for m in table.column("mint").to_pylist()]
-                times = np.asarray(table.column("event_time_unix").to_pylist(), dtype=np.float64)
-                pre = np.asarray(table.column("pre_ui_amount").to_pylist(), dtype=np.float64)
-                post = np.asarray(table.column("post_ui_amount").to_pylist(), dtype=np.float64)
+                times = np.asarray(
+                    table.column("event_time_unix").to_pylist(), dtype=np.float64
+                )
+                pre = np.asarray(
+                    table.column("pre_ui_amount").to_pylist(), dtype=np.float64
+                )
+                post = np.asarray(
+                    table.column("post_ui_amount").to_pylist(), dtype=np.float64
+                )
                 mask = (
                     np.array([m in train_mints for m in mints], dtype=bool)
                     & np.isfinite(times)
