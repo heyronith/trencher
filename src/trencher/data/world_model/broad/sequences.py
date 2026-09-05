@@ -64,6 +64,29 @@ _EVENT_SCHEMA_COLS = (
     "mint_partition",
 )
 
+_EVENT_STAGING_SCHEMA = pa.schema(
+    [
+        ("mint", pa.string()),
+        ("event_time_unix", pa.float64()),
+        ("tx_signature", pa.string()),
+        ("event_fingerprint", pa.string()),
+        ("order_key", pa.string()),
+        ("wallet", pa.string()),
+        ("side", pa.string()),
+        ("is_buy", pa.bool_()),
+        ("sol_amount", pa.float64()),
+        ("token_amount", pa.float64()),
+        ("price_sol", pa.float64()),
+        ("v_sol", pa.float64()),
+        ("v_tok", pa.float64()),
+        ("curve_pct_depleted", pa.float64()),
+        ("source_quality_flag", pa.string()),
+        ("has_reserves", pa.bool_()),
+        ("has_finite_price", pa.bool_()),
+        ("mint_partition", pa.string()),
+    ]
+)
+
 
 def mint_partition(mint: str) -> str:
     return sha256(mint.encode()).hexdigest()[:2]
@@ -98,10 +121,10 @@ def _flush_staging(
     if not rows:
         return
     ensure_dir(staging_dir / part)
-    table = pa.Table.from_pylist(rows)
+    table = pa.Table.from_pylist(rows, schema=_EVENT_STAGING_SCHEMA)
     path = staging_dir / part / "staging.parquet"
     if part not in writers:
-        writers[part] = pq.ParquetWriter(path, table.schema)
+        writers[part] = pq.ParquetWriter(path, _EVENT_STAGING_SCHEMA)
     writers[part].write_table(table)
 
 
