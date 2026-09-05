@@ -197,67 +197,44 @@ def _finalize_partition_events(
 def _write_curve_from_events(
     events_part: Path, curve_part: Path
 ) -> tuple[list[dict[str, Any]], int]:
+    """Thin causal curve projection (reserve/progress columns) with zstd."""
     path = events_part / "part.parquet"
+    ensure_dir(curve_part)
+    out_path = curve_part / "part.parquet"
     if not path.exists() or pq.ParquetFile(path).metadata.num_rows == 0:
-        ensure_dir(curve_part)
         pq.write_table(
             pa.table({"seq_idx": pa.array([], pa.int64())}),
-            curve_part / "part.parquet",
+            out_path,
         )
         return [], 0
-    rows = []
-    for r in pq.read_table(path).to_pylist():
-        if (
-            r.get("v_sol") is None
-            and r.get("v_tok") is None
-            and r.get("curve_pct_depleted") is None
-            and not r.get("has_finite_price")
-        ):
-            continue
-        rows.append(
-            {
-                "mint": r["mint"],
-                "event_time_unix": r["event_time_unix"],
-                "order_key": r["order_key"],
-                "side": r.get("side"),
-                "is_buy": r.get("is_buy"),
-                "sol_amount": r.get("sol_amount"),
-                "token_amount": r.get("token_amount"),
-                "price_sol": r.get("price_sol"),
-                "v_sol": r.get("v_sol"),
-                "v_tok": r.get("v_tok"),
-                "curve_pct_depleted": r.get("curve_pct_depleted"),
-                "has_reserves": r.get("has_reserves"),
-                "source_quality_flag": r.get("source_quality_flag"),
-                "source": "pump_trade_reserve_trajectory",
-                "mint_partition": r.get("mint_partition"),
-                "seq_idx": r["seq_idx"],  # temporary; reassigned below
-            }
+    schema_names = set(pq.read_schema(path).names)
+    cols = [
+        c
+        for c in (
+            "mint",
+            "event_time_unix",
+            "order_key",
+            "price_sol",
+            "v_sol",
+            "v_tok",
+            "curve_pct_depleted",
+            "has_reserves",
+            "source_quality_flag",
+            "mint_partition",
+            "seq_idx",
         )
-    rows.sort(
-        key=lambda r: (
-            r["mint"],
-            float(r["event_time_unix"]),
-            r.get("order_key") or "",
-        )
-    )
-    for i, row in enumerate(rows):
-        row["seq_idx"] = i
-    ensure_dir(curve_part)
-    if rows:
-        pq.write_table(pa.Table.from_pylist(rows), curve_part / "part.parquet")
-    else:
-        pq.write_table(
-            pa.table({"seq_idx": pa.array([], pa.int64())}),
-            curve_part / "part.parquet",
-        )
+        if c in schema_names
+    ]
+    table = pq.read_table(path, columns=cols)
+    pq.write_table(table, out_path, compression="zstd", compression_level=3)
+    mints = table.column("mint").to_pylist()
     entity: list[dict[str, Any]] = []
     i = 0
-    n = len(rows)
+    n = len(mints)
     while i < n:
-        mint = rows[i]["mint"]
+        mint = mints[i]
         j = i + 1
-        while j < n and rows[j]["mint"] == mint:
+        while j < n and mints[j] == mint:
             j += 1
         entity.append(
             {
@@ -269,7 +246,99 @@ def _write_curve_from_events(
             }
         )
         i = j
-    return entity, len(rows)
+    return entity, n
+
+
+
+def rebuild_event_curve_indexes(
+    *,
+    broad_root: Path,
+    rebuild_curves: bool = True,
+) -> dict[str, Any]:
+    """Finalize any remaining staging partitions and rebuild entity indexes."""
+    events_root = ensure_dir(broad_root / EVENTS_STORE)
+    curve_root = ensure_dir(broad_root / CURVE_STORE)
+    staging_root = broad_root / "_staging_events"
+
+    entity_rows: list[dict[str, Any]] = []
+    curve_entity: list[dict[str, Any]] = []
+    event_rows_total = 0
+    curve_rows_total = 0
+    exact_dup = 0
+    price_capable: set[str] = set()
+
+    if staging_root.exists():
+        parts = sorted(d.name for d in staging_root.iterdir() if d.is_dir())
+        for part in parts:
+            logger.info("Finalizing remaining staging partition %s", part)
+            ent, n, dups, caps = _finalize_partition_events(
+                staging_root / part, events_root / part
+            )
+            exact_dup += dups
+            price_capable |= caps
+            shutil.rmtree(staging_root / part, ignore_errors=True)
+            event_rows_total += n
+        shutil.rmtree(staging_root, ignore_errors=True)
+
+    # Rebuild indexes (+ optional thin curves) from all event partitions.
+    parts = sorted(d.name for d in events_root.iterdir() if d.is_dir())
+    for part in parts:
+        ep = events_root / part / "part.parquet"
+        if not ep.exists():
+            continue
+        names = set(pq.read_schema(ep).names)
+        cols = ["mint"] + (["has_finite_price"] if "has_finite_price" in names else [])
+        table = pq.read_table(ep, columns=cols)
+        mints = table.column("mint").to_pylist()
+        flags = (
+            table.column("has_finite_price").to_pylist()
+            if "has_finite_price" in table.column_names
+            else None
+        )
+        n = len(mints)
+        i = 0
+        while i < n:
+            mint = mints[i]
+            j = i + 1
+            while j < n and mints[j] == mint:
+                j += 1
+            entity_rows.append(
+                {
+                    "mint": mint,
+                    "partition": part,
+                    "start_idx": i,
+                    "end_idx": j,
+                    "n_rows": j - i,
+                }
+            )
+            if flags is None or any(flags[i:j]):
+                price_capable.add(str(mint))
+            i = j
+        if rebuild_curves:
+            cent, cn = _write_curve_from_events(events_root / part, curve_root / part)
+            curve_entity.extend(cent)
+            curve_rows_total += cn
+
+    event_rows_total = sum(r["n_rows"] for r in entity_rows)
+    if entity_rows:
+        pq.write_table(pa.Table.from_pylist(entity_rows), events_root / ENTITY_INDEX_NAME)
+    if curve_entity:
+        pq.write_table(pa.Table.from_pylist(curve_entity), curve_root / ENTITY_INDEX_NAME)
+    meta = {
+        "generated_at": utc_now(),
+        "resumed_finalize": True,
+        "deduped_event_rows": event_rows_total,
+        "curve_rows": curve_rows_total,
+        "exact_duplicate_groups_removed": exact_dup,
+        "price_capable_mints": len(price_capable),
+        "entities": len(entity_rows),
+        "events_root": str(events_root),
+        "curve_root": str(curve_root),
+    }
+    write_json(events_root / "manifest.json", meta)
+    write_json(curve_root / "manifest.json", {**meta, "store": CURVE_STORE})
+    meta["price_capable_mint_set"] = price_capable
+    return meta
 
 
 def build_broad_sequence_events_v1(
@@ -414,6 +483,8 @@ def build_broad_sequence_events_v1(
         event_rows_total += n
         exact_dup += dups
         price_capable |= caps
+        # Free disk immediately — do not retain staging once finalized.
+        shutil.rmtree(staging_root / part, ignore_errors=True)
         cent, cn = _write_curve_from_events(events_root / part, curve_root / part)
         curve_entity.extend(cent)
         curve_rows_total += cn
@@ -677,11 +748,38 @@ def build_broad_sequences_v1(
 
     mints = set(event_curve_mints(population_path))
     logger.info("Building broad sequences for %d event_curve mints", len(mints))
-    events_meta = build_broad_sequence_events_v1(
-        broad_root=broad_root,
-        pump_root=pump_root,
-        event_curve_mints=mints,
+
+    events_root = broad_root / EVENTS_STORE
+    staging_root = broad_root / "_staging_events"
+    existing_parts = (
+        sum(
+            1
+            for d in events_root.iterdir()
+            if d.is_dir() and (d / "part.parquet").exists()
+        )
+        if events_root.exists()
+        else 0
     )
+    staging_left = (
+        sum(1 for d in staging_root.iterdir() if d.is_dir())
+        if staging_root.exists()
+        else 0
+    )
+    if existing_parts >= 200 or staging_left:
+        logger.info(
+            "Resuming sequences: existing_event_parts=%d staging_left=%d",
+            existing_parts,
+            staging_left,
+        )
+        events_meta = rebuild_event_curve_indexes(
+            broad_root=broad_root, rebuild_curves=True
+        )
+    else:
+        events_meta = build_broad_sequence_events_v1(
+            broad_root=broad_root,
+            pump_root=pump_root,
+            event_curve_mints=mints,
+        )
     price_set = events_meta.pop("price_capable_mint_set", set())
     price_meta = update_price_target_flags(population_path, price_set)
     creator_meta = build_broad_sequence_creator_v1(
