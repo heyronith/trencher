@@ -1,0 +1,1265 @@
+{
+  "audit_id": "TRAINING_LOADER_AUDIT_V3",
+  "generated_at": "2026-09-05T19:04:44.847765+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "contract_version": "TRAINING_LOADER_CONTRACT_V3",
+  "supersedes": "TRAINING_LOADER_AUDIT_V2",
+  "training_cache": {
+    "cache_version": "training_cache_v1",
+    "generated_at": "2026-09-05T18:57:36.131881+00:00",
+    "design": "slim_targets_plus_tte_by_mint_partition",
+    "broad": {
+      "tte_rows": 8449949,
+      "tte_partitions": 256,
+      "target_rows": 8449949,
+      "target_partitions": 256,
+      "joined_rows": 8449949,
+      "slim_columns_n": 240
+    },
+    "rich": {
+      "joined_rows": 51353,
+      "slim_columns_n": 239
+    },
+    "transforms": {
+      "rows_seen": 4091826,
+      "columns": [
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted"
+      ],
+      "order": "clip_raw_p01_p99_then_zscore"
+    },
+    "notes": [
+      "Frozen stores untouched",
+      "Slim training-head columns only (not full frozen target width)",
+      "Partition-aligned with observation_assignments_broad"
+    ]
+  },
+  "modality_schemas": {
+    "events": {
+      "channels": [
+        "rel_dt",
+        "interarrival",
+        "is_buy",
+        "side_id",
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted",
+        "has_reserves",
+        "has_finite_price",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "interarrival",
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted"
+      ],
+      "binary": [
+        "is_buy",
+        "has_reserves",
+        "has_finite_price"
+      ],
+      "categorical": [
+        "side_id",
+        "source_quality"
+      ]
+    },
+    "curve": {
+      "channels": [
+        "rel_dt",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted",
+        "has_reserves",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted"
+      ],
+      "binary": [
+        "has_reserves"
+      ],
+      "categorical": [
+        "source_quality"
+      ]
+    },
+    "creator": {
+      "channels": [
+        "rel_dt",
+        "prior_rank",
+        "prior_is_mayhem_mode",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "prior_rank"
+      ],
+      "binary": [
+        "prior_is_mayhem_mode"
+      ]
+    },
+    "micro": {
+      "channels": [
+        "rel_dt",
+        "success",
+        "fee_lamports",
+        "compute_units_consumed",
+        "priority_fee_lamports",
+        "account_key_count",
+        "balance_change_count",
+        "log_message_count",
+        "inner_instruction_groups",
+        "availability_priority_fee",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "fee_lamports",
+        "compute_units_consumed",
+        "priority_fee_lamports",
+        "account_key_count",
+        "balance_change_count",
+        "log_message_count",
+        "inner_instruction_groups"
+      ],
+      "binary": [
+        "success",
+        "availability_priority_fee"
+      ]
+    },
+    "ownership": {
+      "channels": [
+        "rel_dt",
+        "event_kind_id",
+        "transfer_type_id",
+        "value",
+        "decimals",
+        "pre_ui_amount",
+        "post_ui_amount",
+        "delta_ui",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "value",
+        "decimals",
+        "pre_ui_amount",
+        "post_ui_amount",
+        "delta_ui"
+      ],
+      "categorical": [
+        "event_kind_id",
+        "transfer_type_id",
+        "source_quality"
+      ]
+    },
+    "graph_token": {
+      "channels": [
+        "rel_dt",
+        "edge_type_id",
+        "direction",
+        "sol_amount",
+        "token_amount",
+        "is_cohort_derived",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "sol_amount",
+        "token_amount"
+      ],
+      "binary": [
+        "is_cohort_derived"
+      ],
+      "categorical": [
+        "edge_type_id",
+        "direction",
+        "source_quality"
+      ],
+      "node_ids": "graph_src_idx/graph_dst_idx indexing only"
+    },
+    "wallet_prior": {
+      "channels": [
+        "rel_dt",
+        "edge_type_id",
+        "direction",
+        "sol_amount",
+        "token_amount",
+        "is_cohort_derived",
+        "source_quality"
+      ],
+      "node_ids": "wallet_node_idx indexing only"
+    },
+    "global": {
+      "channels": [
+        "rel_dt",
+        "trades",
+        "buys",
+        "sells",
+        "buy_sol",
+        "sell_sol",
+        "unique_mints",
+        "unique_wallets"
+      ],
+      "policy": "last_completed_second_only"
+    }
+  },
+  "smoke_benchmark": {
+    "batch_sizes": [
+      64,
+      128
+    ],
+    "max_batches": 200,
+    "light": false,
+    "broad_bs64": {
+      "batch_size": 64,
+      "batches": 200,
+      "examples": 12800,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 369.22726154838193,
+      "steady_state_examples_per_sec": 1268.4808825355449,
+      "examples_per_sec": 1195.6791706503454,
+      "batches_per_sec": 18.682487041411648,
+      "elapsed_sec": 10.705212831497192,
+      "sequence_shapes": {
+        "creator": [
+          64,
+          256,
+          4
+        ],
+        "curve": [
+          64,
+          256,
+          7
+        ],
+        "events": [
+          64,
+          256,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "creator": [
+          "rel_dt",
+          "prior_rank",
+          "prior_is_mayhem_mode",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "creator": 82.3396875,
+        "curve": 13.6478125,
+        "events": 13.6478125,
+        "global": 128.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.0078125,
+        "curve": 0.0078125,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.7565625,
+        "modality_mask_curve": 0.86578125,
+        "modality_mask_events": 0.86578125,
+        "modality_mask_global": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": -0.08585930555669674,
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 4634.727319065653,
+      "production": true
+    },
+    "broad": {
+      "batch_size": 64,
+      "batches": 200,
+      "examples": 12800,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 369.22726154838193,
+      "steady_state_examples_per_sec": 1268.4808825355449,
+      "examples_per_sec": 1195.6791706503454,
+      "batches_per_sec": 18.682487041411648,
+      "elapsed_sec": 10.705212831497192,
+      "sequence_shapes": {
+        "creator": [
+          64,
+          256,
+          4
+        ],
+        "curve": [
+          64,
+          256,
+          7
+        ],
+        "events": [
+          64,
+          256,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "creator": [
+          "rel_dt",
+          "prior_rank",
+          "prior_is_mayhem_mode",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "creator": 82.3396875,
+        "curve": 13.6478125,
+        "events": 13.6478125,
+        "global": 128.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.0078125,
+        "curve": 0.0078125,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.7565625,
+        "modality_mask_curve": 0.86578125,
+        "modality_mask_events": 0.86578125,
+        "modality_mask_global": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": -0.08585930555669674,
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 4634.727319065653,
+      "production": true
+    },
+    "rich_bs64": {
+      "batch_size": 64,
+      "batches": 200,
+      "examples": 12800,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 81.58230284444535,
+      "steady_state_examples_per_sec": 397.5689288020209,
+      "examples_per_sec": 362.4706884305706,
+      "batches_per_sec": 5.6636045067276655,
+      "elapsed_sec": 35.31320023536682,
+      "sequence_shapes": {
+        "curve": [
+          64,
+          162,
+          7
+        ],
+        "events": [
+          64,
+          222,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ],
+        "graph_token": [
+          64,
+          223,
+          7
+        ],
+        "micro": [
+          64,
+          6,
+          11
+        ],
+        "ownership": [
+          64,
+          2,
+          9
+        ],
+        "wallet_prior": [
+          64,
+          10534,
+          7
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "micro": [
+          "rel_dt",
+          "success",
+          "fee_lamports",
+          "compute_units_consumed",
+          "priority_fee_lamports",
+          "account_key_count",
+          "balance_change_count",
+          "log_message_count",
+          "inner_instruction_groups",
+          "availability_priority_fee",
+          "source_quality"
+        ],
+        "ownership": [
+          "rel_dt",
+          "event_kind_id",
+          "transfer_type_id",
+          "value",
+          "decimals",
+          "pre_ui_amount",
+          "post_ui_amount",
+          "delta_ui",
+          "source_quality"
+        ],
+        "graph_token": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ],
+        "wallet_prior": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "curve": 14.714453125,
+        "events": 12.508984375,
+        "global": 128.0,
+        "graph_token": 13.85625,
+        "micro": 2.744609375,
+        "ownership": 1.64765625,
+        "wallet_prior": 842.474453125
+      },
+      "truncation_rate_mean": {
+        "events": 0.009296875,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.000234375,
+        "graph": 0.01046875
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.7190625,
+        "modality_mask_events": 0.72921875,
+        "modality_mask_global": 1.0,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.735390625,
+        "modality_mask_ownership": 0.695859375,
+        "modality_mask_wallet_prior": 0.829765625
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": null,
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 91.12382124318526,
+      "production": true
+    },
+    "rich": {
+      "batch_size": 64,
+      "batches": 200,
+      "examples": 12800,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 81.58230284444535,
+      "steady_state_examples_per_sec": 397.5689288020209,
+      "examples_per_sec": 362.4706884305706,
+      "batches_per_sec": 5.6636045067276655,
+      "elapsed_sec": 35.31320023536682,
+      "sequence_shapes": {
+        "curve": [
+          64,
+          162,
+          7
+        ],
+        "events": [
+          64,
+          222,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ],
+        "graph_token": [
+          64,
+          223,
+          7
+        ],
+        "micro": [
+          64,
+          6,
+          11
+        ],
+        "ownership": [
+          64,
+          2,
+          9
+        ],
+        "wallet_prior": [
+          64,
+          10534,
+          7
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "micro": [
+          "rel_dt",
+          "success",
+          "fee_lamports",
+          "compute_units_consumed",
+          "priority_fee_lamports",
+          "account_key_count",
+          "balance_change_count",
+          "log_message_count",
+          "inner_instruction_groups",
+          "availability_priority_fee",
+          "source_quality"
+        ],
+        "ownership": [
+          "rel_dt",
+          "event_kind_id",
+          "transfer_type_id",
+          "value",
+          "decimals",
+          "pre_ui_amount",
+          "post_ui_amount",
+          "delta_ui",
+          "source_quality"
+        ],
+        "graph_token": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ],
+        "wallet_prior": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "curve": 14.714453125,
+        "events": 12.508984375,
+        "global": 128.0,
+        "graph_token": 13.85625,
+        "micro": 2.744609375,
+        "ownership": 1.64765625,
+        "wallet_prior": 842.474453125
+      },
+      "truncation_rate_mean": {
+        "events": 0.009296875,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.000234375,
+        "graph": 0.01046875
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.7190625,
+        "modality_mask_events": 0.72921875,
+        "modality_mask_global": 1.0,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.735390625,
+        "modality_mask_ownership": 0.695859375,
+        "modality_mask_wallet_prior": 0.829765625
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": null,
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 91.12382124318526,
+      "production": true
+    },
+    "broad_bs128": {
+      "batch_size": 128,
+      "batches": 200,
+      "examples": 25600,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 623.3290150357101,
+      "steady_state_examples_per_sec": 1214.5515492187935,
+      "examples_per_sec": 1186.4189503006726,
+      "batches_per_sec": 9.268898049224005,
+      "elapsed_sec": 21.577538013458252,
+      "sequence_shapes": {
+        "creator": [
+          128,
+          256,
+          4
+        ],
+        "curve": [
+          128,
+          256,
+          7
+        ],
+        "events": [
+          128,
+          256,
+          13
+        ],
+        "global": [
+          128,
+          128,
+          8
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "creator": [
+          "rel_dt",
+          "prior_rank",
+          "prior_is_mayhem_mode",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "creator": 83.3908984375,
+        "curve": 13.688359375,
+        "events": 13.688359375,
+        "global": 128.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.0073046875,
+        "curve": 0.0073046875,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.7623828125,
+        "modality_mask_curve": 0.867734375,
+        "modality_mask_events": 0.867734375,
+        "modality_mask_global": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": -0.08585930555669674,
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 4840.521593160412,
+      "production": true
+    },
+    "rich_bs128": {
+      "batch_size": 128,
+      "batches": 200,
+      "examples": 25600,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 120.76554522805613,
+      "steady_state_examples_per_sec": 395.91554652555175,
+      "examples_per_sec": 374.57967793402776,
+      "batches_per_sec": 2.926403733859592,
+      "elapsed_sec": 68.34326982498169,
+      "sequence_shapes": {
+        "curve": [
+          128,
+          200,
+          7
+        ],
+        "events": [
+          128,
+          224,
+          13
+        ],
+        "global": [
+          128,
+          128,
+          8
+        ],
+        "graph_token": [
+          128,
+          225,
+          7
+        ],
+        "micro": [
+          128,
+          6,
+          11
+        ],
+        "ownership": [
+          128,
+          16,
+          9
+        ],
+        "wallet_prior": [
+          128,
+          10619,
+          7
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "micro": [
+          "rel_dt",
+          "success",
+          "fee_lamports",
+          "compute_units_consumed",
+          "priority_fee_lamports",
+          "account_key_count",
+          "balance_change_count",
+          "log_message_count",
+          "inner_instruction_groups",
+          "availability_priority_fee",
+          "source_quality"
+        ],
+        "ownership": [
+          "rel_dt",
+          "event_kind_id",
+          "transfer_type_id",
+          "value",
+          "decimals",
+          "pre_ui_amount",
+          "post_ui_amount",
+          "delta_ui",
+          "source_quality"
+        ],
+        "graph_token": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ],
+        "wallet_prior": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "curve": 14.9815625,
+        "events": 12.5569921875,
+        "global": 128.0,
+        "graph_token": 13.9515234375,
+        "micro": 2.7426171875,
+        "ownership": 1.6795703125,
+        "wallet_prior": 850.0425390625
+      },
+      "truncation_rate_mean": {
+        "events": 0.00859375,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0003125,
+        "graph": 0.0098828125
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.7179296875,
+        "modality_mask_events": 0.728046875,
+        "modality_mask_global": 1.0,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.7346875,
+        "modality_mask_ownership": 0.694375,
+        "modality_mask_wallet_prior": 0.829453125
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": null,
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true,
+          "at_risk": true,
+          "split_boundary_censored": true
+        },
+        "explosion_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 91.50436328638058,
+      "production": true
+    },
+    "mixed": {
+      "batches": 50,
+      "batches_per_sec": 4.5178594498637,
+      "elapsed_sec": 11.067188024520874,
+      "batch_size": 64
+    },
+    "peak_rss_mb": 10856.59375
+  },
+  "provisional_targets": {
+    "broad_ex_per_sec": 500,
+    "rich_ex_per_sec": 100
+  },
+  "notes": [
+    "Frozen datasets/targets/cutoffs unchanged",
+    "TTE censor durations retained with event_observed=0",
+    "Transforms: clip raw p01/p99 then zscore",
+    "No model training in this build"
+  ]
+}

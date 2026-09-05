@@ -1,4 +1,4 @@
-"""TRAINING_LOADER_CONTRACT/AUDIT V2 + build orchestration."""
+"""TRAINING_LOADER_CONTRACT/AUDIT V3 + build orchestration."""
 
 from __future__ import annotations
 
@@ -7,56 +7,89 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import pyarrow.parquet as pq
-
 from trencher.data.world_model.freeze import FREEZE_ID
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 from trencher.data.world_model.sequences import WINDOW_PRESETS
-from trencher.data.world_model.splits.build_tte import build_tte_overlays_v1
-from trencher.data.world_model.splits.cutoffs import SPLIT_TRAIN
 from trencher.data.world_model.splits.progress import Progress100
+from trencher.data.world_model.training.cache_build import build_training_cache_v1
 from trencher.data.world_model.training.forbid import FORBIDDEN_FEATURE_KEYS
-from trencher.data.world_model.training.smoke import run_production_loader_smoke
-from trencher.data.world_model.training.transforms import (
-    fit_sequence_transforms_from_unique_rows,
-    persist_transforms,
-)
+from trencher.data.world_model.training.schemas import modality_schema_manifest
+from trencher.data.world_model.training.smoke import run_realistic_loader_benchmark
 
 logger = logging.getLogger(__name__)
 
-CONTRACT_ID = "TRAINING_LOADER_CONTRACT_V2"
-AUDIT_ID = "TRAINING_LOADER_AUDIT_V2"
+CONTRACT_ID = "TRAINING_LOADER_CONTRACT_V3"
+AUDIT_ID = "TRAINING_LOADER_AUDIT_V3"
 
 
 def build_training_loaders_v1(**kwargs: Any) -> dict[str, Any]:
-    """Back-compat alias → v2 production path."""
-    return build_training_loaders_v2(**kwargs)
+    return build_training_loaders_v3(**kwargs)
 
 
-def build_training_loader_contract_v2() -> dict[str, Any]:
+def build_training_loaders_v2(**kwargs: Any) -> dict[str, Any]:
+    return build_training_loaders_v3(**kwargs)
+
+
+def build_training_loader_contract_v3() -> dict[str, Any]:
     return {
         "contract_version": CONTRACT_ID,
-        "supersedes": "TRAINING_LOADER_CONTRACT_V1",
+        "supersedes": "TRAINING_LOADER_CONTRACT_V2",
         "generated_at": utc_now(),
         "freeze_id": FREEZE_ID,
         "depends_on_splits": "SPLIT_CONTRACT_V1",
         "no_model_training": True,
-        "runtime": "numpy_pyarrow_streaming_production",
+        "runtime": "numpy_pyarrow_streaming_production_cached",
         "production_loader": True,
         "synthetic_path": "tests_only",
-        "tte_admin_censor": {
-            "rule": "event_time < split_end may remain observed; else hide + right_censor",
-            "never_admin_censor_to_negative": True,
-            "test_bound": "CORPUS_END_UNIX",
+        "training_cache": "training_cache_v1",
+        "tte_training_representation": {
+            "fields": [
+                "duration_sec",
+                "event_observed",
+                "censored",
+                "at_risk",
+                "effective_status",
+                "split_boundary_censored",
+            ],
+            "rule_event_before_boundary": "duration=event-T; event_observed=1",
+            "rule_event_at_or_after_boundary": (
+                "duration=split_end-T; event_observed=0; censored=1; never negative"
+            ),
+            "rule_unresolved": "duration=earliest_bound-T; event_observed=0",
+            "rule_already_occurred": "at_risk=0; left_truncated; not a new future event",
+            "retain_censor_duration": True,
         },
-        "forbidden_predictive_features": sorted(FORBIDDEN_FEATURE_KEYS),
-        "train_only_transforms": {
+        "transforms": {
+            "order": "clip_raw_p01_p99_then_zscore",
             "fit_on": "unique_underlying_training_sequence_rows",
-            "apply_on": "production_sequence_numeric_channels",
             "never_fit_on": ["val", "test"],
+            "do_not_normalize": [
+                "masks",
+                "binary_flags",
+                "categorical_event_edge_types",
+                "graph_node_ids",
+            ],
             "no_raw_unix_as_generic_feature": True,
         },
+        "modality_schemas": modality_schema_manifest(),
+        "target_families": [
+            "returns",
+            "barriers",
+            "mfe_mae",
+            "survival",
+            "graduation_binary",
+            "graduation_tte",
+            "explosion_imminence",
+            "explosion_tte",
+            "explosion_magnitude",
+            "persistence",
+            "ownership",
+            "execution",
+            "future_path_refs",
+        ],
+        "forbidden_predictive_features": sorted(FORBIDDEN_FEATURE_KEYS),
         "window_presets": list(WINDOW_PRESETS),
+        "engineering_targets_examples_per_sec": {"broad": 500, "rich": 100},
         "stores": {
             "broad": [
                 "broad_sequence_events_v1",
@@ -64,23 +97,27 @@ def build_training_loader_contract_v2() -> dict[str, Any]:
                 "broad_sequence_creator_v1",
                 "broad_targets_v3",
                 "tte_overlays_broad",
+                "training_cache_v1",
             ],
             "rich": [
                 "sequence_dataset_v2",
                 "target_dataset_v3",
                 "tte_overlays_rich",
+                "pit/global",
+                "training_cache_v1",
             ],
         },
     }
 
 
-def build_training_loaders_v2(
+def build_training_loaders_v3(
     *,
     world_root: Path,
     manifest_dir: Path,
     progress: Progress100 | None = None,
-    smoke_max_batches: int = 30,
-    rebuild_tte: bool = True,
+    smoke_max_batches: int = 200,
+    rebuild_cache: bool = True,
+    light_smoke: bool = False,
 ) -> dict[str, Any]:
     progress = progress or Progress100()
     world_root = Path(world_root)
@@ -90,61 +127,31 @@ def build_training_loaders_v2(
     if not (inv.get("invariants") or {}).get("all_passed"):
         raise RuntimeError("split invariants not passed")
 
-    if rebuild_tte:
-        progress(2, "build TTE overlays")
-        tte_meta = build_tte_overlays_v1(
+    cache_meta: dict[str, Any] = {}
+    if rebuild_cache:
+        progress(1, "build training_cache_v1")
+        cache_meta = build_training_cache_v1(
             world_root=world_root, split_root=split_root, progress=progress
         )
     else:
-        tte_meta = json.loads(
-            (split_root / "tte_overlays_manifest.json").read_text(encoding="utf-8")
-        )
+        mpath = split_root / "training_cache_v1" / "manifest.json"
+        if mpath.exists():
+            cache_meta = json.loads(mpath.read_text(encoding="utf-8"))
 
-    # Patch SPLIT_AUDIT with TTE overlay stats (additive)
-    split_audit_path = manifest_dir / "SPLIT_AUDIT_V1.json"
-    if split_audit_path.exists():
-        audit = json.loads(split_audit_path.read_text(encoding="utf-8"))
-        audit["tte_admin_censor_overlays"] = tte_meta
-        write_json(split_audit_path, audit)
-        write_json(split_root / "SPLIT_AUDIT_V1.json", audit)
-
-    progress(55, "refit train sequence transforms")
-    tokens = pq.read_table(split_root / "token_assignments.parquet").to_pylist()
-    train_mints = {
-        r["mint"]
-        for r in tokens
-        if r["base_split"] == SPLIT_TRAIN and r.get("in_broad_event_curve")
-    }
-    events_root = world_root / "broad" / "broad_sequence_events_v1"
-    parts = sorted(events_root.rglob("part.parquet"))
-    fit_parts = parts[:: max(1, len(parts) // 32)][:32] if parts else []
-    numeric_cols = [
-        c
-        for c in ("sol_amount", "token_amount", "price_sol", "v_sol", "v_tok")
-        if fit_parts and c in pq.read_schema(fit_parts[0]).names
-    ]
-    transforms = fit_sequence_transforms_from_unique_rows(
-        sequence_parts=fit_parts,
-        train_mints=train_mints,
-        numeric_columns=numeric_cols,
-        max_rows_per_part=200_000,
-    )
-    tdir = ensure_dir(split_root / "transforms_train_v1")
-    persist_transforms(tdir / "sequence_numeric_stats.json", transforms)
-
-    progress(65, "production loader smoke")
-    smoke = run_production_loader_smoke(
+    progress(91, "realistic loader benchmark")
+    smoke = run_realistic_loader_benchmark(
         world_root=world_root,
         split_root=split_root,
-        batch_size=16,
-        max_batches=smoke_max_batches,
+        batch_sizes=(64, 128) if not light_smoke else (16,),
+        max_batches=smoke_max_batches if not light_smoke else 20,
         seed=0,
         progress=progress,
+        light=light_smoke,
     )
-    write_json(split_root / "loader_smoke_benchmark_v2.json", smoke)
+    write_json(split_root / "loader_smoke_benchmark_v3.json", smoke)
 
-    progress(92, "publish TRAINING_LOADER_*_V2")
-    contract = build_training_loader_contract_v2()
+    progress(96, "publish TRAINING_LOADER_*_V3")
+    contract = build_training_loader_contract_v3()
     write_json(manifest_dir / f"{CONTRACT_ID}.json", contract)
     write_json(split_root / f"{CONTRACT_ID}.json", contract)
 
@@ -153,28 +160,39 @@ def build_training_loaders_v2(
         "generated_at": utc_now(),
         "freeze_id": FREEZE_ID,
         "contract_version": CONTRACT_ID,
-        "supersedes": "TRAINING_LOADER_AUDIT_V1",
-        "tte_overlays": tte_meta,
-        "transforms": {
-            "rows_seen": transforms.get("rows_seen"),
-            "train_mints_n": transforms.get("train_mints_n"),
-            "columns": list((transforms.get("columns") or {}).keys()),
-            "fit_scope": transforms.get("fit_scope"),
-        },
+        "supersedes": "TRAINING_LOADER_AUDIT_V2",
+        "training_cache": cache_meta,
+        "modality_schemas": modality_schema_manifest(),
         "smoke_benchmark": smoke,
+        "provisional_targets": {"broad_ex_per_sec": 500, "rich_ex_per_sec": 100},
+        "notes": [
+            "Frozen datasets/targets/cutoffs unchanged",
+            "TTE censor durations retained with event_observed=0",
+            "Transforms: clip raw p01/p99 then zscore",
+            "No model training in this build",
+        ],
     }
     write_json(manifest_dir / f"{AUDIT_ID}.json", audit)
     write_json(split_root / f"{AUDIT_ID}.json", audit)
-    md = (
-        f"# Training Loader Audit (`{AUDIT_ID}`)\n\n"
-        f"Generated: `{audit['generated_at']}`\n\n"
-        f"## TTE overlays\n\n`{tte_meta.get('stats')}`\n\n"
-        f"## Smoke\n\n"
-        f"- peak_rss_mb: **{smoke.get('peak_rss_mb')}**\n"
-        f"- broad: `{smoke.get('broad')}`\n"
-        f"- rich: `{smoke.get('rich')}`\n"
-    )
+    md_lines = [
+        f"# Training Loader Audit (`{AUDIT_ID}`)",
+        "",
+        f"Generated: `{audit['generated_at']}`",
+        "",
+        "## Cache",
+        "",
+        f"`{cache_meta}`",
+        "",
+        "## Benchmark",
+        "",
+        f"- peak_rss_mb: **{smoke.get('peak_rss_mb')}**",
+        f"- broad: `{smoke.get('broad')}`",
+        f"- rich: `{smoke.get('rich')}`",
+        f"- mixed: `{smoke.get('mixed')}`",
+        "",
+    ]
+    md = "\n".join(md_lines)
     (manifest_dir / f"{AUDIT_ID}.md").write_text(md, encoding="utf-8")
     (split_root / f"{AUDIT_ID}.md").write_text(md, encoding="utf-8")
-    progress(100, "training loaders v2 complete")
-    return {"contract": contract, "audit": audit, "smoke": smoke, "tte": tte_meta}
+    progress(100, "training loaders v3 complete")
+    return {"contract": contract, "audit": audit, "smoke": smoke, "cache": cache_meta}

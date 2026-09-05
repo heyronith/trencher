@@ -387,5 +387,10 @@
       "broad": "data/external/world_model/splits/split_v1/tte_overlays_broad",
       "rich": "data/external/world_model/splits/split_v1/tte_overlays_rich.parquet"
     }
+  },
+  "training_loader_v3": {
+    "contract": "TRAINING_LOADER_CONTRACT_V3",
+    "tte_training_representation": "duration_sec/event_observed/censored/at_risk",
+    "training_cache": "training_cache_v1"
   }
 }

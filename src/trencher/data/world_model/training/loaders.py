@@ -46,6 +46,7 @@ def iter_loader(
     strategy: str = STRATEGY_BROAD_PRETRAIN,
     max_batches: int | None = None,
     use_production: bool = True,
+    use_cache: bool = True,
 ) -> Iterator[dict[str, Any]]:
     """Yield collated batches from frozen stores (true population distribution)."""
     paths = resolve_assignment_paths(split_root, population)
@@ -67,6 +68,7 @@ def iter_loader(
             world_root=world_root,
             split_root=Path(split_root),
             population="rich" if population == "rich" else "broad",
+            use_cache=use_cache,
         )
 
     for n, batch_rows in enumerate(
@@ -79,16 +81,17 @@ def iter_loader(
 
             examples = [synthetic_example_from_assignment(r) for r in batch_rows]
         else:
-            oids = [str(r["observation_id"]) for r in batch_rows]
-            builder.targets.prefetch(oids)
-            builder.tte.prefetch(oids)
+            builder.prefetch(batch_rows)
             examples = [builder.build(r) for r in batch_rows]
         batch = collate_examples(examples)
         batch["strategy"] = strategy
         batch["population"] = population
         batch["split"] = split
         batch["production"] = bool(use_production)
-        batch["prefetch_ready"] = False
+        batch["used_training_cache"] = bool(
+            use_production and builder is not None and builder.joined is not None
+        )
+        batch["prefetch_ready"] = True
         batch["pin_memory"] = False
         yield batch
         if max_batches is not None and n >= max_batches:
@@ -104,6 +107,7 @@ def mixed_loader(
     seed: int = 0,
     max_batches: int | None = None,
     use_production: bool = True,
+    use_cache: bool = True,
 ) -> Iterator[dict[str, Any]]:
     """Alternate broad/rich production batches (no outcome sampling)."""
     broad = iter_loader(
@@ -117,6 +121,7 @@ def mixed_loader(
         strategy=STRATEGY_MIXED,
         max_batches=None,
         use_production=use_production,
+        use_cache=use_cache,
     )
     rich = iter_loader(
         world_root=world_root,
@@ -129,6 +134,7 @@ def mixed_loader(
         strategy=STRATEGY_MIXED,
         max_batches=None,
         use_production=use_production,
+        use_cache=use_cache,
     )
     n = 0
     while True:

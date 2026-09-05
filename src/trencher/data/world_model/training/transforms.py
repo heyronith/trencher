@@ -1,4 +1,8 @@
-"""Train-only transforms fit on unique underlying training sequence rows."""
+"""Train-only transforms fit on unique underlying training sequence rows.
+
+Order (required): clip raw values to train p01/p99 → zscore with train mean/std.
+Never z-score masks, binary flags, categorical IDs, or graph node indices.
+"""
 
 from __future__ import annotations
 
@@ -17,13 +21,24 @@ def fit_numeric_stats(values: np.ndarray) -> dict[str, float]:
     arr = arr[np.isfinite(arr)]
     if arr.size == 0:
         return {"mean": 0.0, "std": 1.0, "n": 0.0, "p01": 0.0, "p99": 0.0}
+    p01 = float(np.quantile(arr, 0.01))
+    p99 = float(np.quantile(arr, 0.99))
+    # Stats after the same clip applied at train time (clip → zscore).
+    clipped = np.clip(arr, p01, p99)
+    std = float(clipped.std())
     return {
-        "mean": float(arr.mean()),
-        "std": float(arr.std()) if float(arr.std()) > 1e-12 else 1.0,
+        "mean": float(clipped.mean()),
+        "std": std if std > 1e-12 else 1.0,
         "n": float(arr.size),
-        "p01": float(np.quantile(arr, 0.01)),
-        "p99": float(np.quantile(arr, 0.99)),
+        "p01": p01,
+        "p99": p99,
+        "order": "clip_raw_p01_p99_then_zscore",
     }
+
+
+def apply_clip(values: np.ndarray, stats: dict[str, float]) -> np.ndarray:
+    arr = np.asarray(values, dtype=np.float64)
+    return np.clip(arr, stats["p01"], stats["p99"])
 
 
 def apply_zscore(values: np.ndarray, stats: dict[str, float]) -> np.ndarray:
@@ -31,9 +46,17 @@ def apply_zscore(values: np.ndarray, stats: dict[str, float]) -> np.ndarray:
     return (arr - stats["mean"]) / stats["std"]
 
 
-def apply_clip(values: np.ndarray, stats: dict[str, float]) -> np.ndarray:
-    arr = np.asarray(values, dtype=np.float64)
-    return np.clip(arr, stats["p01"], stats["p99"])
+def apply_clip_then_zscore(values: np.ndarray, stats: dict[str, float]) -> np.ndarray:
+    """Canonical transform: clip raw → zscore with train-only (clipped) mean/std."""
+    return apply_zscore(apply_clip(values, stats), stats)
+
+
+def apply_numeric_channel(
+    values: np.ndarray, stats: dict[str, float] | None
+) -> np.ndarray:
+    if not stats:
+        return np.asarray(values, dtype=np.float64)
+    return apply_clip_then_zscore(values, stats)
 
 
 def fit_sequence_transforms_from_unique_rows(
@@ -77,6 +100,7 @@ def fit_sequence_transforms_from_unique_rows(
     return {
         "generated_at": utc_now(),
         "fit_scope": "unique_underlying_training_sequence_rows",
+        "transform_order": "clip_raw_p01_p99_then_zscore",
         "train_mints_n": len(train_mints),
         "rows_seen": rows_seen,
         "columns": stats,

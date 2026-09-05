@@ -152,15 +152,71 @@ def collate_examples(examples: list[dict[str, Any]]) -> dict[str, Any]:
                 targets_out[k] = vals
 
     modality = {k: features[k] for k in features if k.startswith("modality_mask_")}
+
+    # Collate graph index tensors (int) separately from float predictive features
+    graph_index: dict[str, Any] = {}
+    for gk in ("graph_src_idx", "graph_dst_idx", "wallet_node_idx"):
+        arrs = []
+        for ex in examples:
+            gi = (ex.get("graph_index") or {}).get(gk)
+            arrs.append(
+                np.asarray(gi if gi is not None else np.zeros((0,), dtype=np.int32), np.int32)
+            )
+        if any(a.size for a in arrs):
+            padded, mask = pad_sequences([a[:, None] for a in arrs])
+            graph_index[gk] = padded[:, :, 0].astype(np.int32)
+            graph_index[f"{gk}_padding_mask"] = mask
+
+    if is_nested:
+        for head in (
+            "returns_h60",
+            "explosion_imminence_h60",
+            "survival_h60",
+            "graduation_tte",
+            "explosion_tte",
+            "explosion_magnitude",
+            "barrier_u100_l30_h3600",
+            "execution_gross_0p1sol",
+            "mfe_h60",
+            "mae_h60",
+        ):
+            if head in flat_targets:
+                continue
+            vals: list[float] = []
+            miss: list[bool] = []
+            for t in nested_targets:
+                pack = t.get(head) or {}
+                if head in ("graduation_tte", "explosion_tte"):
+                    v = pack.get("duration_sec", pack.get("value"))
+                    # Keep duration even when censored; missing only if no duration
+                    if v is None:
+                        vals.append(np.nan)
+                        miss.append(True)
+                    else:
+                        vals.append(float(v))
+                        miss.append(False)
+                else:
+                    v = pack.get("value_or_nan", pack.get("value"))
+                    if v is None or isinstance(v, (str, bool, dict)):
+                        vals.append(np.nan)
+                        miss.append(True)
+                    else:
+                        vals.append(float(v))
+                        miss.append(bool(pack.get("is_missing", False)))
+            flat_targets[head] = np.asarray(vals, dtype=np.float32)
+            flat_targets[f"{head}_is_missing"] = np.asarray(miss, dtype=bool)
+
     return {
         "batch_size": b,
         "features": features,
         "sequences": seq_batch,
+        "graph_index": graph_index,
         "sequence_length_stats": length_stats,
         "truncation_rates": trunc_rates,
         "targets": targets_out,
         "flat_targets": flat_targets,
         "modality_masks": modality,
+        "channel_schemas": (examples[0].get("channel_schemas") if examples else {}) or {},
         "causal_ok": all(bool(ex.get("causal_ok", True)) for ex in examples),
         "meta": [ex.get("meta") for ex in examples],
     }
