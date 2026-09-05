@@ -214,7 +214,9 @@ def test_sufficiency_positive_subseteq_valid() -> None:
             "surv_h86400_status": STATUS_VALID_POSITIVE,
             "grad_h86400_status": STATUS_VALID_POSITIVE,
             "grad_h86400_graduated": True,
+            "time_to_graduation_status": STATUS_VALID_POSITIVE,
             "explosion_within_60s": True,
+            "explosion_within_60s_status": STATUS_VALID_POSITIVE,
             "holder_state_reconstructable": False,
         },
         {
@@ -225,6 +227,7 @@ def test_sufficiency_positive_subseteq_valid() -> None:
             "surv_h86400_status": STATUS_RIGHT_CENSORED,
             "grad_h86400_status": STATUS_RIGHT_CENSORED,
             "grad_h86400_graduated": None,
+            "time_to_graduation_status": STATUS_RIGHT_CENSORED,
             "explosion_within_60s": None,
             "explosion_within_60s_status": STATUS_RIGHT_CENSORED,
             "holder_state_reconstructable": False,
@@ -237,7 +240,22 @@ def test_sufficiency_positive_subseteq_valid() -> None:
             "surv_h86400_status": STATUS_VALID_NEGATIVE,
             "grad_h86400_status": STATUS_VALID_NEGATIVE,
             "grad_h86400_graduated": False,
+            "time_to_graduation_status": STATUS_VALID_NEGATIVE,
             "explosion_within_60s": False,
+            "explosion_within_60s_status": STATUS_VALID_NEGATIVE,
+            "holder_state_reconstructable": False,
+        },
+        {
+            # No eventual primary explosion, but valid-negative imminence.
+            "mint": "d",
+            "h300_status": STATUS_VALID_NEGATIVE,
+            "h3600_barrier_u100_l30_outcome": "neither",
+            "surv_h86400_status": STATUS_VALID_NEGATIVE,
+            "grad_h86400_status": STATUS_RIGHT_CENSORED,
+            "grad_h86400_graduated": None,
+            "time_to_graduation_status": STATUS_RIGHT_CENSORED,
+            "explosion_within_60s": False,
+            "explosion_within_60s_status": STATUS_VALID_NEGATIVE,
             "holder_state_reconstructable": False,
         },
     ]
@@ -257,7 +275,31 @@ def test_sufficiency_positive_subseteq_valid() -> None:
         )
     ret = next(r for r in out if r["head"] == "returns_h300")
     assert ret["distinct_positive_tokens"] == 1  # only mint a
-    assert ret["unique_tokens_with_valid_supervision"] == 2  # a,c
+    assert ret["unique_tokens_with_valid_supervision"] == 3  # a,c,d
+
+    expl = next(r for r in out if r["head"] == "explosion_within_60s")
+    # a (pos), c and d (valid negative) — not only eventual explosion tokens
+    assert expl["unique_tokens_with_valid_supervision"] == 3
+    assert expl["distinct_positive_tokens"] == 1
+    assert expl["positive_observations"] == 1
+    assert expl["prevalence_among_valid_tokens"] == 1 / 3
+    # Must NOT be computed against event-positive tokens only (=1)
+    assert expl["unique_tokens_with_valid_supervision"] != 1
+
+    expl_alias = next(r for r in out if r["head"] == "explosion_onset_primary")
+    assert (
+        expl_alias["unique_tokens_with_valid_supervision"]
+        == expl["unique_tokens_with_valid_supervision"]
+    )
+
+    tte = next(r for r in out if r["head"] == "graduation_time_to_event")
+    # censored are legitimate survival supervision
+    assert tte["unique_tokens_with_valid_supervision"] >= 3
+    assert tte["censored_observations"] >= 1
+    binary = next(r for r in out if r["head"] == "graduated_within_h86400_binary")
+    # censored mint d / b excluded from binary valid denominator
+    assert binary["unique_tokens_with_valid_supervision"] == 2  # a,c
+    assert "graduation" not in {r["head"] for r in out}
 
     # Direct invariant guard on sufficiency_row
     try:

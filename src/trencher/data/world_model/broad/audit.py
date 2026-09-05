@@ -31,6 +31,35 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _recorded_or_not(value: Any) -> Any:
+    if value is None:
+        return "not_recorded"
+    return value
+
+
+def _recover_build_timings(broad_root: Path) -> dict[str, Any]:
+    """Recover phase timings from build_progress.jsonl when available."""
+    path = broad_root / "build_progress.jsonl"
+    if not path.exists():
+        return {}
+    recovered: dict[str, float] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("status") != "done":
+            continue
+        phase = rec.get("phase")
+        seconds = rec.get("seconds")
+        if isinstance(phase, str) and isinstance(seconds, (int, float)):
+            # Last wins — progress file may contain multiple phase runs.
+            recovered[phase] = float(seconds)
+    return recovered
+
+
 def build_broad_supervision_contract_v1() -> dict[str, Any]:
     return {
         "contract_version": CONTRACT_ID,
@@ -291,6 +320,44 @@ def build_broad_supervision_audit_v1(
             "creator": creator_manifest,
         }
 
+    recovered_timings = _recover_build_timings(broad_root)
+    build_timings: dict[str, Any] = {}
+    # Prefer recovered full-run timings; overlay any timings from this process.
+    build_timings.update(recovered_timings)
+    build_timings.update(phase_timings)
+    if not build_timings:
+        build_timings = {"status": "not_recorded"}
+
+    sequence_quality = {
+        "excluded_system_program_rows": _recorded_or_not(
+            (seq_meta.get("events") or seq_meta).get("excluded_system_program_rows")
+            if isinstance(seq_meta.get("events") or seq_meta, dict)
+            else None
+        ),
+        "exact_duplicate_groups_removed": _recorded_or_not(
+            events_manifest.get("exact_duplicate_groups_removed")
+        ),
+        "signatures_with_heterogeneous_event_fingerprints": _recorded_or_not(
+            events_manifest.get("signatures_with_heterogeneous_event_fingerprints")
+        ),
+        "heterogeneous_same_signature_events_preserved": _recorded_or_not(
+            events_manifest.get("heterogeneous_same_signature_events_preserved")
+        ),
+        "invalid_nonfinite_rows_excluded": _recorded_or_not(
+            events_manifest.get("invalid_nonfinite_rows_excluded")
+        ),
+        "source": "broad_sequence_events_v1/manifest.json",
+        "note": (
+            "Counts taken only from existing manifests; missing fields are "
+            "marked not_recorded (resume finalize may omit exclusion tallies)."
+        ),
+    }
+    # Prefer explicit events_manifest values when nested lookup is nullish.
+    if sequence_quality["excluded_system_program_rows"] == "not_recorded":
+        sequence_quality["excluded_system_program_rows"] = _recorded_or_not(
+            events_manifest.get("excluded_system_program_rows")
+        )
+
     audit = {
         "audit_id": AUDIT_ID,
         "generated_at": utc_now(),
@@ -304,11 +371,23 @@ def build_broad_supervision_audit_v1(
             or events_manifest.get("curve_rows"),
             "creator_rows": (seq_meta.get("creator") or {}).get("rows")
             or creator_manifest.get("rows"),
-            "excluded_system_program_rows": (seq_meta.get("events") or seq_meta).get(
+            "excluded_system_program_rows": sequence_quality[
                 "excluded_system_program_rows"
-            )
-            or events_manifest.get("excluded_system_program_rows"),
+            ],
+            "exact_duplicate_groups_removed": sequence_quality[
+                "exact_duplicate_groups_removed"
+            ],
+            "signatures_with_heterogeneous_event_fingerprints": sequence_quality[
+                "signatures_with_heterogeneous_event_fingerprints"
+            ],
+            "heterogeneous_same_signature_events_preserved": sequence_quality[
+                "heterogeneous_same_signature_events_preserved"
+            ],
+            "invalid_nonfinite_rows_excluded": sequence_quality[
+                "invalid_nonfinite_rows_excluded"
+            ],
         },
+        "sequence_quality": sequence_quality,
         "observation_counts": {
             "tokens_n": obs_meta.get("tokens_n"),
             "observations_n": obs_meta.get("observations_n"),
@@ -324,7 +403,7 @@ def build_broad_supervision_audit_v1(
             "explosion_definition_rows": tgt_meta.get("explosion_definition_rows"),
         },
         "disk": disk,
-        "build_timings_sec": phase_timings,
+        "build_timings_sec": build_timings,
         "explosion_scale_audit": {
             "rich_4k_primary_explosion_events": rich_primary,
             "broad_primary_explosion_events": broad_primary,
@@ -334,6 +413,9 @@ def build_broad_supervision_audit_v1(
             ),
             "imminence_positives_by_horizon": target_extras.get(
                 "explosion_imminence_positives_by_horizon"
+            ),
+            "imminence_valid_tokens_by_horizon": target_extras.get(
+                "explosion_imminence_valid_tokens_by_horizon"
             ),
             "pre_explosion_observations": target_extras.get(
                 "pre_explosion_observations"
@@ -348,7 +430,7 @@ def build_broad_supervision_audit_v1(
         "graduation_decision": censor,
         "rich_vs_broad_capability_matrix": rich_vs_broad_capability_matrix(),
         "supervision_sufficiency": sufficiency,
-        "sufficiency_field_contract_version": "supervision_sufficiency_v2",
+        "sufficiency_field_contract_version": "supervision_sufficiency_v3",
         "phase_metas": {
             k: {kk: vv for kk, vv in (v or {}).items() if kk != "price_capable_mint_set"}
             for k, v in phase_metas.items()
@@ -376,6 +458,7 @@ def render_broad_audit_md(audit: dict[str, Any]) -> str:
         "## Counts",
         "",
         f"- sequences: `{audit.get('sequence_counts')}`",
+        f"- sequence_quality: `{audit.get('sequence_quality')}`",
         f"- observations: `{audit.get('observation_counts')}`",
         f"- targets: `{audit.get('target_counts')}`",
         f"- disk MB: **{(audit.get('disk') or {}).get('total_mb')}**",

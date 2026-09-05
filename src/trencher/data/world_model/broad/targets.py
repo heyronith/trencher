@@ -419,7 +419,9 @@ def _synthetic_path_arr(*, n: int = 8, t0: float = 1_800_000_000.0) -> dict[str,
     }
 
 
-def _prototype_target_and_ref_rows(coverage: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _prototype_target_and_ref_rows(
+    coverage: Any,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Rows covering sparse and dense compute_* branches for a fixed Parquet schema."""
     target_rows: list[dict[str, Any]] = []
     ref_rows: list[dict[str, Any]] = []

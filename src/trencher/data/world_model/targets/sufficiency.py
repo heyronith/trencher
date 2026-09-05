@@ -23,6 +23,8 @@ from trencher.data.world_model.targets.status import (
 
 VALID_LABEL = (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
 CENSORED_LIKE = (STATUS_RIGHT_CENSORED, STATUS_SOURCE_BOUNDARY_UNAVAILABLE)
+EXPLOSION_IMMINENCE_HORIZONS_SEC = (10, 30, 60, 120, 300)
+NOT_RECORDED = "not_recorded"
 
 
 def _finite_num(x: Any) -> bool:
@@ -110,6 +112,101 @@ def _status_sets(
     return valid_tokens, pos_tokens, n_valid, n_pos, n_cens, n_unavail
 
 
+def _infer_imminence_status(flag: Any, status: Any) -> Any:
+    """Prefer explicit status; if missing, infer from boolean imminence flag."""
+    if status is not None:
+        return status
+    if flag is True:
+        return STATUS_VALID_POSITIVE
+    if flag is False:
+        return STATUS_VALID_NEGATIVE
+    return None
+
+
+def explosion_imminence_counts(
+    rows: Iterable[dict[str, Any]],
+    *,
+    horizon_sec: int,
+) -> dict[str, Any]:
+    """Status-gated imminence bookkeeping for one horizon.
+
+    ``unique_tokens_with_valid_supervision`` = distinct mints with
+    ``explosion_within_<H>s_status in {valid_positive, valid_negative}``
+    (includes valid-negative / no-explosion tokens).
+    """
+    status_key = f"explosion_within_{horizon_sec}s_status"
+    flag_key = f"explosion_within_{horizon_sec}s"
+    valid_tokens: set[str] = set()
+    pos_tokens: set[str] = set()
+    n_valid = n_pos = n_cens = n_unavail = 0
+    for r in rows:
+        flag = r.get(flag_key)
+        st = _infer_imminence_status(flag, r.get(status_key))
+        mint = r.get("mint")
+        if st in VALID_LABEL:
+            n_valid += 1
+            if mint is not None:
+                valid_tokens.add(str(mint))
+            if st == STATUS_VALID_POSITIVE and flag is True:
+                n_pos += 1
+                if mint is not None:
+                    pos_tokens.add(str(mint))
+        elif st in CENSORED_LIKE or st == "known_source_outage":
+            n_cens += 1
+        else:
+            n_unavail += 1
+    pos_tokens &= valid_tokens
+    return {
+        "horizon_sec": horizon_sec,
+        "valid_tokens": valid_tokens,
+        "pos_tokens": pos_tokens,
+        "valid_observations": n_valid,
+        "positive_observations": n_pos,
+        "censored_observations": n_cens,
+        "unavailable_observations": n_unavail,
+    }
+
+
+def graduation_time_to_event_counts(
+    rows: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    """Survival-style time-to-graduation supervision.
+
+    Right-censored rows are legitimate survival supervision (included in the
+    usable denominator), unlike binary within-H labels.
+    """
+    usable_tokens: set[str] = set()
+    event_tokens: set[str] = set()
+    n_usable = n_event = n_cens = n_resolved_neg = n_unavail = 0
+    for r in rows:
+        st = r.get("time_to_graduation_status")
+        mint = r.get("mint")
+        if st in VALID_LABEL or st in CENSORED_LIKE or st == "known_source_outage":
+            n_usable += 1
+            if mint is not None:
+                usable_tokens.add(str(mint))
+            if st == STATUS_VALID_POSITIVE:
+                n_event += 1
+                if mint is not None:
+                    event_tokens.add(str(mint))
+            elif st in CENSORED_LIKE or st == "known_source_outage":
+                n_cens += 1
+            elif st == STATUS_VALID_NEGATIVE:
+                n_resolved_neg += 1
+        else:
+            n_unavail += 1
+    event_tokens &= usable_tokens
+    return {
+        "usable_tokens": usable_tokens,
+        "event_tokens": event_tokens,
+        "usable_observations": n_usable,
+        "event_observations": n_event,
+        "censored_observations": n_cens,
+        "resolved_negative_observations": n_resolved_neg,
+        "unavailable_observations": n_unavail,
+    }
+
+
 def compute_rich_sufficiency(
     target_rows: list[dict[str, Any]],
     *,
@@ -168,70 +265,39 @@ def compute_rich_sufficiency(
         _status_sets(target_rows, "surv_h86400_status")
     )
 
-    # --- graduation @ 24h (valid label status; positives = graduated) ---
-    grad_valid_tokens: set[str] = set()
-    grad_pos_tokens: set[str] = set()
-    grad_valid = grad_pos = grad_cens = 0
+    # --- graduation: split time-to-event vs binary within-H ---
+    grad_bin_valid_tokens: set[str] = set()
+    grad_bin_pos_tokens: set[str] = set()
+    grad_bin_valid = grad_bin_pos = grad_bin_cens = 0
     for r in target_rows:
         st = r.get("grad_h86400_status")
         mint = r.get("mint")
         if st in VALID_LABEL:
-            grad_valid += 1
+            grad_bin_valid += 1
             if mint:
-                grad_valid_tokens.add(mint)
+                grad_bin_valid_tokens.add(mint)
             if r.get("grad_h86400_graduated") is True or st == STATUS_VALID_POSITIVE:
-                grad_pos += 1
+                grad_bin_pos += 1
                 if mint:
-                    grad_pos_tokens.add(mint)
+                    grad_bin_pos_tokens.add(mint)
         elif st in CENSORED_LIKE or st == "known_source_outage":
-            grad_cens += 1
-    # Any-horizon graduated tokens that also have valid 24h status
-    any_grad = {
-        r["mint"]
-        for r in target_rows
-        if r.get("mint")
-        and any(
-            r.get(f"grad_h{h}_graduated") is True
-            for h in (10, 30, 60, 120, 300, 600, 1800, 3600, 21600, 86400)
-        )
-    }
-    # Independent graduation events = distinct graduated tokens in population
-    # with at least one valid positive label at some horizon.
-    grad_event_tokens = any_grad & {
-        r["mint"]
-        for r in target_rows
-        if r.get("mint")
-        and any(
-            r.get(f"grad_h{h}_status") == STATUS_VALID_POSITIVE
-            for h in (10, 30, 60, 120, 300, 600, 1800, 3600, 21600, 86400)
-        )
-    }
-    # Ensure positive ⊆ valid for 24h head: use only 24h-valid positives
-    grad_pos_tokens &= grad_valid_tokens
-    grad_unavail = n_total - grad_valid - grad_cens
+            grad_bin_cens += 1
+    grad_bin_pos_tokens &= grad_bin_valid_tokens
+    grad_bin_unavail = n_total - grad_bin_valid - grad_bin_cens
 
-    # --- explosion ---
-    expl_valid_tokens = set(tokens_with_primary_explosion)
-    expl_pos_obs = sum(1 for r in target_rows if r.get("explosion_within_60s") is True)
-    expl_pos_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("explosion_within_60s") is True and r.get("mint")
-    } & expl_valid_tokens
-    expl_cens = sum(
-        1
-        for r in target_rows
-        if r.get("explosion_within_60s") is None
-        and r.get("explosion_within_60s_status") in CENSORED_LIKE
-    )
-    # Observations with definitive True/False imminence
-    expl_valid_obs = sum(
-        1 for r in target_rows if r.get("explosion_within_60s") is not None
-    )
-    expl_unavail = n_total - expl_valid_obs - expl_cens
+    tte = graduation_time_to_event_counts(target_rows)
+
+    # --- explosion imminence (status-gated; all horizons) ---
+    expl_by_h = {
+        h: explosion_imminence_counts(target_rows, horizon_sec=h)
+        for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+    }
+    expl60 = expl_by_h[60]
 
     holder_tokens = holder_tokens or {
-        r["mint"] for r in target_rows if r.get("holder_state_reconstructable") and r.get("mint")
+        r["mint"]
+        for r in target_rows
+        if r.get("holder_state_reconstructable") and r.get("mint")
     }
     holder_obs = sum(1 for r in target_rows if r.get("holder_state_reconstructable"))
 
@@ -256,10 +322,19 @@ def compute_rich_sufficiency(
             return "marginal"
         return "requires_broader_population"
 
-    def _rec_grad(n_events: int) -> str:
+    def _rec_grad_tte(n_events: int) -> str:
+        # Observed graduation events as survival events (~4k broad may suffice).
         if n_events >= 200:
             return "sufficient_on_rich_4k"
         if n_events >= 50:
+            return "marginal"
+        return "requires_broader_population"
+
+    def _rec_grad_binary(n_valid_tok: int, n_pos_tok: int) -> str:
+        # Only resolved valid+/valid- horizon labels; heavy censoring ≠ negatives.
+        if n_valid_tok >= 1000 and n_pos_tok >= 50:
+            return "sufficient_on_rich_4k"
+        if n_valid_tok >= 100:
             return "marginal"
         return "requires_broader_population"
 
@@ -270,7 +345,7 @@ def compute_rich_sufficiency(
             return "marginal"
         return "requires_broader_population"
 
-    return [
+    out_rows: list[dict[str, Any]] = [
         sufficiency_row(
             head="returns_h300",
             valid_observations=ret_valid,
@@ -310,45 +385,102 @@ def compute_rich_sufficiency(
             recommendation=_rec_surv(len(surv_valid_tokens)),
         ),
         sufficiency_row(
-            head="graduation",
-            valid_observations=grad_valid,
-            unique_tokens_with_valid_supervision=len(grad_valid_tokens),
-            positive_observations=grad_pos,
-            distinct_positive_tokens=len(grad_pos_tokens),
-            independent_events=(
-                len(grad_event_tokens) if grad_event_tokens else len(grad_pos_tokens)
-            ),
-            censored_observations=grad_cens,
-            unavailable_observations=grad_unavail,
-            recommendation=_rec_grad(
-                len(grad_event_tokens) if grad_event_tokens else len(grad_pos_tokens)
-            ),
+            head="graduation_time_to_event",
+            valid_observations=tte["usable_observations"],
+            unique_tokens_with_valid_supervision=len(tte["usable_tokens"]),
+            positive_observations=tte["event_observations"],
+            distinct_positive_tokens=len(tte["event_tokens"]),
+            independent_events=len(tte["event_tokens"]),
+            censored_observations=tte["censored_observations"],
+            unavailable_observations=tte["unavailable_observations"],
+            recommendation=_rec_grad_tte(len(tte["event_tokens"])),
             notes=(
-                "Valid = grad_h86400_status in {valid_positive, valid_negative}. "
-                "Absence negatives remain mostly censored under coverage v2. "
-                f"any_horizon_graduated_tokens={len(any_grad)}; "
+                "Survival-style time_to_graduation_status. Right-censored "
+                "observations are legitimate supervision and remain in the "
+                "usable denominator. independent_events = distinct mints with "
+                "observed future graduation. "
                 f"population_mints={len(mints)}."
             ),
         ),
         sufficiency_row(
-            head="explosion_onset_primary",
-            valid_observations=expl_valid_obs if expl_valid_obs else pre_explosion_obs,
-            unique_tokens_with_valid_supervision=len(expl_valid_tokens),
-            positive_observations=expl_pos_obs,
-            distinct_positive_tokens=len(expl_pos_tokens),
-            independent_events=primary_explosion_events,
-            censored_observations=expl_cens,
-            unavailable_observations=max(0, expl_unavail),
-            recommendation=_rec_expl(primary_explosion_events, explosion_obs_before_60s),
-            notes=(
-                "independent_events = primary detector events; "
-                "distinct_positive_tokens ⊆ tokens_with_primary_explosion "
-                "(imminence@60s True)."
+            head="graduated_within_h86400_binary",
+            valid_observations=grad_bin_valid,
+            unique_tokens_with_valid_supervision=len(grad_bin_valid_tokens),
+            positive_observations=grad_bin_pos,
+            distinct_positive_tokens=len(grad_bin_pos_tokens),
+            independent_events=len(grad_bin_pos_tokens),
+            censored_observations=grad_bin_cens,
+            unavailable_observations=grad_bin_unavail,
+            recommendation=_rec_grad_binary(
+                len(grad_bin_valid_tokens), len(grad_bin_pos_tokens)
             ),
-            prevalence_among_valid_tokens=(
-                primary_explosion_events / len(mints) if mints else None
+            notes=(
+                "Binary within-24h graduation only. Valid = "
+                "grad_h86400_status in {valid_positive, valid_negative}. "
+                "Heavily censored absence rows are NOT ordinary binary negatives "
+                "and are excluded from the valid denominator."
             ),
         ),
+    ]
+
+    for h, stats in expl_by_h.items():
+        out_rows.append(
+            sufficiency_row(
+                head=f"explosion_within_{h}s",
+                valid_observations=stats["valid_observations"],
+                unique_tokens_with_valid_supervision=len(stats["valid_tokens"]),
+                positive_observations=stats["positive_observations"],
+                distinct_positive_tokens=len(stats["pos_tokens"]),
+                independent_events=primary_explosion_events,
+                censored_observations=stats["censored_observations"],
+                unavailable_observations=stats["unavailable_observations"],
+                recommendation=(
+                    _rec_expl(
+                        primary_explosion_events,
+                        stats["positive_observations"]
+                        if h == 60
+                        else explosion_obs_before_60s,
+                    )
+                    if h == 60
+                    else _rec_expl(
+                        primary_explosion_events, stats["positive_observations"]
+                    )
+                ),
+                notes=(
+                    f"Imminence@{h}s. valid = status in "
+                    "{valid_positive, valid_negative} (includes no-explosion "
+                    "valid_negatives). positives are status-gated "
+                    "valid_positive with flag True. independent_events = "
+                    "distinct primary explosion detector events. "
+                    "prevalence_among_valid_tokens uses valid-imminence tokens, "
+                    "not event-positive tokens only."
+                ),
+            )
+        )
+
+    # Compatibility alias: primary head == 60s imminence bookkeeping.
+    out_rows.append(
+        sufficiency_row(
+            head="explosion_onset_primary",
+            valid_observations=expl60["valid_observations"],
+            unique_tokens_with_valid_supervision=len(expl60["valid_tokens"]),
+            positive_observations=expl60["positive_observations"],
+            distinct_positive_tokens=len(expl60["pos_tokens"]),
+            independent_events=primary_explosion_events,
+            censored_observations=expl60["censored_observations"],
+            unavailable_observations=expl60["unavailable_observations"],
+            recommendation=_rec_expl(
+                primary_explosion_events,
+                expl60["positive_observations"] or explosion_obs_before_60s,
+            ),
+            notes=(
+                "Alias of explosion_within_60s. "
+                f"pre_explosion_obs_arg={pre_explosion_obs}; "
+                "tokens_with_primary_explosion is NOT the valid denominator."
+            ),
+        )
+    )
+    out_rows.append(
         sufficiency_row(
             head="holder_state_targets",
             valid_observations=holder_obs,
@@ -360,8 +492,9 @@ def compute_rich_sufficiency(
             unavailable_observations=n_total - holder_obs,
             recommendation="requires_broader_population",
             notes="Sparse ownership evidence on rich subset only.",
-        ),
-    ]
+        )
+    )
+    return out_rows
 
 
 def aggregate_sufficiency_streaming(
@@ -374,13 +507,14 @@ def aggregate_sufficiency_streaming(
     """Scan partitioned observation_targets without loading all rows into RAM."""
     import pyarrow.dataset as ds
 
+    del tokens_with_primary_explosion  # not used as valid denominator
+
     path = Path(targets_root) / "observation_targets"
     if not path.exists():
         path = Path(targets_root)
     if not path.exists():
         return [], {"observations_scanned": 0}
 
-    # Accumulators
     ret_valid_tok: set[str] = set()
     ret_pos_tok: set[str] = set()
     ret_valid = ret_pos = ret_cens = 0
@@ -393,16 +527,25 @@ def aggregate_sufficiency_streaming(
     surv_pos_tok: set[str] = set()
     surv_valid = surv_pos = surv_cens = 0
 
-    grad_valid_tok: set[str] = set()
-    grad_pos_tok: set[str] = set()
-    grad_valid = grad_pos = grad_cens = 0
-    grad_event_tok: set[str] = set()
+    grad_bin_valid_tok: set[str] = set()
+    grad_bin_pos_tok: set[str] = set()
+    grad_bin_valid = grad_bin_pos = grad_bin_cens = 0
 
-    expl_valid_obs = expl_pos_obs = expl_cens = 0
-    expl_pos_tok: set[str] = set()
+    tte_usable_tok: set[str] = set()
+    tte_event_tok: set[str] = set()
+    tte_usable = tte_event = tte_cens = 0
+
+    expl_valid_tok: dict[int, set[str]] = {
+        h: set() for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+    }
+    expl_pos_tok: dict[int, set[str]] = {
+        h: set() for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+    }
+    expl_valid_obs = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
+    expl_pos_obs = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
+    expl_cens = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
+
     pre_expl = 0
-    obs_before = {str(h): 0 for h in (10, 30, 60, 120, 300)}
-
     holder_tok: set[str] = set()
     holder_obs = 0
     n_total = 0
@@ -415,32 +558,21 @@ def aggregate_sufficiency_streaming(
         "surv_h86400_status",
         "grad_h86400_status",
         "grad_h86400_graduated",
-        "explosion_within_60s",
-        "explosion_within_60s_status",
+        "time_to_graduation_status",
         "explosion_already_started_at_t",
         "explosion_event_observed",
         "holder_state_reconstructable",
         "price_target_available",
-        "explosion_within_10s",
-        "explosion_within_30s",
-        "explosion_within_120s",
-        "explosion_within_300s",
     ]
-    # Only request columns that exist
+    for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
+        cols.append(f"explosion_within_{h}s")
+        cols.append(f"explosion_within_{h}s_status")
+
     dataset = ds.dataset(str(path), format="parquet")
     available = set(dataset.schema.names)
     use_cols = [c for c in cols if c in available]
-    # graduation any-horizon positives
-    grad_h_cols = [
-        c
-        for c in available
-        if c.startswith("grad_h") and c.endswith("_status")
-    ]
 
-    for batch in dataset.scanner(
-        columns=list(dict.fromkeys(use_cols + grad_h_cols)),
-        batch_size=50_000,
-    ).to_batches():
+    for batch in dataset.scanner(columns=use_cols, batch_size=50_000).to_batches():
         names = batch.schema.names
         colmap = {n: batch.column(n).to_pylist() for n in names}
         n = batch.num_rows
@@ -471,7 +603,12 @@ def aggregate_sufficiency_streaming(
                     bar_pos += 1
                     if mint:
                         bar_pos_tok.add(mint)
-            elif out in ("censored", "unavailable", BARRIER_CENSORED, BARRIER_UNAVAILABLE):
+            elif out in (
+                "censored",
+                "unavailable",
+                BARRIER_CENSORED,
+                BARRIER_UNAVAILABLE,
+            ):
                 bar_cens += 1
 
             sst = colmap.get("surv_h86400_status", [None] * n)[i]
@@ -488,53 +625,62 @@ def aggregate_sufficiency_streaming(
 
             gst = colmap.get("grad_h86400_status", [None] * n)[i]
             if gst in VALID_LABEL:
-                grad_valid += 1
+                grad_bin_valid += 1
                 if mint:
-                    grad_valid_tok.add(mint)
+                    grad_bin_valid_tok.add(mint)
                 if (
                     colmap.get("grad_h86400_graduated", [None] * n)[i] is True
                     or gst == STATUS_VALID_POSITIVE
                 ):
-                    grad_pos += 1
+                    grad_bin_pos += 1
                     if mint:
-                        grad_pos_tok.add(mint)
+                        grad_bin_pos_tok.add(mint)
             elif gst in CENSORED_LIKE or gst == "known_source_outage":
-                grad_cens += 1
-            for hc in grad_h_cols:
-                if colmap[hc][i] == STATUS_VALID_POSITIVE and mint:
-                    grad_event_tok.add(mint)
+                grad_bin_cens += 1
 
-            ew = colmap.get("explosion_within_60s", [None] * n)[i]
-            est = colmap.get("explosion_within_60s_status", [None] * n)[i]
-            if ew is not None:
-                expl_valid_obs += 1
-                if ew is True:
-                    expl_pos_obs += 1
-                    if mint and mint in tokens_with_primary_explosion:
-                        expl_pos_tok.add(mint)
-            elif est in CENSORED_LIKE:
-                expl_cens += 1
+            tte_st = colmap.get("time_to_graduation_status", [None] * n)[i]
+            if (
+                tte_st in VALID_LABEL
+                or tte_st in CENSORED_LIKE
+                or tte_st == "known_source_outage"
+            ):
+                tte_usable += 1
+                if mint:
+                    tte_usable_tok.add(mint)
+                if tte_st == STATUS_VALID_POSITIVE:
+                    tte_event += 1
+                    if mint:
+                        tte_event_tok.add(mint)
+                elif tte_st in CENSORED_LIKE or tte_st == "known_source_outage":
+                    tte_cens += 1
+
+            for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
+                flag = colmap.get(f"explosion_within_{h}s", [None] * n)[i]
+                est = _infer_imminence_status(
+                    flag, colmap.get(f"explosion_within_{h}s_status", [None] * n)[i]
+                )
+                if est in VALID_LABEL:
+                    expl_valid_obs[h] += 1
+                    if mint:
+                        expl_valid_tok[h].add(mint)
+                    if est == STATUS_VALID_POSITIVE and flag is True:
+                        expl_pos_obs[h] += 1
+                        if mint:
+                            expl_pos_tok[h].add(mint)
+                elif est in CENSORED_LIKE or est == "known_source_outage":
+                    expl_cens[h] += 1
+
             if (
                 colmap.get("explosion_already_started_at_t", [None] * n)[i] is False
                 and colmap.get("explosion_event_observed", [None] * n)[i]
             ):
                 pre_expl += 1
-            for h, key in (
-                (10, "explosion_within_10s"),
-                (30, "explosion_within_30s"),
-                (60, "explosion_within_60s"),
-                (120, "explosion_within_120s"),
-                (300, "explosion_within_300s"),
-            ):
-                if colmap.get(key, [None] * n)[i] is True:
-                    obs_before[str(h)] += 1
 
             if colmap.get("holder_state_reconstructable", [False] * n)[i]:
                 holder_obs += 1
                 if mint:
                     holder_tok.add(mint)
 
-    # Build sufficiency via temporary synthetic rows is awkward; assemble directly.
     def _rec_broad(head: str, n_events: int, n_tokens: int) -> str:
         if head in {"returns_h300", "survival_24h"}:
             if n_tokens >= 50_000:
@@ -548,23 +694,30 @@ def aggregate_sufficiency_streaming(
             if n_events >= 200:
                 return "marginal_on_broad"
             return "still_sparse"
-        if head == "graduation":
+        if head == "graduation_time_to_event":
             if n_events >= 1_000:
                 return "sufficient_on_broad"
             if n_events >= 100:
                 return "marginal_on_broad"
             return "still_sparse"
-        if head == "explosion_onset_primary":
-            if n_events >= 5_000 and obs_before["60"] >= 2_000:
+        if head == "graduated_within_h86400_binary":
+            if n_tokens >= 10_000 and n_events >= 1_000:
                 return "sufficient_on_broad"
-            if n_events >= 500 and obs_before["60"] >= 200:
+            if n_tokens >= 500:
+                return "marginal_on_broad"
+            return "still_sparse"
+        if head.startswith("explosion_within_") or head == "explosion_onset_primary":
+            pos60 = expl_pos_obs[60]
+            if n_events >= 5_000 and pos60 >= 2_000:
+                return "sufficient_on_broad"
+            if n_events >= 500 and pos60 >= 200:
                 return "marginal_on_broad"
             return "still_sparse"
         if head == "holder_state_targets":
             return "still_sparse_ownership"
         return "unspecified"
 
-    rows = [
+    rows: list[dict[str, Any]] = [
         sufficiency_row(
             head="returns_h300",
             valid_observations=ret_valid,
@@ -574,7 +727,9 @@ def aggregate_sufficiency_streaming(
             independent_events=len(ret_valid_tok),
             censored_observations=ret_cens,
             unavailable_observations=n_total - ret_valid - ret_cens,
-            recommendation=_rec_broad("returns_h300", len(ret_valid_tok), len(ret_valid_tok)),
+            recommendation=_rec_broad(
+                "returns_h300", len(ret_valid_tok), len(ret_valid_tok)
+            ),
         ),
         sufficiency_row(
             head="barrier_u100_l30_h3600",
@@ -603,32 +758,94 @@ def aggregate_sufficiency_streaming(
             ),
         ),
         sufficiency_row(
-            head="graduation",
-            valid_observations=grad_valid,
-            unique_tokens_with_valid_supervision=len(grad_valid_tok),
-            positive_observations=grad_pos,
-            distinct_positive_tokens=len(grad_pos_tok & grad_valid_tok),
-            independent_events=len(grad_event_tok),
-            censored_observations=grad_cens,
-            unavailable_observations=n_total - grad_valid - grad_cens,
-            recommendation=_rec_broad("graduation", len(grad_event_tok), len(grad_valid_tok)),
-            notes="Conservative v3 absence censoring retained on broad.",
+            head="graduation_time_to_event",
+            valid_observations=tte_usable,
+            unique_tokens_with_valid_supervision=len(tte_usable_tok),
+            positive_observations=tte_event,
+            distinct_positive_tokens=len(tte_event_tok),
+            independent_events=len(tte_event_tok),
+            censored_observations=tte_cens,
+            unavailable_observations=n_total - tte_usable,
+            recommendation=_rec_broad(
+                "graduation_time_to_event",
+                len(tte_event_tok),
+                len(tte_usable_tok),
+            ),
+            notes=(
+                "Survival-style time_to_graduation_status. Right-censored "
+                "observations are legitimate supervision in the usable "
+                "denominator. ~4k observed graduation events may be sufficient."
+            ),
         ),
         sufficiency_row(
+            head="graduated_within_h86400_binary",
+            valid_observations=grad_bin_valid,
+            unique_tokens_with_valid_supervision=len(grad_bin_valid_tok),
+            positive_observations=grad_bin_pos,
+            distinct_positive_tokens=len(grad_bin_pos_tok & grad_bin_valid_tok),
+            independent_events=len(grad_bin_pos_tok & grad_bin_valid_tok),
+            censored_observations=grad_bin_cens,
+            unavailable_observations=n_total - grad_bin_valid - grad_bin_cens,
+            recommendation=_rec_broad(
+                "graduated_within_h86400_binary",
+                len(grad_bin_pos_tok & grad_bin_valid_tok),
+                len(grad_bin_valid_tok),
+            ),
+            notes=(
+                "Binary within-24h only. Censored absence is not an ordinary "
+                "binary negative; excluded from valid denominator."
+            ),
+        ),
+    ]
+
+    for h in EXPLOSION_IMMINENCE_HORIZONS_SEC:
+        pos_tok = expl_pos_tok[h] & expl_valid_tok[h]
+        rows.append(
+            sufficiency_row(
+                head=f"explosion_within_{h}s",
+                valid_observations=expl_valid_obs[h],
+                unique_tokens_with_valid_supervision=len(expl_valid_tok[h]),
+                positive_observations=expl_pos_obs[h],
+                distinct_positive_tokens=len(pos_tok),
+                independent_events=primary_explosion_events,
+                censored_observations=expl_cens[h],
+                unavailable_observations=max(
+                    0, n_total - expl_valid_obs[h] - expl_cens[h]
+                ),
+                recommendation=_rec_broad(
+                    f"explosion_within_{h}s",
+                    primary_explosion_events,
+                    len(expl_valid_tok[h]),
+                ),
+                notes=(
+                    f"Imminence@{h}s status-gated. Valid denominator includes "
+                    "valid_negative (no-explosion) tokens."
+                ),
+            )
+        )
+
+    pos60 = expl_pos_tok[60] & expl_valid_tok[60]
+    rows.append(
+        sufficiency_row(
             head="explosion_onset_primary",
-            valid_observations=expl_valid_obs,
-            unique_tokens_with_valid_supervision=len(tokens_with_primary_explosion),
-            positive_observations=expl_pos_obs,
-            distinct_positive_tokens=len(expl_pos_tok),
+            valid_observations=expl_valid_obs[60],
+            unique_tokens_with_valid_supervision=len(expl_valid_tok[60]),
+            positive_observations=expl_pos_obs[60],
+            distinct_positive_tokens=len(pos60),
             independent_events=primary_explosion_events,
-            censored_observations=expl_cens,
-            unavailable_observations=max(0, n_total - expl_valid_obs - expl_cens),
+            censored_observations=expl_cens[60],
+            unavailable_observations=max(
+                0, n_total - expl_valid_obs[60] - expl_cens[60]
+            ),
             recommendation=_rec_broad(
                 "explosion_onset_primary",
                 primary_explosion_events,
-                len(tokens_with_primary_explosion),
+                len(expl_valid_tok[60]),
             ),
-        ),
+            notes="Alias of explosion_within_60s (status-gated imminence).",
+        )
+    )
+    rows.append(
         sufficiency_row(
             head="holder_state_targets",
             valid_observations=holder_obs,
@@ -638,16 +855,23 @@ def aggregate_sufficiency_streaming(
             independent_events=len(holder_tok),
             censored_observations=0,
             unavailable_observations=n_total - holder_obs,
-            recommendation=_rec_broad("holder_state_targets", len(holder_tok), len(holder_tok)),
-        ),
-    ]
+            recommendation=_rec_broad(
+                "holder_state_targets", len(holder_tok), len(holder_tok)
+            ),
+        )
+    )
     for row in rows:
         row["population"] = population
 
     extras = {
         "observations_scanned": n_total,
         "price_target_available_observations": price_avail,
-        "explosion_imminence_positives_by_horizon": obs_before,
+        "explosion_imminence_positives_by_horizon": {
+            str(h): expl_pos_obs[h] for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+        },
+        "explosion_imminence_valid_tokens_by_horizon": {
+            str(h): len(expl_valid_tok[h]) for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+        },
         "pre_explosion_observations": pre_expl,
     }
     return rows, extras
@@ -690,16 +914,32 @@ def compute_broad_sufficiency(
                 if n_ev >= 2_000
                 else ("marginal_on_broad" if n_ev >= 200 else "still_sparse")
             )
-        elif head == "graduation":
+        elif head == "graduation_time_to_event":
             row["recommendation"] = (
                 "sufficient_on_broad"
                 if n_ev >= 1_000
                 else ("marginal_on_broad" if n_ev >= 100 else "still_sparse")
             )
-        elif head == "explosion_onset_primary":
-            if n_ev >= 5_000 and explosion_obs_before_60s >= 2_000:
+        elif head == "graduated_within_h86400_binary":
+            row["recommendation"] = (
+                "sufficient_on_broad"
+                if n_tok >= 10_000 and n_ev >= 1_000
+                else ("marginal_on_broad" if n_tok >= 500 else "still_sparse")
+            )
+        elif head.startswith("explosion_within_") or head == "explosion_onset_primary":
+            pos60 = int(
+                next(
+                    (
+                        r["positive_observations"]
+                        for r in rows
+                        if r["head"] == "explosion_within_60s"
+                    ),
+                    explosion_obs_before_60s,
+                )
+            )
+            if n_ev >= 5_000 and pos60 >= 2_000:
                 row["recommendation"] = "sufficient_on_broad"
-            elif n_ev >= 500 and explosion_obs_before_60s >= 200:
+            elif n_ev >= 500 and pos60 >= 200:
                 row["recommendation"] = "marginal_on_broad"
             else:
                 row["recommendation"] = "still_sparse"
@@ -789,7 +1029,9 @@ def recompute_v3_sufficiency_revision(
         "supervision_sufficiency": corrected,
         "diffs_vs_prior_audit": diffs,
         "notes": (
-            "Corrects returns_h300 (and analogous heads) so censored observations "
-            "with partial numeric returns cannot enter positive-token counts."
+            "Corrects returns_h300 positives to require valid status; corrects "
+            "explosion imminence so valid tokens include status-gated "
+            "valid_negatives (not merely eventual explosion tokens); splits "
+            "graduation into time-to-event vs binary within-H sufficiency."
         ),
     }

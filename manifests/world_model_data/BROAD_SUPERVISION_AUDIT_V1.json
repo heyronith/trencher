@@ -1,6 +1,6 @@
 {
   "audit_id": "BROAD_SUPERVISION_AUDIT_V1",
-  "generated_at": "2026-09-05T03:43:06.874000+00:00",
+  "generated_at": "2026-09-05T04:14:08.859221+00:00",
   "freeze_id": "world_model_freeze_v1",
   "contract_version": "BROAD_SUPERVISION_CONTRACT_V1",
   "population_counts": {
@@ -14,7 +14,20 @@
     "event_rows": 26886634,
     "curve_rows": 26886634,
     "creator_rows": 55686561,
-    "excluded_system_program_rows": null
+    "excluded_system_program_rows": "not_recorded",
+    "exact_duplicate_groups_removed": 0,
+    "signatures_with_heterogeneous_event_fingerprints": "not_recorded",
+    "heterogeneous_same_signature_events_preserved": "not_recorded",
+    "invalid_nonfinite_rows_excluded": "not_recorded"
+  },
+  "sequence_quality": {
+    "excluded_system_program_rows": "not_recorded",
+    "exact_duplicate_groups_removed": 0,
+    "signatures_with_heterogeneous_event_fingerprints": "not_recorded",
+    "heterogeneous_same_signature_events_preserved": "not_recorded",
+    "invalid_nonfinite_rows_excluded": "not_recorded",
+    "source": "broad_sequence_events_v1/manifest.json",
+    "note": "Counts taken only from existing manifests; missing fields are marked not_recorded (resume finalize may omit exclusion tallies)."
   },
   "observation_counts": {
     "tokens_n": 622303,
@@ -46,7 +59,13 @@
     "total_bytes": 34433085588,
     "total_mb": 32837.949
   },
-  "build_timings_sec": {},
+  "build_timings_sec": {
+    "population": 8.99655670800712,
+    "sequences": 147.5605618749978,
+    "observations": 312.90213095900253,
+    "targets": 5507.716352957999,
+    "audit": 614.5539309169981
+  },
   "explosion_scale_audit": {
     "rich_4k_primary_explosion_events": 222,
     "broad_primary_explosion_events": 49836,
@@ -59,12 +78,19 @@
       "120": 128367,
       "300": 140230
     },
+    "imminence_valid_tokens_by_horizon": {
+      "10": 49836,
+      "30": 49836,
+      "60": 49836,
+      "120": 49836,
+      "300": 49836
+    },
     "pre_explosion_observations": 159768,
     "observations_scanned_for_sufficiency": 8449949,
     "price_target_available_observations": 7124293
   },
   "graduation_decision": {
-    "generated_at": "2026-09-05T03:34:43.231862+00:00",
+    "generated_at": "2026-09-05T04:03:20.573450+00:00",
     "decision_id": "broad_graduation_censor_v1",
     "tracking_expires_at_is_proven_graduation_tracking_end": false,
     "retain_conservative_v3_graduation_treatment": true,
@@ -219,7 +245,25 @@
       "population": "broad_event_curve"
     },
     {
-      "head": "graduation",
+      "head": "graduation_time_to_event",
+      "valid_observations": 8449949,
+      "unique_tokens_with_valid_supervision": 622303,
+      "positive_observations": 49787,
+      "distinct_positive_tokens": 4150,
+      "independent_events": 4150,
+      "censored_observations": 8381011,
+      "unavailable_observations": 0,
+      "prevalence_among_valid_observations": 0.0058919882238342505,
+      "prevalence_among_valid_tokens": 0.006668777106972006,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Survival-style time_to_graduation_status. Right-censored observations are legitimate supervision in the usable denominator. ~4k observed graduation events may be sufficient.",
+      "observations": 8449949,
+      "independent_event_count": 4150,
+      "prevalence": 0.0058919882238342505,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "graduated_within_h86400_binary",
       "valid_observations": 68938,
       "unique_tokens_with_valid_supervision": 4150,
       "positive_observations": 47121,
@@ -229,11 +273,101 @@
       "unavailable_observations": 0,
       "prevalence_among_valid_observations": 0.6835272273637181,
       "prevalence_among_valid_tokens": 0.9681927710843373,
-      "recommendation": "sufficient_on_broad",
-      "notes": "Conservative v3 absence censoring retained on broad.",
+      "recommendation": "marginal_on_broad",
+      "notes": "Binary within-24h only. Censored absence is not an ordinary binary negative; excluded from valid denominator.",
       "observations": 68938,
       "independent_event_count": 4018,
       "prevalence": 0.6835272273637181,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "explosion_within_10s",
+      "valid_observations": 849819,
+      "unique_tokens_with_valid_supervision": 49836,
+      "positive_observations": 77297,
+      "distinct_positive_tokens": 43694,
+      "independent_events": 49836,
+      "censored_observations": 0,
+      "unavailable_observations": 7600130,
+      "prevalence_among_valid_observations": 0.09095701555272358,
+      "prevalence_among_valid_tokens": 0.8767557588891565,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Imminence@10s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+      "observations": 849819,
+      "independent_event_count": 49836,
+      "prevalence": 0.09095701555272358,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "explosion_within_30s",
+      "valid_observations": 849819,
+      "unique_tokens_with_valid_supervision": 49836,
+      "positive_observations": 109114,
+      "distinct_positive_tokens": 47031,
+      "independent_events": 49836,
+      "censored_observations": 0,
+      "unavailable_observations": 7600130,
+      "prevalence_among_valid_observations": 0.12839675272028514,
+      "prevalence_among_valid_tokens": 0.9437153864676138,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Imminence@30s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+      "observations": 849819,
+      "independent_event_count": 49836,
+      "prevalence": 0.12839675272028514,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "explosion_within_60s",
+      "valid_observations": 849819,
+      "unique_tokens_with_valid_supervision": 49836,
+      "positive_observations": 120638,
+      "distinct_positive_tokens": 47887,
+      "independent_events": 49836,
+      "censored_observations": 0,
+      "unavailable_observations": 7600130,
+      "prevalence_among_valid_observations": 0.14195728737531169,
+      "prevalence_among_valid_tokens": 0.9608917248575327,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Imminence@60s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+      "observations": 849819,
+      "independent_event_count": 49836,
+      "prevalence": 0.14195728737531169,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "explosion_within_120s",
+      "valid_observations": 849819,
+      "unique_tokens_with_valid_supervision": 49836,
+      "positive_observations": 128367,
+      "distinct_positive_tokens": 48556,
+      "independent_events": 49836,
+      "censored_observations": 0,
+      "unavailable_observations": 7600130,
+      "prevalence_among_valid_observations": 0.1510521652257716,
+      "prevalence_among_valid_tokens": 0.9743157556786259,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Imminence@120s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+      "observations": 849819,
+      "independent_event_count": 49836,
+      "prevalence": 0.1510521652257716,
+      "population": "broad_event_curve"
+    },
+    {
+      "head": "explosion_within_300s",
+      "valid_observations": 849819,
+      "unique_tokens_with_valid_supervision": 49836,
+      "positive_observations": 140230,
+      "distinct_positive_tokens": 49226,
+      "independent_events": 49836,
+      "censored_observations": 0,
+      "unavailable_observations": 7600130,
+      "prevalence_among_valid_observations": 0.16501160835424955,
+      "prevalence_among_valid_tokens": 0.9877598523155952,
+      "recommendation": "sufficient_on_broad",
+      "notes": "Imminence@300s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+      "observations": 849819,
+      "independent_event_count": 49836,
+      "prevalence": 0.16501160835424955,
       "population": "broad_event_curve"
     },
     {
@@ -248,7 +382,7 @@
       "prevalence_among_valid_observations": 0.14195728737531169,
       "prevalence_among_valid_tokens": 0.9608917248575327,
       "recommendation": "sufficient_on_broad",
-      "notes": "",
+      "notes": "Alias of explosion_within_60s (status-gated imminence).",
       "observations": 849819,
       "independent_event_count": 49836,
       "prevalence": 0.14195728737531169,
@@ -273,6 +407,6 @@
       "population": "broad_event_curve"
     }
   ],
-  "sufficiency_field_contract_version": "supervision_sufficiency_v2",
+  "sufficiency_field_contract_version": "supervision_sufficiency_v3",
   "phase_metas": {}
 }
