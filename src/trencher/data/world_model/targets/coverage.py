@@ -212,6 +212,75 @@ def _event_span(times: list[float]) -> dict[str, float | None]:
     return {"min": float(min(times)), "max": float(max(times)), "n": len(times)}
 
 
+def load_source_coverage_registry(path: Path) -> SourceCoverageRegistry:
+    """Load frozen ``target_source_coverage_v2`` JSON (no rebuild)."""
+    import json
+
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    sources = payload.get("sources") or {}
+
+    def _cov(key: str) -> SourceCoverage:
+        d = sources.get(key) or {}
+        return SourceCoverage(
+            source_id=str(d.get("source_id") or key),
+            intervals=[
+                TimeInterval(float(iv["start"]), float(iv["end"]))
+                for iv in (d.get("intervals") or [])
+            ],
+            known_gaps=[
+                TimeInterval(float(g["start"]), float(g["end"]))
+                for g in (d.get("known_gaps") or [])
+            ],
+            notes=str(d.get("notes") or ""),
+            coverage_basis=str(d.get("coverage_basis") or ""),
+            coverage_evidence=list(d.get("coverage_evidence") or []),
+            coverage_confidence=str(
+                d.get("coverage_confidence") or CONFIDENCE_INSUFFICIENT
+            ),
+            supports_absence_negatives=bool(d.get("supports_absence_negatives")),
+            event_span=d.get("event_span"),
+        )
+
+    return SourceCoverageRegistry(
+        pump_trades=_cov("pump_trades"),
+        migrations=_cov("migrations"),
+        postgrad_snapshots=_cov("postgrad_snapshots"),
+        ownership=_cov("ownership"),
+        generated_at=str(payload.get("generated_at") or utc_now()),
+    )
+
+
+def earliest_continuous_censor_endpoint(
+    cov: SourceCoverage,
+    observation_time_t: float,
+    *,
+    split_end: float,
+) -> float | None:
+    """Earliest legitimate continuous censor time from T, or None if unavailable.
+
+    Caps follow-up at the earliest of: split boundary, end of the coverage
+    interval containing T, or the start of a known gap after T.
+    """
+    T = float(observation_time_t)
+    end_cap = float(split_end)
+    if not cov.supports_absence_negatives or not cov.intervals:
+        return None
+    containing = [iv for iv in cov.intervals if iv.start <= T < iv.end]
+    if not containing:
+        # Inclusive end edge: T exactly at interval.end is not continuous interior
+        containing = [iv for iv in cov.intervals if iv.contains(T) and iv.end > T]
+    if not containing:
+        return None
+    iv = containing[0]
+    endpoint = min(end_cap, float(iv.end))
+    for g in cov.known_gaps:
+        if T < g.start < endpoint:
+            endpoint = float(g.start)
+    if endpoint <= T:
+        return None
+    return endpoint
+
+
 def build_source_coverage_registry(
     *,
     world_root: Path,

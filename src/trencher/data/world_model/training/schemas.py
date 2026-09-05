@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from trencher.data.world_model.training.vocabs import (
+    vocab_manifest,
+)
+
 # --- Broad / rich event sequences ---
 # Layout: [rel_dt, interarrival, is_buy, side_id, sol, token, price, v_sol, v_tok,
 #          curve_pct, has_reserves, has_finite_price, source_quality]
@@ -137,65 +141,24 @@ GLOBAL_BUCKET_CHANNELS: tuple[str, ...] = (
     "unique_mints",
     "unique_wallets",
 )
-GLOBAL_CONTINUOUS = GLOBAL_BUCKET_CHANNELS
+GLOBAL_CONTINUOUS = tuple(c for c in GLOBAL_BUCKET_CHANNELS if c != "rel_dt")
+GLOBAL_SCALAR_CONTINUOUS = (
+    "global_launches_1h",
+    "global_launches_24h",
+    "global_migrations_1h",
+    "global_migrations_24h",
+    "daily_network_launches",
+    "daily_network_graduations",
+    "daily_network_trades",
+    "daily_network_buy_volume_sol",
+    "daily_network_graduation_rate",
+)
 
 SIDE_TO_ID = {"buy": 1, "sell": 2, "unknown": 0, "": 0}
-EDGE_TYPE_VOCAB = {
-    "": 0,
-    "unknown": 0,
-    "trade": 1,
-    "transfer": 2,
-    "swap": 3,
-    "buy": 4,
-    "sell": 5,
-    "create": 6,
-    "migrate": 7,
-}
-EVENT_KIND_VOCAB = {
-    "": 0,
-    "unknown": 0,
-    "transfer": 1,
-    "mint": 2,
-    "burn": 3,
-    "transfer_checked": 4,
-}
 
 
-def side_id(side: Any, is_buy: Any = None) -> float:
-    if side is None or side == "":
-        if is_buy is True:
-            return 1.0
-        if is_buy is False:
-            return 2.0
-        return 0.0
-    return float(SIDE_TO_ID.get(str(side).lower(), 0))
-
-
-def edge_type_id(edge_type: Any) -> float:
-    if edge_type is None:
-        return 0.0
-    key = str(edge_type).lower()
-    if key in EDGE_TYPE_VOCAB:
-        return float(EDGE_TYPE_VOCAB[key])
-    # Stable hash bucket into [10, 99] for unseen types
-    return float(10 + (hash(key) % 90))
-
-
-def event_kind_id(kind: Any) -> float:
-    if kind is None:
-        return 0.0
-    key = str(kind).lower()
-    if key in EVENT_KIND_VOCAB:
-        return float(EVENT_KIND_VOCAB[key])
-    return float(10 + (hash(key) % 90))
-
-
-def transfer_type_id(t: Any) -> float:
-    return event_kind_id(t)
-
-
-def continuous_channel_names() -> list[str]:
-    """All continuous channel names that should receive clip→zscore stats."""
+def continuous_channel_names(*, include_relative_time: bool = False) -> list[str]:
+    """Unbounded continuous channels that receive clip→zscore by default."""
     names: list[str] = []
     for group in (
         EVENT_CONTINUOUS,
@@ -205,11 +168,29 @@ def continuous_channel_names() -> list[str]:
         OWN_CONTINUOUS,
         GRAPH_CONTINUOUS,
         GLOBAL_CONTINUOUS,
+        GLOBAL_SCALAR_CONTINUOUS,
     ):
         for n in group:
-            if n not in ("rel_dt", "interarrival") and n not in names:
+            if n in ("rel_dt", "interarrival") and not include_relative_time:
+                continue
+            if n == "decimals":
+                continue  # bounded ordinal — explicit exemption
+            if n not in names:
                 names.append(n)
     return names
+
+
+# Relative time: documented exemption (remain raw relative / optional log1p upstream)
+RELATIVE_TIME_EXEMPT = ("rel_dt", "interarrival")
+BOUNDED_ORDINAL_EXEMPT = ("decimals",)
+NEVER_NORMALIZE = (
+    "masks",
+    "binary_flags",
+    "categorical_ids",
+    "graph_node_ids",
+    *RELATIVE_TIME_EXEMPT,
+    *BOUNDED_ORDINAL_EXEMPT,
+)
 
 
 def modality_schema_manifest() -> dict[str, Any]:
@@ -255,5 +236,12 @@ def modality_schema_manifest() -> dict[str, Any]:
         "global": {
             "channels": list(GLOBAL_BUCKET_CHANNELS),
             "policy": "last_completed_second_only",
+            "daily_policy": "last_fully_completed_utc_day_before_T",
+        },
+        "vocabs": vocab_manifest(),
+        "transform_exemptions": {
+            "relative_time_raw": list(RELATIVE_TIME_EXEMPT),
+            "bounded_ordinals": list(BOUNDED_ORDINAL_EXEMPT),
+            "never_normalize": list(NEVER_NORMALIZE),
         },
     }

@@ -27,7 +27,6 @@ from trencher.data.world_model.targets.status import (
     SURVIVAL_HORIZONS_SEC,
 )
 from trencher.data.world_model.training.transforms import (
-    fit_sequence_transforms_from_unique_rows,
     persist_transforms,
 )
 
@@ -292,13 +291,53 @@ def build_training_cache_v1(
 
     transform_info: dict[str, Any] = {}
     if refit_transforms:
-        progress(85, "cache: fit train transforms")
+        progress(85, "cache: fit train transforms v4")
+        import json
+
+        import numpy as np
+
+        from trencher.data.world_model.training.transforms import (
+            fit_column_stats_from_table,
+            fit_numeric_stats,
+            fit_sequence_transforms_from_unique_rows,
+            merge_intervals,
+            transform_coverage_manifest,
+        )
+
+        cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
+        q70 = float(cutoffs["quantiles_unix"]["q70"])
         tokens = pq.read_table(split_root / "token_assignments.parquet").to_pylist()
         train_mints = {
             r["mint"]
             for r in tokens
             if r["base_split"] == "train" and r.get("in_broad_event_curve")
         }
+        # Union train observation event row ranges from broad refs (sample partitions)
+        refs_root = world_root / "broad" / "broad_observation_sequence_refs_v1"
+        ref_parts = sorted(refs_root.glob("*/part.parquet"))
+        ref_sample = ref_parts[:: max(1, len(ref_parts) // 48)][:48] if ref_parts else []
+        # Tag train via mint; refs lack base_split — inject synthetic train rows
+        events_ranges: dict[str, list[tuple[int, int]]] = {}
+        for rp in ref_sample:
+            table = pq.read_table(
+                rp,
+                columns=[
+                    "mint",
+                    "mint_partition",
+                    "events_start_idx",
+                    "events_end_idx",
+                ],
+            )
+            for row in table.to_pylist():
+                if row.get("mint") not in train_mints:
+                    continue
+                mp = str(row.get("mint_partition") or "")
+                lo, hi = row.get("events_start_idx"), row.get("events_end_idx")
+                if lo is None or hi is None or int(hi) <= int(lo):
+                    continue
+                events_ranges.setdefault(mp, []).append((int(lo), int(hi)))
+        events_ranges = {mp: merge_intervals(ivs) for mp, ivs in events_ranges.items()}
+
         events_root = world_root / "broad" / "broad_sequence_events_v1"
         parts = sorted(events_root.rglob("part.parquet"))
         fit_parts = parts[:: max(1, len(parts) // 64)][:64] if parts else []
@@ -319,8 +358,177 @@ def build_training_cache_v1(
             sequence_parts=fit_parts,
             train_mints=train_mints,
             numeric_columns=numeric_cols,
-            max_rows_per_part=250_000,
+            max_event_time=q70,
+            row_ranges_by_partition=events_ranges or None,
+            partition_from_path=lambda p: Path(p).parent.name,
         )
+        buckets = world_root / "pit" / "global" / "trade_second_buckets.parquet"
+        gstats = fit_column_stats_from_table(
+            buckets,
+            numeric_columns=[
+                "trades",
+                "buys",
+                "sells",
+                "buy_sol",
+                "sell_sol",
+                "unique_mints",
+                "unique_wallets",
+            ],
+            second_column="second_unix",
+            max_event_time=q70,
+        )
+        transforms.setdefault("columns", {}).update(gstats)
+        daily = world_root / "global_context" / "daily_pump_network_context.parquet"
+        if daily.exists():
+            from datetime import UTC, datetime
+
+            dtable = pq.read_table(daily).to_pylist()
+            q70_day = datetime.fromtimestamp(q70, tz=UTC).strftime("%Y-%m-%d")
+            mapping = {
+                "launches": "daily_network_launches",
+                "graduations": "daily_network_graduations",
+                "trades": "daily_network_trades",
+                "buy_volume_sol": "daily_network_buy_volume_sol",
+                "graduation_rate": "daily_network_graduation_rate",
+            }
+            for src, dst in mapping.items():
+                vals = [
+                    float(r.get(src) or 0.0)
+                    for r in dtable
+                    if str(r.get("day") or "") < q70_day
+                ]
+                transforms["columns"][dst] = fit_numeric_stats(
+                    np.asarray(vals, dtype=np.float64)
+                )
+
+        for path, cols in (
+            (
+                world_root
+                / "sequences"
+                / "sequence_dataset_v2"
+                / "sequence_microstructure_v2.parquet",
+                [
+                    "fee_lamports",
+                    "compute_units_consumed",
+                    "priority_fee_lamports",
+                    "account_key_count",
+                    "balance_change_count",
+                    "log_message_count",
+                    "inner_instruction_groups",
+                ],
+            ),
+            (
+                world_root
+                / "sequences"
+                / "sequence_dataset_v2"
+                / "sequence_ownership_v2.parquet",
+                ["value", "pre_ui_amount", "post_ui_amount"],
+            ),
+            (
+                world_root
+                / "sequences"
+                / "sequence_dataset_v2"
+                / "sequence_graph_token_v2.parquet",
+                ["sol_amount", "token_amount"],
+            ),
+            (
+                world_root / "broad" / "broad_sequence_creator_v1",
+                ["prior_rank"],
+            ),
+        ):
+            path = Path(path)
+            if path.is_dir():
+                rparts = sorted(path.rglob("part.parquet"))[:16]
+            elif path.exists():
+                rparts = [path]
+            else:
+                rparts = []
+            if not rparts:
+                continue
+            sch0 = set(pq.read_schema(rparts[0]).names)
+            if "mint" not in sch0:
+                stats = fit_column_stats_from_table(
+                    rparts[0],
+                    numeric_columns=[c for c in cols if c in sch0],
+                    time_column="event_time_unix"
+                    if "event_time_unix" in sch0
+                    else None,
+                    max_event_time=q70,
+                )
+                for c, st in stats.items():
+                    prev = transforms["columns"].get(c)
+                    if prev is None or (st.get("n") or 0) > (prev.get("n") or 0):
+                        transforms["columns"][c] = st
+                continue
+            extra = fit_sequence_transforms_from_unique_rows(
+                sequence_parts=rparts,
+                train_mints=train_mints,
+                numeric_columns=[c for c in cols if c in sch0],
+                max_event_time=q70,
+                max_rows_per_part=400_000,
+            )
+            for c, st in (extra.get("columns") or {}).items():
+                prev = transforms["columns"].get(c)
+                if prev is None or (st.get("n") or 0) > (prev.get("n") or 0):
+                    transforms["columns"][c] = st
+            # Ownership delta_ui derived channel
+            if "pre_ui_amount" in sch0 and "post_ui_amount" in sch0:
+                table = pq.read_table(
+                    rparts[0],
+                    columns=["mint", "event_time_unix", "pre_ui_amount", "post_ui_amount"],
+                )
+                mints = [str(m) for m in table.column("mint").to_pylist()]
+                times = np.asarray(table.column("event_time_unix").to_pylist(), dtype=np.float64)
+                pre = np.asarray(table.column("pre_ui_amount").to_pylist(), dtype=np.float64)
+                post = np.asarray(table.column("post_ui_amount").to_pylist(), dtype=np.float64)
+                mask = (
+                    np.array([m in train_mints for m in mints], dtype=bool)
+                    & np.isfinite(times)
+                    & (times < q70)
+                )
+                transforms["columns"]["delta_ui"] = fit_numeric_stats((post - pre)[mask])
+
+
+        # Rolling launch/migration counts: reconstruct pre-q70 histogram from timelines
+        for tl_name, keys in (
+            (
+                "launches_timeline.parquet",
+                ("global_launches_1h", "global_launches_24h"),
+            ),
+            (
+                "migrations_timeline.parquet",
+                ("global_migrations_1h", "global_migrations_24h"),
+            ),
+        ):
+            tl = world_root / "pit" / "global" / tl_name
+            if not tl.exists():
+                continue
+            times = np.sort(
+                np.asarray(
+                    pq.read_table(tl, columns=["event_time_unix"])
+                    .column(0)
+                    .to_pylist(),
+                    dtype=np.float64,
+                )
+            )
+            times = times[np.isfinite(times) & (times < q70)]
+            if times.size == 0:
+                continue
+            # Sample up to 5k observation times uniformly in train window
+            sample_t = times[:: max(1, times.size // 5000)][:5000]
+            for window, key in ((3600.0, keys[0]), (86400.0, keys[1])):
+                counts = []
+                for t in sample_t:
+                    hi = int(np.searchsorted(times, t, side="right"))
+                    lo = int(np.searchsorted(times, t - window, side="right"))
+                    counts.append(float(hi - lo))
+                transforms["columns"][key] = fit_numeric_stats(
+                    np.asarray(counts, dtype=np.float64)
+                )
+
+        transforms["fit_scope"] = "train_obs_unique_rows_pre_q70"
+        transforms["max_event_time"] = q70
+        transforms["coverage"] = transform_coverage_manifest(transforms)
         tdir = ensure_dir(root / "transforms_train_v1")
         persist_transforms(tdir / "sequence_numeric_stats.json", transforms)
         persist_transforms(
@@ -331,6 +539,8 @@ def build_training_cache_v1(
             "rows_seen": transforms.get("rows_seen"),
             "columns": list((transforms.get("columns") or {}).keys()),
             "order": transforms.get("transform_order"),
+            "coverage": transforms.get("coverage"),
+            "max_event_time": q70,
         }
 
     manifest = {

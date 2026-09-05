@@ -383,35 +383,19 @@ def build_target_payload(
             effective_status=st if elig else "split_boundary_purged",
         )
 
-    # --- TTE overlays ---
-    if tte_overlay is None:
-        tte_overlay = apply_tte_overlays_for_row(
-            target_row,
-            observation_time_t=float(assignment["observation_time_t"]),
-            base_split=str(assignment["base_split"]),
-            q70=q70,
-            q85=q85,
-            corpus_end=CORPUS_END_UNIX,
-        )
+    # --- TTE overlays: always live-recompute V4 source-aware view from frozen
+    # targets. Persisted overlay tables may lag; never trust them alone.
+    del tte_overlay  # unused; live path below
+    tte_overlay = apply_tte_overlays_for_row(
+        target_row,
+        observation_time_t=float(assignment["observation_time_t"]),
+        base_split=str(assignment["base_split"]),
+        q70=q70,
+        q85=q85,
+        corpus_end=CORPUS_END_UNIX,
+    )
 
     grad = normalize_overlay_row(tte_overlay, "graduation_tte")
-    # Prefer live recompute if already-occurred flag present on frozen row
-    if target_row.get("graduated_at_or_before_t") and grad.get("at_risk", True):
-        from trencher.data.world_model.splits.tte_overlay import (
-            admin_boundary_unix,
-            apply_graduation_tte_overlay,
-        )
-
-        live = apply_graduation_tte_overlay(
-            observation_time_t=float(assignment["observation_time_t"]),
-            split_end=admin_boundary_unix(
-                str(assignment["base_split"]), q70=q70, q85=q85
-            ),
-            time_to_graduation_sec=target_row.get("time_to_graduation_sec"),
-            time_to_graduation_status=target_row.get("time_to_graduation_status"),
-            graduated_at_or_before_t=True,
-        )
-        grad = normalize_overlay_row(live, "graduation_tte")
 
     out["graduation_tte"] = _pack_tte(
         overlay=grad,
@@ -421,23 +405,6 @@ def build_target_payload(
     )
 
     expl = normalize_overlay_row(tte_overlay, "explosion_tte")
-    if target_row.get("explosion_already_started_at_t") and expl.get("at_risk", True):
-        from trencher.data.world_model.splits.tte_overlay import (
-            admin_boundary_unix,
-            apply_explosion_tte_overlay,
-        )
-
-        live = apply_explosion_tte_overlay(
-            observation_time_t=float(assignment["observation_time_t"]),
-            split_end=admin_boundary_unix(
-                str(assignment["base_split"]), q70=q70, q85=q85
-            ),
-            time_to_explosion_sec=target_row.get("time_to_explosion_sec"),
-            explosion_event_observed=target_row.get("explosion_event_observed"),
-            explosion_already_started_at_t=True,
-            explosion_right_censored=target_row.get("explosion_right_censored"),
-        )
-        expl = normalize_overlay_row(live, "explosion_tte")
 
     out["explosion_tte"] = _pack_tte(
         overlay=expl,

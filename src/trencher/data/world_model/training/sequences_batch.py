@@ -37,12 +37,14 @@ from trencher.data.world_model.training.schemas import (
     MICRO_CONTINUOUS,
     OWN_CHANNELS,
     OWN_CONTINUOUS,
+)
+from trencher.data.world_model.training.transforms import apply_numeric_channel
+from trencher.data.world_model.training.vocabs import (
     edge_type_id,
     event_kind_id,
     side_id,
     transfer_type_id,
 )
-from trencher.data.world_model.training.transforms import apply_numeric_channel
 
 
 def default_window_preset(name: str = "last_n_256") -> dict[str, Any]:

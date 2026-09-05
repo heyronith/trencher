@@ -91,6 +91,9 @@ def build_tte_overlays_v1(
         "explosion_event_observed",
         "explosion_already_started_at_t",
         "explosion_right_censored",
+        "explosion_within_60s_status",
+        "explosion_within_10s_status",
+        "explosion_within_30s_status",
     ]
     stats = {
         "broad_rows": 0,

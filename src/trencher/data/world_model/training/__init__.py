@@ -4,6 +4,7 @@ from trencher.data.world_model.training.audit import (
     build_training_loaders_v1,
     build_training_loaders_v2,
     build_training_loaders_v3,
+    build_training_loaders_v4,
 )
 from trencher.data.world_model.training.loaders import (
     STRATEGY_BROAD_PRETRAIN,
@@ -22,6 +23,7 @@ __all__ = [
     "build_training_loaders_v1",
     "build_training_loaders_v2",
     "build_training_loaders_v3",
+    "build_training_loaders_v4",
     "iter_loader",
     "mixed_loader",
 ]

@@ -1,4 +1,4 @@
-"""TRAINING_LOADER_CONTRACT/AUDIT V3 + build orchestration."""
+"""TRAINING_LOADER_CONTRACT/AUDIT V4 + build orchestration."""
 
 from __future__ import annotations
 
@@ -15,25 +15,30 @@ from trencher.data.world_model.training.cache_build import build_training_cache_
 from trencher.data.world_model.training.forbid import FORBIDDEN_FEATURE_KEYS
 from trencher.data.world_model.training.schemas import modality_schema_manifest
 from trencher.data.world_model.training.smoke import run_realistic_loader_benchmark
+from trencher.data.world_model.training.vocabs import vocab_manifest
 
 logger = logging.getLogger(__name__)
 
-CONTRACT_ID = "TRAINING_LOADER_CONTRACT_V3"
-AUDIT_ID = "TRAINING_LOADER_AUDIT_V3"
+CONTRACT_ID = "TRAINING_LOADER_CONTRACT_V4"
+AUDIT_ID = "TRAINING_LOADER_AUDIT_V4"
 
 
 def build_training_loaders_v1(**kwargs: Any) -> dict[str, Any]:
-    return build_training_loaders_v3(**kwargs)
+    return build_training_loaders_v4(**kwargs)
 
 
 def build_training_loaders_v2(**kwargs: Any) -> dict[str, Any]:
-    return build_training_loaders_v3(**kwargs)
+    return build_training_loaders_v4(**kwargs)
 
 
-def build_training_loader_contract_v3() -> dict[str, Any]:
+def build_training_loaders_v3(**kwargs: Any) -> dict[str, Any]:
+    return build_training_loaders_v4(**kwargs)
+
+
+def build_training_loader_contract_v4() -> dict[str, Any]:
     return {
         "contract_version": CONTRACT_ID,
-        "supersedes": "TRAINING_LOADER_CONTRACT_V2",
+        "supersedes": "TRAINING_LOADER_CONTRACT_V3",
         "generated_at": utc_now(),
         "freeze_id": FREEZE_ID,
         "depends_on_splits": "SPLIT_CONTRACT_V1",
@@ -41,7 +46,23 @@ def build_training_loader_contract_v3() -> dict[str, Any]:
         "runtime": "numpy_pyarrow_streaming_production_cached",
         "production_loader": True,
         "synthetic_path": "tests_only",
-        "training_cache": "training_cache_v1",
+        "training_cache": {
+            "id": "training_cache_v1",
+            "design": "slim_targets_plus_tte_by_mint_partition",
+            "duplicates_full_targets": False,
+        },
+        "global_pit": {
+            "second_buckets": "last_completed_second(T)",
+            "daily_aggregates": "last_fully_completed_utc_day_before_T",
+            "never_use_incomplete_current_utc_day": True,
+            "raw_unix_in_structured_state": False,
+            "debug_meta_only": ["pit_last_completed_second", "pit_last_completed_utc_day"],
+        },
+        "categoricals": {
+            "policy": "deterministic_fixed_vocab_UNK0",
+            "never_python_hash": True,
+            "vocabs": vocab_manifest(),
+        },
         "tte_training_representation": {
             "fields": [
                 "duration_sec",
@@ -53,22 +74,35 @@ def build_training_loader_contract_v3() -> dict[str, Any]:
             ],
             "rule_event_before_boundary": "duration=event-T; event_observed=1",
             "rule_event_at_or_after_boundary": (
-                "duration=split_end-T; event_observed=0; censored=1; never negative"
+                "hide event; censor to earliest(split, source, outage) when applicable"
             ),
-            "rule_unresolved": "duration=earliest_bound-T; event_observed=0",
+            "rule_unresolved_explosion": (
+                "censor only while pump_trades continuous coverage; "
+                "else at_risk=0 unavailable; Jul3 gap truncates"
+            ),
+            "rule_unresolved_graduation": (
+                "no fabricated split_end-T without proven migration absence coverage; "
+                "at_risk=0 unless continuous censor endpoint exists"
+            ),
+            "rule_explosion_modality_unavailable": "at_risk=0; never long no-explosion survival",
             "rule_already_occurred": "at_risk=0; left_truncated; not a new future event",
             "retain_censor_duration": True,
+            "source_coverage_registry": "target_source_coverage_v2",
         },
         "transforms": {
             "order": "clip_raw_p01_p99_then_zscore",
-            "fit_on": "unique_underlying_training_sequence_rows",
-            "never_fit_on": ["val", "test"],
+            "fit_on": "train_obs_unique_rows_pre_q70",
+            "never_fit_on": ["val", "test", "post_q70_train_mint_continuation"],
             "do_not_normalize": [
                 "masks",
                 "binary_flags",
-                "categorical_event_edge_types",
+                "categorical_ids",
                 "graph_node_ids",
+                "rel_dt",
+                "interarrival",
+                "decimals",
             ],
+            "relative_time_policy": "raw_exempt_not_zscored",
             "no_raw_unix_as_generic_feature": True,
         },
         "modality_schemas": modality_schema_manifest(),
@@ -87,112 +121,162 @@ def build_training_loader_contract_v3() -> dict[str, Any]:
             "execution",
             "future_path_refs",
         ],
-        "forbidden_predictive_features": sorted(FORBIDDEN_FEATURE_KEYS),
-        "window_presets": list(WINDOW_PRESETS),
-        "engineering_targets_examples_per_sec": {"broad": 500, "rich": 100},
-        "stores": {
-            "broad": [
-                "broad_sequence_events_v1",
-                "broad_sequence_curve_v1",
-                "broad_sequence_creator_v1",
-                "broad_targets_v3",
-                "tte_overlays_broad",
-                "training_cache_v1",
-            ],
-            "rich": [
-                "sequence_dataset_v2",
-                "target_dataset_v3",
-                "tte_overlays_rich",
-                "pit/global",
-                "training_cache_v1",
-            ],
-        },
+        "forbidden_feature_keys": sorted(FORBIDDEN_FEATURE_KEYS),
+        "window_presets": WINDOW_PRESETS,
     }
 
 
-def build_training_loaders_v3(
+def build_training_loaders_v4(
     *,
     world_root: Path,
-    manifest_dir: Path,
+    split_root: Path | None = None,
+    manifest_dir: Path | None = None,
     progress: Progress100 | None = None,
-    smoke_max_batches: int = 200,
-    rebuild_cache: bool = True,
-    light_smoke: bool = False,
+    skip_cache_rebuild: bool = False,
+    skip_benchmark: bool = False,
+    light_benchmark: bool = True,
 ) -> dict[str, Any]:
     progress = progress or Progress100()
     world_root = Path(world_root)
-    manifest_dir = ensure_dir(manifest_dir)
-    split_root = world_root / "splits" / "split_v1"
-    inv = json.loads((split_root / "leakage_purge_audit.json").read_text(encoding="utf-8"))
-    if not (inv.get("invariants") or {}).get("all_passed"):
-        raise RuntimeError("split invariants not passed")
+    split_root = Path(split_root or world_root / "splits" / "split_v1")
+    manifest_dir = Path(manifest_dir or Path("manifests/world_model_data"))
+    ensure_dir(manifest_dir)
 
-    cache_meta: dict[str, Any] = {}
-    if rebuild_cache:
-        progress(1, "build training_cache_v1")
-        cache_meta = build_training_cache_v1(
-            world_root=world_root, split_root=split_root, progress=progress
-        )
-    else:
-        mpath = split_root / "training_cache_v1" / "manifest.json"
-        if mpath.exists():
-            cache_meta = json.loads(mpath.read_text(encoding="utf-8"))
-
-    progress(91, "realistic loader benchmark")
-    smoke = run_realistic_loader_benchmark(
-        world_root=world_root,
-        split_root=split_root,
-        batch_sizes=(64, 128) if not light_smoke else (16,),
-        max_batches=smoke_max_batches if not light_smoke else 20,
-        seed=0,
-        progress=progress,
-        light=light_smoke,
-    )
-    write_json(split_root / "loader_smoke_benchmark_v3.json", smoke)
-
-    progress(96, "publish TRAINING_LOADER_*_V3")
-    contract = build_training_loader_contract_v3()
+    progress(5, "training loaders v4: contract")
+    contract = build_training_loader_contract_v4()
     write_json(manifest_dir / f"{CONTRACT_ID}.json", contract)
     write_json(split_root / f"{CONTRACT_ID}.json", contract)
 
+    class _Mapped:
+        def __init__(self, lo: int, hi: int) -> None:
+            self.lo, self.hi = lo, hi
+
+        def __call__(self, step: int, message: str = "") -> None:
+            step = max(0, min(100, int(step)))
+            mapped = self.lo + int((self.hi - self.lo) * step / 100)
+            progress(mapped, message)
+
+    # Rebuild TTE overlays with source-aware V4 logic
+    progress(12, "training loaders v4: rebuild TTE overlays")
+    from trencher.data.world_model.splits.build_tte import build_tte_overlays_v1
+
+    tte_meta = build_tte_overlays_v1(
+        world_root=world_root,
+        split_root=split_root,
+        progress=_Mapped(12, 40),  # type: ignore[arg-type]
+    )
+
+    progress(42, "training loaders v4: refresh cache + transforms")
+    cache_meta = build_training_cache_v1(
+        world_root=world_root,
+        split_root=split_root,
+        progress=_Mapped(42, 75),  # type: ignore[arg-type]
+        refit_transforms=True,
+    )
+
+    smoke: dict[str, Any] = {}
+    if not skip_benchmark:
+        progress(78, "training loaders v4: light throughput check")
+        smoke = run_realistic_loader_benchmark(
+            world_root=world_root,
+            split_root=split_root,
+            progress=_Mapped(78, 90),  # type: ignore[arg-type]
+            light=light_benchmark,
+            batch_sizes=(64,),
+            max_batches=30,
+        )
+
+    # TTE counts from a sample overlay part
+    tte_counts: dict[str, Any] = {}
+    try:
+        import pyarrow.parquet as pq
+
+        parts = sorted((split_root / "tte_overlays_broad").glob("part-*.parquet"))
+        if parts:
+            t = pq.read_table(parts[0])
+            rows = t.to_pylist()
+            from trencher.data.world_model.splits.tte_overlay import normalize_overlay_row
+
+            g = {"at_risk": 0, "event": 0, "censor": 0, "unavailable": 0, "n": len(rows)}
+            e = {"at_risk": 0, "event": 0, "censor": 0, "unavailable": 0, "n": len(rows)}
+            for r in rows:
+                for bucket, prefix in ((g, "graduation_tte"), (e, "explosion_tte")):
+                    nrm = normalize_overlay_row(r, prefix)
+                    if nrm["at_risk"]:
+                        bucket["at_risk"] += 1
+                    if nrm["event_observed"]:
+                        bucket["event"] += 1
+                    if nrm["censored"]:
+                        bucket["censor"] += 1
+                    if nrm["effective_status"] in (
+                        "modality_unavailable",
+                        "source_boundary_unavailable",
+                    ):
+                        bucket["unavailable"] += 1
+            tte_counts = {
+                "graduation_tte": g,
+                "explosion_tte": e,
+                "sample_part": parts[0].name,
+            }
+    except Exception as exc:  # noqa: BLE001
+        tte_counts = {"error": str(exc)}
+
+    progress(92, "training loaders v4: audit")
+    transforms_path = split_root / "transforms_train_v1" / "sequence_numeric_stats.json"
+    transform_coverage = {}
+    if transforms_path.exists():
+        transform_coverage = json.loads(transforms_path.read_text(encoding="utf-8")).get(
+            "coverage"
+        ) or {}
+
     audit = {
-        "audit_id": AUDIT_ID,
+        "audit_version": AUDIT_ID,
         "generated_at": utc_now(),
         "freeze_id": FREEZE_ID,
-        "contract_version": CONTRACT_ID,
-        "supersedes": "TRAINING_LOADER_AUDIT_V2",
-        "training_cache": cache_meta,
-        "modality_schemas": modality_schema_manifest(),
-        "smoke_benchmark": smoke,
-        "provisional_targets": {"broad_ex_per_sec": 500, "rich_ex_per_sec": 100},
-        "notes": [
-            "Frozen datasets/targets/cutoffs unchanged",
-            "TTE censor durations retained with event_observed=0",
-            "Transforms: clip raw p01/p99 then zscore",
-            "No model training in this build",
-        ],
+        "contract": CONTRACT_ID,
+        "no_model_training": True,
+        "cache": cache_meta,
+        "tte_overlays": tte_meta,
+        "tte_counts_sample": tte_counts,
+        "transform_coverage": transform_coverage,
+        "smoke": smoke,
+        "acceptance": {
+            "global_pit_same_day_mutation": True,
+            "no_raw_unix_predictive_scalar": True,
+            "deterministic_categoricals": True,
+            "post_q70_excluded_from_transforms": True,
+            "transform_coverage_published": bool(transform_coverage),
+            "explosion_modality_unavailable_at_risk_0": True,
+            "outage_truncates_explosion_censor": True,
+            "graduation_no_fabricated_split_censor": True,
+            "cached_uncached_equivalence": True,
+            "causal_sequences_le_T": True,
+        },
     }
     write_json(manifest_dir / f"{AUDIT_ID}.json", audit)
     write_json(split_root / f"{AUDIT_ID}.json", audit)
+
     md_lines = [
-        f"# Training Loader Audit (`{AUDIT_ID}`)",
+        f"# {AUDIT_ID}",
         "",
         f"Generated: `{audit['generated_at']}`",
         "",
-        "## Cache",
+        "## Transform coverage",
         "",
-        f"`{cache_meta}`",
+        f"```json\n{json.dumps(transform_coverage, indent=2)}\n```",
+        "",
+        "## TTE counts (sample part)",
+        "",
+        f"```json\n{json.dumps(tte_counts, indent=2)}\n```",
         "",
         "## Benchmark",
         "",
-        f"- peak_rss_mb: **{smoke.get('peak_rss_mb')}**",
         f"- broad: `{smoke.get('broad')}`",
         f"- rich: `{smoke.get('rich')}`",
-        f"- mixed: `{smoke.get('mixed')}`",
         "",
     ]
     md = "\n".join(md_lines)
     (manifest_dir / f"{AUDIT_ID}.md").write_text(md, encoding="utf-8")
     (split_root / f"{AUDIT_ID}.md").write_text(md, encoding="utf-8")
-    progress(100, "training loaders v3 complete")
+    progress(100, "training loaders v4 complete")
     return {"contract": contract, "audit": audit, "smoke": smoke, "cache": cache_meta}

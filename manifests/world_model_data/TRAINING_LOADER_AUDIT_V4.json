@@ -1,0 +1,975 @@
+{
+  "audit_version": "TRAINING_LOADER_AUDIT_V4",
+  "generated_at": "2026-09-05T19:28:33.693076+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "contract": "TRAINING_LOADER_CONTRACT_V4",
+  "no_model_training": true,
+  "cache": {
+    "cache_version": "training_cache_v1",
+    "generated_at": "2026-09-05T19:28:14.980996+00:00",
+    "design": "slim_targets_plus_tte_by_mint_partition",
+    "broad": {
+      "tte_rows": 8449949,
+      "tte_partitions": 256,
+      "target_rows": 8449949,
+      "target_partitions": 256,
+      "joined_rows": 8449949,
+      "slim_columns_n": 1
+    },
+    "rich": {
+      "joined_rows": 51353,
+      "slim_columns_n": 239
+    },
+    "transforms": {
+      "rows_seen": 718471,
+      "columns": [
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted",
+        "trades",
+        "buys",
+        "sells",
+        "buy_sol",
+        "sell_sol",
+        "unique_mints",
+        "unique_wallets",
+        "daily_network_launches",
+        "daily_network_graduations",
+        "daily_network_trades",
+        "daily_network_buy_volume_sol",
+        "daily_network_graduation_rate",
+        "prior_rank"
+      ],
+      "order": "clip_raw_p01_p99_then_zscore",
+      "coverage": {
+        "transform_order": "clip_raw_p01_p99_then_zscore",
+        "fit_scope": "train_obs_unique_rows_pre_q70",
+        "max_event_time": 1782869641.017306,
+        "transformed_continuous_channels": [
+          "buy_sol",
+          "buys",
+          "curve_pct_depleted",
+          "daily_network_buy_volume_sol",
+          "daily_network_graduation_rate",
+          "daily_network_graduations",
+          "daily_network_launches",
+          "daily_network_trades",
+          "price_sol",
+          "prior_rank",
+          "sell_sol",
+          "sells",
+          "sol_amount",
+          "token_amount",
+          "trades",
+          "unique_mints",
+          "unique_wallets",
+          "v_sol",
+          "v_tok"
+        ],
+        "missing_or_empty_fit": [
+          "account_key_count",
+          "balance_change_count",
+          "compute_units_consumed",
+          "delta_ui",
+          "fee_lamports",
+          "global_launches_1h",
+          "global_launches_24h",
+          "global_migrations_1h",
+          "global_migrations_24h",
+          "inner_instruction_groups",
+          "log_message_count",
+          "post_ui_amount",
+          "pre_ui_amount",
+          "priority_fee_lamports",
+          "value"
+        ],
+        "intentionally_untransformed": {
+          "relative_time_raw": [
+            "rel_dt",
+            "interarrival"
+          ],
+          "bounded_ordinals": [
+            "decimals"
+          ],
+          "never_normalize": [
+            "masks",
+            "binary_flags",
+            "categorical_ids",
+            "graph_node_ids"
+          ]
+        },
+        "rows_seen": 718471,
+        "column_stats_n": {
+          "sol_amount": 626991.0,
+          "token_amount": 718471.0,
+          "price_sol": 626991.0,
+          "v_sol": 515580.0,
+          "v_tok": 590942.0,
+          "curve_pct_depleted": 515580.0,
+          "trades": 1666258.0,
+          "buys": 1666258.0,
+          "sells": 1666258.0,
+          "buy_sol": 1666258.0,
+          "sell_sol": 1666258.0,
+          "unique_mints": 1666258.0,
+          "unique_wallets": 1666258.0,
+          "daily_network_launches": 26.0,
+          "daily_network_graduations": 26.0,
+          "daily_network_trades": 26.0,
+          "daily_network_buy_volume_sol": 26.0,
+          "daily_network_graduation_rate": 26.0,
+          "prior_rank": 2125004.0
+        }
+      },
+      "max_event_time": 1782869641.017306
+    },
+    "notes": [
+      "Frozen stores untouched",
+      "Slim training-head columns only (not full frozen target width)",
+      "Partition-aligned with observation_assignments_broad"
+    ]
+  },
+  "tte_overlays": {
+    "generated_at": "2026-09-05T19:26:10.293375+00:00",
+    "q70": 1782869641.017306,
+    "q85": 1783459140.3081825,
+    "corpus_end_unix": 1784073600.0,
+    "rule": "event_time < split_end may remain observed; else admin right-censor",
+    "never_admin_censor_to_negative": true,
+    "stats": {
+      "broad_rows": 8449949,
+      "broad_grad_admin_censored": 1522,
+      "broad_expl_admin_censored": 5773322,
+      "rich_rows": 51353,
+      "rich_grad_admin_censored": 0,
+      "rich_expl_admin_censored": 28717
+    },
+    "artifacts": {
+      "broad": "data/external/world_model/splits/split_v1/tte_overlays_broad",
+      "rich": "data/external/world_model/splits/split_v1/tte_overlays_rich.parquet"
+    }
+  },
+  "tte_counts_sample": {
+    "graduation_tte": {
+      "at_risk": 2935,
+      "event": 2905,
+      "censor": 30,
+      "unavailable": 495999,
+      "n": 500000
+    },
+    "explosion_tte": {
+      "at_risk": 437471,
+      "event": 9667,
+      "censor": 427804,
+      "unavailable": 21057,
+      "n": 500000
+    },
+    "sample_part": "part-00000.parquet"
+  },
+  "transform_coverage": {
+    "transform_order": "clip_raw_p01_p99_then_zscore",
+    "fit_scope": "train_obs_unique_rows_pre_q70",
+    "max_event_time": 1782869641.017306,
+    "transformed_continuous_channels": [
+      "account_key_count",
+      "balance_change_count",
+      "buy_sol",
+      "buys",
+      "compute_units_consumed",
+      "curve_pct_depleted",
+      "daily_network_buy_volume_sol",
+      "daily_network_graduation_rate",
+      "daily_network_graduations",
+      "daily_network_launches",
+      "daily_network_trades",
+      "delta_ui",
+      "fee_lamports",
+      "global_launches_1h",
+      "global_launches_24h",
+      "global_migrations_1h",
+      "global_migrations_24h",
+      "inner_instruction_groups",
+      "log_message_count",
+      "post_ui_amount",
+      "pre_ui_amount",
+      "price_sol",
+      "prior_rank",
+      "sell_sol",
+      "sells",
+      "sol_amount",
+      "token_amount",
+      "trades",
+      "unique_mints",
+      "unique_wallets",
+      "v_sol",
+      "v_tok",
+      "value"
+    ],
+    "empty_train_fit_identity_passthrough": [
+      "priority_fee_lamports"
+    ],
+    "missing_or_empty_fit": [
+      "priority_fee_lamports"
+    ],
+    "intentionally_untransformed": {
+      "relative_time_raw": [
+        "rel_dt",
+        "interarrival"
+      ],
+      "bounded_ordinals": [
+        "decimals"
+      ],
+      "never_normalize": [
+        "masks",
+        "binary_flags",
+        "categorical_ids",
+        "graph_node_ids"
+      ],
+      "empty_train_channels_note": "Channels with n=0 in train fit pass through unscaled (e.g. priority_fee_lamports often unavailable)."
+    },
+    "rows_seen": 718471,
+    "column_stats_n": {
+      "sol_amount": 626991.0,
+      "token_amount": 718471.0,
+      "price_sol": 626991.0,
+      "v_sol": 515580.0,
+      "v_tok": 590942.0,
+      "curve_pct_depleted": 515580.0,
+      "trades": 1666258.0,
+      "buys": 1666258.0,
+      "sells": 1666258.0,
+      "buy_sol": 1666258.0,
+      "sell_sol": 1666258.0,
+      "unique_mints": 1666258.0,
+      "unique_wallets": 1666258.0,
+      "daily_network_launches": 26.0,
+      "daily_network_graduations": 26.0,
+      "daily_network_trades": 26.0,
+      "daily_network_buy_volume_sol": 26.0,
+      "daily_network_graduation_rate": 26.0,
+      "fee_lamports": 10831.0,
+      "compute_units_consumed": 10831.0,
+      "priority_fee_lamports": 0.0,
+      "account_key_count": 10831.0,
+      "balance_change_count": 10831.0,
+      "log_message_count": 10831.0,
+      "inner_instruction_groups": 10831.0,
+      "value": 6641.0,
+      "pre_ui_amount": 4045.0,
+      "post_ui_amount": 4045.0,
+      "delta_ui": 4045.0,
+      "prior_rank": 2298423.0,
+      "global_launches_1h": 5000.0,
+      "global_launches_24h": 5000.0,
+      "global_migrations_1h": 1177.0,
+      "global_migrations_24h": 1177.0
+    }
+  },
+  "smoke": {
+    "batch_sizes": [
+      64
+    ],
+    "max_batches": 30,
+    "light": true,
+    "broad_bs64": {
+      "batch_size": 64,
+      "batches": 20,
+      "examples": 1280,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 188.09394766437654,
+      "steady_state_examples_per_sec": 1175.8989608083018,
+      "examples_per_sec": 770.9984777376309,
+      "batches_per_sec": 12.046851214650482,
+      "elapsed_sec": 1.6601848602294922,
+      "sequence_shapes": {
+        "creator": [
+          64,
+          256,
+          4
+        ],
+        "curve": [
+          64,
+          130,
+          7
+        ],
+        "events": [
+          64,
+          130,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "creator": [
+          "rel_dt",
+          "prior_rank",
+          "prior_is_mayhem_mode",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "creator": 80.2015625,
+        "curve": 15.53203125,
+        "events": 15.53203125,
+        "global": 128.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.00859375,
+        "curve": 0.00859375,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.7484375,
+        "modality_mask_curve": 0.87421875,
+        "modality_mask_events": 0.87421875,
+        "modality_mask_global": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": -0.08585930555669674,
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "duration_sec": null,
+          "event_observed": false,
+          "censored": false,
+          "at_risk": false,
+          "split_boundary_censored": false
+        },
+        "explosion_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 4999.632788142603,
+      "production": true
+    },
+    "broad": {
+      "batch_size": 64,
+      "batches": 20,
+      "examples": 1280,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 188.09394766437654,
+      "steady_state_examples_per_sec": 1175.8989608083018,
+      "examples_per_sec": 770.9984777376309,
+      "batches_per_sec": 12.046851214650482,
+      "elapsed_sec": 1.6601848602294922,
+      "sequence_shapes": {
+        "creator": [
+          64,
+          256,
+          4
+        ],
+        "curve": [
+          64,
+          130,
+          7
+        ],
+        "events": [
+          64,
+          130,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "creator": [
+          "rel_dt",
+          "prior_rank",
+          "prior_is_mayhem_mode",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "creator": 80.2015625,
+        "curve": 15.53203125,
+        "events": 15.53203125,
+        "global": 128.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.00859375,
+        "curve": 0.00859375,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.7484375,
+        "modality_mask_curve": 0.87421875,
+        "modality_mask_events": 0.87421875,
+        "modality_mask_global": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": -0.08585930555669674,
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "duration_sec": null,
+          "event_observed": false,
+          "censored": false,
+          "at_risk": false,
+          "split_boundary_censored": false
+        },
+        "explosion_tte": {
+          "duration_sec": 1461306.203560114,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 4999.632788142603,
+      "production": true
+    },
+    "rich_bs64": {
+      "batch_size": 64,
+      "batches": 20,
+      "examples": 1280,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 21.259375262836187,
+      "steady_state_examples_per_sec": 279.8419215497831,
+      "examples_per_sec": 126.26413248889591,
+      "batches_per_sec": 1.9728770701389986,
+      "elapsed_sec": 10.137479066848755,
+      "sequence_shapes": {
+        "curve": [
+          64,
+          200,
+          7
+        ],
+        "events": [
+          64,
+          256,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ],
+        "graph_token": [
+          64,
+          256,
+          7
+        ],
+        "micro": [
+          64,
+          6,
+          11
+        ],
+        "ownership": [
+          64,
+          6,
+          9
+        ],
+        "wallet_prior": [
+          64,
+          15952,
+          7
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "micro": [
+          "rel_dt",
+          "success",
+          "fee_lamports",
+          "compute_units_consumed",
+          "priority_fee_lamports",
+          "account_key_count",
+          "balance_change_count",
+          "log_message_count",
+          "inner_instruction_groups",
+          "availability_priority_fee",
+          "source_quality"
+        ],
+        "ownership": [
+          "rel_dt",
+          "event_kind_id",
+          "transfer_type_id",
+          "value",
+          "decimals",
+          "pre_ui_amount",
+          "post_ui_amount",
+          "delta_ui",
+          "source_quality"
+        ],
+        "graph_token": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ],
+        "wallet_prior": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "curve": 13.953125,
+        "events": 11.55390625,
+        "global": 128.0,
+        "graph_token": 12.796875,
+        "micro": 2.83515625,
+        "ownership": 1.66875,
+        "wallet_prior": 829.47421875
+      },
+      "truncation_rate_mean": {
+        "events": 0.00859375,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0109375
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.746875,
+        "modality_mask_events": 0.75625,
+        "modality_mask_global": 1.0,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.76015625,
+        "modality_mask_ownership": 0.725,
+        "modality_mask_wallet_prior": 0.846875
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": null,
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "duration_sec": null,
+          "event_observed": false,
+          "censored": false,
+          "at_risk": false,
+          "split_boundary_censored": false
+        },
+        "explosion_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 129.45880231012902,
+      "production": true
+    },
+    "rich": {
+      "batch_size": 64,
+      "batches": 20,
+      "examples": 1280,
+      "shuffle": true,
+      "used_training_cache": true,
+      "cold_start_examples_per_sec": 21.259375262836187,
+      "steady_state_examples_per_sec": 279.8419215497831,
+      "examples_per_sec": 126.26413248889591,
+      "batches_per_sec": 1.9728770701389986,
+      "elapsed_sec": 10.137479066848755,
+      "sequence_shapes": {
+        "curve": [
+          64,
+          200,
+          7
+        ],
+        "events": [
+          64,
+          256,
+          13
+        ],
+        "global": [
+          64,
+          128,
+          8
+        ],
+        "graph_token": [
+          64,
+          256,
+          7
+        ],
+        "micro": [
+          64,
+          6,
+          11
+        ],
+        "ownership": [
+          64,
+          6,
+          9
+        ],
+        "wallet_prior": [
+          64,
+          15952,
+          7
+        ]
+      },
+      "channel_schemas": {
+        "events": [
+          "rel_dt",
+          "interarrival",
+          "is_buy",
+          "side_id",
+          "sol_amount",
+          "token_amount",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "has_finite_price",
+          "source_quality"
+        ],
+        "curve": [
+          "rel_dt",
+          "price_sol",
+          "v_sol",
+          "v_tok",
+          "curve_pct_depleted",
+          "has_reserves",
+          "source_quality"
+        ],
+        "micro": [
+          "rel_dt",
+          "success",
+          "fee_lamports",
+          "compute_units_consumed",
+          "priority_fee_lamports",
+          "account_key_count",
+          "balance_change_count",
+          "log_message_count",
+          "inner_instruction_groups",
+          "availability_priority_fee",
+          "source_quality"
+        ],
+        "ownership": [
+          "rel_dt",
+          "event_kind_id",
+          "transfer_type_id",
+          "value",
+          "decimals",
+          "pre_ui_amount",
+          "post_ui_amount",
+          "delta_ui",
+          "source_quality"
+        ],
+        "graph_token": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ],
+        "wallet_prior": [
+          "rel_dt",
+          "edge_type_id",
+          "direction",
+          "sol_amount",
+          "token_amount",
+          "is_cohort_derived",
+          "source_quality"
+        ]
+      },
+      "length_means": {
+        "curve": 13.953125,
+        "events": 11.55390625,
+        "global": 128.0,
+        "graph_token": 12.796875,
+        "micro": 2.83515625,
+        "ownership": 1.66875,
+        "wallet_prior": 829.47421875
+      },
+      "truncation_rate_mean": {
+        "events": 0.00859375,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0109375
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.746875,
+        "modality_mask_events": 0.75625,
+        "modality_mask_global": 1.0,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.76015625,
+        "modality_mask_ownership": 0.725,
+        "modality_mask_wallet_prior": 0.846875
+      },
+      "target_status_example": {
+        "available": true,
+        "families_present": [
+          "barriers",
+          "execution",
+          "explosion_imminence",
+          "explosion_magnitude",
+          "explosion_tte",
+          "future_path_refs",
+          "graduation_binary",
+          "graduation_tte",
+          "mfe_mae",
+          "ownership",
+          "persistence",
+          "returns",
+          "survival"
+        ],
+        "returns_h60": {
+          "value": null,
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "duration_sec": null,
+          "event_observed": false,
+          "censored": false,
+          "at_risk": false,
+          "split_boundary_censored": false
+        },
+        "explosion_tte": {
+          "duration_sec": 2040905.5387551785,
+          "event_observed": false,
+          "censored": true
+        },
+        "barrier_sample": "censored",
+        "execution_sample": true
+      },
+      "target_families": [
+        "barriers",
+        "execution",
+        "explosion_imminence",
+        "explosion_magnitude",
+        "explosion_tte",
+        "future_path_refs",
+        "graduation_binary",
+        "graduation_tte",
+        "mfe_mae",
+        "ownership",
+        "persistence",
+        "returns",
+        "survival"
+      ],
+      "causal_failures": 0,
+      "estimated_epoch_wall_clock_sec": 129.45880231012902,
+      "production": true
+    },
+    "mixed": {
+      "batches": 5,
+      "batches_per_sec": 0.9140288110462814,
+      "elapsed_sec": 5.470287084579468,
+      "batch_size": 64
+    },
+    "peak_rss_mb": 9867.53125
+  },
+  "acceptance": {
+    "global_pit_same_day_mutation": true,
+    "no_raw_unix_predictive_scalar": true,
+    "deterministic_categoricals": true,
+    "post_q70_excluded_from_transforms": true,
+    "transform_coverage_published": true,
+    "explosion_modality_unavailable_at_risk_0": true,
+    "outage_truncates_explosion_censor": true,
+    "graduation_no_fabricated_split_censor": true,
+    "cached_uncached_equivalence": true,
+    "causal_sequences_le_T": true
+  }
+}

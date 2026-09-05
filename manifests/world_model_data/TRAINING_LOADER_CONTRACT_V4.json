@@ -1,0 +1,428 @@
+{
+  "contract_version": "TRAINING_LOADER_CONTRACT_V4",
+  "supersedes": "TRAINING_LOADER_CONTRACT_V3",
+  "generated_at": "2026-09-05T19:24:51.073991+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "depends_on_splits": "SPLIT_CONTRACT_V1",
+  "no_model_training": true,
+  "runtime": "numpy_pyarrow_streaming_production_cached",
+  "production_loader": true,
+  "synthetic_path": "tests_only",
+  "training_cache": {
+    "id": "training_cache_v1",
+    "design": "slim_targets_plus_tte_by_mint_partition",
+    "duplicates_full_targets": false
+  },
+  "global_pit": {
+    "second_buckets": "last_completed_second(T)",
+    "daily_aggregates": "last_fully_completed_utc_day_before_T",
+    "never_use_incomplete_current_utc_day": true,
+    "raw_unix_in_structured_state": false,
+    "debug_meta_only": [
+      "pit_last_completed_second",
+      "pit_last_completed_utc_day"
+    ]
+  },
+  "categoricals": {
+    "policy": "deterministic_fixed_vocab_UNK0",
+    "never_python_hash": true,
+    "vocabs": {
+      "unk": 0,
+      "hash_policy": "never_python_hash",
+      "unknown_policy": "UNK=0",
+      "side": {
+        "": 0,
+        "unknown": 0,
+        "buy": 1,
+        "sell": 2
+      },
+      "edge_type": {
+        "": 0,
+        "unknown": 0,
+        "creator_token": 1,
+        "wallet_token_buy": 2,
+        "wallet_token_sell": 3,
+        "spl_transfer_ownership": 4,
+        "native_sol_funding": 5
+      },
+      "event_kind": {
+        "": 0,
+        "unknown": 0,
+        "rpc_pre_post_token_balance": 1,
+        "bq_spl_transfer": 2
+      },
+      "transfer_type": {
+        "": 0,
+        "unknown": 0,
+        "spl-transfer": 1,
+        "burn": 2,
+        "mintTo": 3
+      },
+      "source_quality": {
+        "": 0,
+        "unknown": 0,
+        "observed": 1,
+        "ok": 1,
+        "high": 1,
+        "good": 1,
+        "derived": 2,
+        "low": 3,
+        "bad": 3,
+        "missing": 0
+      }
+    }
+  },
+  "tte_training_representation": {
+    "fields": [
+      "duration_sec",
+      "event_observed",
+      "censored",
+      "at_risk",
+      "effective_status",
+      "split_boundary_censored"
+    ],
+    "rule_event_before_boundary": "duration=event-T; event_observed=1",
+    "rule_event_at_or_after_boundary": "hide event; censor to earliest(split, source, outage) when applicable",
+    "rule_unresolved_explosion": "censor only while pump_trades continuous coverage; else at_risk=0 unavailable; Jul3 gap truncates",
+    "rule_unresolved_graduation": "no fabricated split_end-T without proven migration absence coverage; at_risk=0 unless continuous censor endpoint exists",
+    "rule_explosion_modality_unavailable": "at_risk=0; never long no-explosion survival",
+    "rule_already_occurred": "at_risk=0; left_truncated; not a new future event",
+    "retain_censor_duration": true,
+    "source_coverage_registry": "target_source_coverage_v2"
+  },
+  "transforms": {
+    "order": "clip_raw_p01_p99_then_zscore",
+    "fit_on": "train_obs_unique_rows_pre_q70",
+    "never_fit_on": [
+      "val",
+      "test",
+      "post_q70_train_mint_continuation"
+    ],
+    "do_not_normalize": [
+      "masks",
+      "binary_flags",
+      "categorical_ids",
+      "graph_node_ids",
+      "rel_dt",
+      "interarrival",
+      "decimals"
+    ],
+    "relative_time_policy": "raw_exempt_not_zscored",
+    "no_raw_unix_as_generic_feature": true
+  },
+  "modality_schemas": {
+    "events": {
+      "channels": [
+        "rel_dt",
+        "interarrival",
+        "is_buy",
+        "side_id",
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted",
+        "has_reserves",
+        "has_finite_price",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "interarrival",
+        "sol_amount",
+        "token_amount",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted"
+      ],
+      "binary": [
+        "is_buy",
+        "has_reserves",
+        "has_finite_price"
+      ],
+      "categorical": [
+        "side_id",
+        "source_quality"
+      ]
+    },
+    "curve": {
+      "channels": [
+        "rel_dt",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted",
+        "has_reserves",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "price_sol",
+        "v_sol",
+        "v_tok",
+        "curve_pct_depleted"
+      ],
+      "binary": [
+        "has_reserves"
+      ],
+      "categorical": [
+        "source_quality"
+      ]
+    },
+    "creator": {
+      "channels": [
+        "rel_dt",
+        "prior_rank",
+        "prior_is_mayhem_mode",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "prior_rank"
+      ],
+      "binary": [
+        "prior_is_mayhem_mode"
+      ]
+    },
+    "micro": {
+      "channels": [
+        "rel_dt",
+        "success",
+        "fee_lamports",
+        "compute_units_consumed",
+        "priority_fee_lamports",
+        "account_key_count",
+        "balance_change_count",
+        "log_message_count",
+        "inner_instruction_groups",
+        "availability_priority_fee",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "fee_lamports",
+        "compute_units_consumed",
+        "priority_fee_lamports",
+        "account_key_count",
+        "balance_change_count",
+        "log_message_count",
+        "inner_instruction_groups"
+      ],
+      "binary": [
+        "success",
+        "availability_priority_fee"
+      ]
+    },
+    "ownership": {
+      "channels": [
+        "rel_dt",
+        "event_kind_id",
+        "transfer_type_id",
+        "value",
+        "decimals",
+        "pre_ui_amount",
+        "post_ui_amount",
+        "delta_ui",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "value",
+        "decimals",
+        "pre_ui_amount",
+        "post_ui_amount",
+        "delta_ui"
+      ],
+      "categorical": [
+        "event_kind_id",
+        "transfer_type_id",
+        "source_quality"
+      ]
+    },
+    "graph_token": {
+      "channels": [
+        "rel_dt",
+        "edge_type_id",
+        "direction",
+        "sol_amount",
+        "token_amount",
+        "is_cohort_derived",
+        "source_quality"
+      ],
+      "continuous": [
+        "rel_dt",
+        "sol_amount",
+        "token_amount"
+      ],
+      "binary": [
+        "is_cohort_derived"
+      ],
+      "categorical": [
+        "edge_type_id",
+        "direction",
+        "source_quality"
+      ],
+      "node_ids": "graph_src_idx/graph_dst_idx indexing only"
+    },
+    "wallet_prior": {
+      "channels": [
+        "rel_dt",
+        "edge_type_id",
+        "direction",
+        "sol_amount",
+        "token_amount",
+        "is_cohort_derived",
+        "source_quality"
+      ],
+      "node_ids": "wallet_node_idx indexing only"
+    },
+    "global": {
+      "channels": [
+        "rel_dt",
+        "trades",
+        "buys",
+        "sells",
+        "buy_sol",
+        "sell_sol",
+        "unique_mints",
+        "unique_wallets"
+      ],
+      "policy": "last_completed_second_only",
+      "daily_policy": "last_fully_completed_utc_day_before_T"
+    },
+    "vocabs": {
+      "unk": 0,
+      "hash_policy": "never_python_hash",
+      "unknown_policy": "UNK=0",
+      "side": {
+        "": 0,
+        "unknown": 0,
+        "buy": 1,
+        "sell": 2
+      },
+      "edge_type": {
+        "": 0,
+        "unknown": 0,
+        "creator_token": 1,
+        "wallet_token_buy": 2,
+        "wallet_token_sell": 3,
+        "spl_transfer_ownership": 4,
+        "native_sol_funding": 5
+      },
+      "event_kind": {
+        "": 0,
+        "unknown": 0,
+        "rpc_pre_post_token_balance": 1,
+        "bq_spl_transfer": 2
+      },
+      "transfer_type": {
+        "": 0,
+        "unknown": 0,
+        "spl-transfer": 1,
+        "burn": 2,
+        "mintTo": 3
+      },
+      "source_quality": {
+        "": 0,
+        "unknown": 0,
+        "observed": 1,
+        "ok": 1,
+        "high": 1,
+        "good": 1,
+        "derived": 2,
+        "low": 3,
+        "bad": 3,
+        "missing": 0
+      }
+    },
+    "transform_exemptions": {
+      "relative_time_raw": [
+        "rel_dt",
+        "interarrival"
+      ],
+      "bounded_ordinals": [
+        "decimals"
+      ],
+      "never_normalize": [
+        "masks",
+        "binary_flags",
+        "categorical_ids",
+        "graph_node_ids",
+        "rel_dt",
+        "interarrival",
+        "decimals"
+      ]
+    }
+  },
+  "target_families": [
+    "returns",
+    "barriers",
+    "mfe_mae",
+    "survival",
+    "graduation_binary",
+    "graduation_tte",
+    "explosion_imminence",
+    "explosion_tte",
+    "explosion_magnitude",
+    "persistence",
+    "ownership",
+    "execution",
+    "future_path_refs"
+  ],
+  "forbidden_feature_keys": [
+    "artifact_id",
+    "base58_address",
+    "base_split",
+    "censor_reason",
+    "creator",
+    "label_semantics",
+    "mint",
+    "model_state_digest",
+    "observation_dataset_version",
+    "observation_id",
+    "pit_engine_version",
+    "purge_reason",
+    "sequence_store_version",
+    "source_freeze_version",
+    "source_identity",
+    "split_assignment",
+    "target_dataset_version",
+    "tx_signature",
+    "wallet",
+    "wallet_id"
+  ],
+  "window_presets": [
+    {
+      "name": "last_n_64",
+      "kind": "last_n",
+      "n": 64
+    },
+    {
+      "name": "last_n_256",
+      "kind": "last_n",
+      "n": 256
+    },
+    {
+      "name": "last_10s",
+      "kind": "last_seconds",
+      "seconds": 10
+    },
+    {
+      "name": "last_30s",
+      "kind": "last_seconds",
+      "seconds": 30
+    },
+    {
+      "name": "last_2m",
+      "kind": "last_seconds",
+      "seconds": 120
+    },
+    {
+      "name": "full_capped_4096",
+      "kind": "full_capped",
+      "cap": 4096
+    }
+  ]
+}
