@@ -760,10 +760,11 @@ def build_broad_targets_v1(
                     flat[f"precursor_{pk}"] = pv
                 explosion_rows.append(flat)
             prim = primary_event(events)
-            if prim and prim.get("explosion_exists"):
+            if prim:
                 primary_by_mint[mint] = prim
-                primary_event_count += 1
-                mints_with_primary.add(mint)
+                if prim.get("explosion_exists"):
+                    primary_event_count += 1
+                    mints_with_primary.add(mint)
         if explosion_rows:
             pq.write_table(
                 pa.Table.from_pylist(explosion_rows),

@@ -8,11 +8,13 @@ from pathlib import Path
 from typing import Any
 
 from trencher.data.world_model.broad.audit import build_broad_supervision_audit_v1
+from trencher.data.world_model.broad.audit_v2 import build_broad_supervision_audit_v2
 from trencher.data.world_model.broad.graduation_censor import graduation_censor_decision
 from trencher.data.world_model.broad.observations import build_broad_observations_v1
 from trencher.data.world_model.broad.population import build_broad_population_v1
 from trencher.data.world_model.broad.sequences import build_broad_sequences_v1
 from trencher.data.world_model.broad.targets import build_broad_targets_v1
+from trencher.data.world_model.broad.targets_v2 import build_broad_targets_v2_from_v1
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 
 logger = logging.getLogger(__name__)
@@ -139,6 +141,27 @@ def build_broad_supervision_v1(
             ),
         )
 
+    if "targets_v2" in phases:
+        _log_progress("targets_v2", "start")
+        t0 = time.perf_counter()
+        metas["targets_v2"] = build_broad_targets_v2_from_v1(
+            world_root=world_root,
+            pump_root=pump_root,
+            broad_root=broad_root,
+        )
+        timings["targets_v2"] = time.perf_counter() - t0
+        _log_progress(
+            "targets_v2",
+            "done",
+            seconds=timings["targets_v2"],
+            observations_processed=(metas["targets_v2"] or {}).get(
+                "observations_processed"
+            ),
+            primary_explosion_events=(metas["targets_v2"] or {}).get(
+                "primary_explosion_events"
+            ),
+        )
+
     if "audit" in phases:
         _log_progress("audit", "start")
         t0 = time.perf_counter()
@@ -152,6 +175,20 @@ def build_broad_supervision_v1(
         )
         timings["audit"] = time.perf_counter() - t0
         _log_progress("audit", "done", seconds=timings["audit"])
+
+    if "audit_v2" in phases:
+        _log_progress("audit_v2", "start")
+        t0 = time.perf_counter()
+        metas["audit_v2"] = build_broad_supervision_audit_v2(
+            world_root=world_root,
+            manifest_dir=manifest_dir,
+            pump_root=pump_root,
+            broad_root=broad_root,
+            phase_timings=timings,
+            phase_metas=metas,
+        )
+        timings["audit_v2"] = time.perf_counter() - t0
+        _log_progress("audit_v2", "done", seconds=timings["audit_v2"])
 
     summary["timings_sec"] = timings
     summary["metas"] = {

@@ -156,12 +156,15 @@ def explosion_imminence_counts(
         else:
             n_unavail += 1
     pos_tokens &= valid_tokens
+    neg_tokens = valid_tokens - pos_tokens
     return {
         "horizon_sec": horizon_sec,
         "valid_tokens": valid_tokens,
         "pos_tokens": pos_tokens,
+        "neg_tokens": neg_tokens,
         "valid_observations": n_valid,
         "positive_observations": n_pos,
+        "negative_observations": n_valid - n_pos,
         "censored_observations": n_cens,
         "unavailable_observations": n_unavail,
     }
@@ -541,9 +544,14 @@ def aggregate_sufficiency_streaming(
     expl_pos_tok: dict[int, set[str]] = {
         h: set() for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
     }
+    expl_neg_tok: dict[int, set[str]] = {
+        h: set() for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+    }
     expl_valid_obs = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
     expl_pos_obs = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
+    expl_neg_obs = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
     expl_cens = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
+    expl_unavail = {h: 0 for h in EXPLOSION_IMMINENCE_HORIZONS_SEC}
 
     pre_expl = 0
     holder_tok: set[str] = set()
@@ -667,8 +675,14 @@ def aggregate_sufficiency_streaming(
                         expl_pos_obs[h] += 1
                         if mint:
                             expl_pos_tok[h].add(mint)
+                    elif est == STATUS_VALID_NEGATIVE:
+                        expl_neg_obs[h] += 1
+                        if mint:
+                            expl_neg_tok[h].add(mint)
                 elif est in CENSORED_LIKE or est == "known_source_outage":
                     expl_cens[h] += 1
+                else:
+                    expl_unavail[h] += 1
 
             if (
                 colmap.get("explosion_already_started_at_t", [None] * n)[i] is False
@@ -871,6 +885,30 @@ def aggregate_sufficiency_streaming(
         },
         "explosion_imminence_valid_tokens_by_horizon": {
             str(h): len(expl_valid_tok[h]) for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
+        },
+        "explosion_imminence_by_horizon": {
+            str(h): {
+                "valid_observations": expl_valid_obs[h],
+                "valid_negative_observations": expl_neg_obs[h],
+                "valid_positive_observations": expl_pos_obs[h],
+                "unique_tokens_with_valid_supervision": len(expl_valid_tok[h]),
+                "distinct_positive_tokens": len(expl_pos_tok[h] & expl_valid_tok[h]),
+                "distinct_valid_negative_tokens": len(
+                    expl_neg_tok[h] & expl_valid_tok[h]
+                ),
+                "censored_observations": expl_cens[h],
+                "unavailable_observations": expl_unavail[h],
+                "prevalence_among_valid_observations": (
+                    expl_pos_obs[h] / expl_valid_obs[h] if expl_valid_obs[h] else None
+                ),
+                "prevalence_among_valid_tokens": (
+                    (len(expl_pos_tok[h] & expl_valid_tok[h]) / len(expl_valid_tok[h]))
+                    if expl_valid_tok[h]
+                    else None
+                ),
+                "independent_primary_explosion_events": primary_explosion_events,
+            }
+            for h in EXPLOSION_IMMINENCE_HORIZONS_SEC
         },
         "pre_explosion_observations": pre_expl,
     }

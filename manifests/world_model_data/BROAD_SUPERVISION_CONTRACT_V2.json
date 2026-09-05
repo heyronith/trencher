@@ -1,0 +1,27 @@
+{
+  "contract_version": "BROAD_SUPERVISION_CONTRACT_V2",
+  "generated_at": "2026-09-05T14:29:19.351802+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "supersedes": "BROAD_SUPERVISION_CONTRACT_V1",
+  "scope": "broad_event_curve_supervision",
+  "explosion_primary_semantics": "Store every primary_event(events) whether explosion_exists is true or false \u2014 match target_dataset_v3. Count primary explosion events only when explosion_exists is true.",
+  "targets": {
+    "v1_preserved": "broad_targets_v1",
+    "v2_repaired": "broad_targets_v2",
+    "v2_repair": "explosion_columns_only_from_stored_explosion_events"
+  },
+  "frozen_semantics_not_modified": [
+    "world_model_freeze_v1",
+    "pit_v4",
+    "observation_dataset_v1",
+    "sequence_dataset_v2",
+    "model_input_contract_v2",
+    "target_dataset_v3_target_values",
+    "target_contract_v3",
+    "target_source_coverage_v2",
+    "explosion_detector_v1"
+  ],
+  "no_splits": true,
+  "no_training": true,
+  "no_external_acquisition": true
+}

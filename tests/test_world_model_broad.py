@@ -319,6 +319,124 @@ def test_sufficiency_positive_subseteq_valid() -> None:
         pass
 
 
+def test_broad_primary_absent_yields_valid_negative_imminence() -> None:
+    """Rich semantics: primary exists=False must not become modality_unavailable."""
+    from trencher.data.world_model.targets.compute import compute_explosion_obs
+    from trencher.data.world_model.targets.explosion import (
+        PRIMARY_DEFINITION_ID,
+        primary_event,
+    )
+    from trencher.data.world_model.targets.status import (
+        STATUS_MODALITY_UNAVAILABLE,
+        STATUS_VALID_NEGATIVE,
+    )
+
+    class _Cov:
+        def covers_window(self, start: float, end: float) -> bool:
+            return True
+
+        def absence_status(self, start: float, end: float) -> str:
+            return STATUS_VALID_NEGATIVE
+
+    class _Reg:
+        pump_trades = _Cov()
+
+    events = [
+        {
+            "definition_id": "explosion_conservative_v1",
+            "definition_label": "conservative",
+            "explosion_exists": False,
+            "onset_unix": None,
+            "censoring_status": None,
+        },
+        {
+            "definition_id": PRIMARY_DEFINITION_ID,
+            "definition_label": "primary",
+            "explosion_exists": False,
+            "onset_unix": None,
+            "censoring_status": None,
+        },
+        {
+            "definition_id": "explosion_aggressive_v1",
+            "definition_label": "aggressive",
+            "explosion_exists": False,
+            "onset_unix": None,
+            "censoring_status": None,
+        },
+    ]
+    prim = primary_event(events)
+    assert prim is not None
+    assert prim["explosion_exists"] is False
+
+    # Broken broad gate: drop primary when exists=False → modality_unavailable
+    broken = compute_explosion_obs(
+        T=1_800_000_000.0,
+        primary=None,
+        all_defs=events,
+        coverage=_Reg(),
+        ref={"price_target_available": False, "reference_price": None},
+    )
+    assert broken["explosion_within_60s_status"] == STATUS_MODALITY_UNAVAILABLE
+
+    # Fixed / rich semantics: retain primary with exists=False
+    fixed = compute_explosion_obs(
+        T=1_800_000_000.0,
+        primary=prim,
+        all_defs=events,
+        coverage=_Reg(),
+        ref={"price_target_available": False, "reference_price": None},
+    )
+    assert fixed["explosion_within_60s"] is False
+    assert fixed["explosion_within_60s_status"] == STATUS_VALID_NEGATIVE
+
+
+def test_repair_explosion_row_matches_rich_primary_semantics() -> None:
+    from trencher.data.world_model.broad.targets_v2 import (
+        repair_explosion_columns_for_row,
+    )
+    from trencher.data.world_model.targets.explosion import PRIMARY_DEFINITION_ID
+    from trencher.data.world_model.targets.status import (
+        STATUS_MODALITY_UNAVAILABLE,
+        STATUS_VALID_NEGATIVE,
+    )
+
+    class _Cov:
+        def covers_window(self, start: float, end: float) -> bool:
+            return True
+
+        def absence_status(self, start: float, end: float) -> str:
+            return STATUS_VALID_NEGATIVE
+
+    class _Reg:
+        pump_trades = _Cov()
+
+    prim = {
+        "definition_id": PRIMARY_DEFINITION_ID,
+        "definition_label": "primary",
+        "explosion_exists": False,
+        "onset_unix": None,
+        "censoring_status": None,
+    }
+    row = {
+        "observation_id": "m:1",
+        "mint": "m",
+        "observation_time_t": 1_800_000_000.0,
+        "price_target_available": False,
+        "reference_price": None,
+        "explosion_within_60s": None,
+        "explosion_within_60s_status": STATUS_MODALITY_UNAVAILABLE,
+        "h300_status": STATUS_VALID_NEGATIVE,
+        "target_dataset_version": "broad_targets_v1",
+    }
+    repaired = repair_explosion_columns_for_row(
+        row, primary=prim, all_defs=[prim], coverage=_Reg()
+    )
+    assert repaired["explosion_within_60s"] is False
+    assert repaired["explosion_within_60s_status"] == STATUS_VALID_NEGATIVE
+    assert repaired["h300_status"] == STATUS_VALID_NEGATIVE  # non-explosion unchanged
+    assert repaired["target_dataset_version"] == "broad_targets_v2"
+
+
 def test_graduation_censor_decision_documents_conservative_retain(
     tmp_path: Path,
 ) -> None:
