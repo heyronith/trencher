@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -308,6 +309,263 @@ def _iter_obs_for_partition(index_root: Path, part: str):
         yield from pq.read_table(path).to_pylist()
 
 
+def _py_to_pa_type(value: Any) -> pa.DataType | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return pa.bool_()
+    if isinstance(value, (int, np.integer)) and not isinstance(value, bool):
+        return pa.int64()
+    if isinstance(value, (float, np.floating)):
+        return pa.float64()
+    if isinstance(value, str):
+        return pa.string()
+    return pa.string()
+
+
+def _heuristic_pa_type(name: str) -> pa.DataType:
+    """Stable Arrow type when a column is all-null in prototypes."""
+    if name.endswith("_execution_target_available") or name.endswith(
+        ("_start_idx", "_end_idx", "_count")
+    ):
+        return pa.int64()
+    if name.endswith(
+        (
+            "_status",
+            "_outcome",
+            "_source",
+            "_note",
+            "_type",
+            "_regime",
+            "_trigger",
+            "_version",
+            "_semantics",
+            "_pseudolabel",
+        )
+    ) or name in {
+        "observation_id",
+        "mint",
+        "trigger_value",
+        "explosion_definition_primary",
+        "ownership_evidence_level",
+        "future_path_store",
+        "survival_definition",
+    }:
+        return pa.string()
+    if (
+        name.endswith(
+            (
+                "_available",
+                "_exists",
+                "_censored",
+                "_graduated",
+                "_observed",
+                "_reconstructable",
+            )
+        )
+        or name.startswith("explosion_reaches_")
+        or name
+        in {
+            "label_only",
+            "explosion_already_started_at_t",
+            "explosion_event_observed",
+            "explosion_right_censored",
+        }
+    ):
+        return pa.bool_()
+    return pa.float64()
+
+
+def _schema_from_rows(rows: list[dict[str, Any]]) -> pa.Schema:
+    keys: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        for key in row:
+            if key not in seen:
+                seen.add(key)
+                keys.append(key)
+    fields: list[pa.Field] = []
+    for key in keys:
+        inferred: pa.DataType | None = None
+        for row in rows:
+            inferred = _py_to_pa_type(row.get(key))
+            if inferred is not None:
+                break
+        fields.append(pa.field(key, inferred or _heuristic_pa_type(key), nullable=True))
+    return pa.schema(fields)
+
+
+def _normalize_row(row: dict[str, Any], schema: pa.Schema) -> dict[str, Any]:
+    return {field.name: row.get(field.name) for field in schema}
+
+
+def _synthetic_path_arr(*, n: int = 8, t0: float = 1_800_000_000.0) -> dict[str, np.ndarray]:
+    t = t0 + np.arange(n, dtype=np.float64) * 30.0
+    price = np.linspace(1.0, 2.5, n, dtype=np.float64)
+    return {
+        "t": t,
+        "price": price,
+        "regime": np.zeros(n, dtype=np.int8),
+        "is_buy": np.ones(n, dtype=np.int8),
+        "sol": np.full(n, 0.5, dtype=np.float64),
+        "token": np.full(n, 1e6, dtype=np.float64),
+        "wallet": np.asarray([f"w{i}" for i in range(n)], dtype=object),
+        "v_sol": np.full(n, 30.0, dtype=np.float64),
+        "v_tok": np.full(n, 1e9, dtype=np.float64),
+        "curve": np.linspace(0.0, 0.4, n, dtype=np.float64),
+        "price_source": np.asarray(["trade_price_sol"] * n, dtype=object),
+        "path_idx": np.arange(n, dtype=np.int64),
+        "usable_price": np.ones(n, dtype=bool),
+    }
+
+
+def _prototype_target_and_ref_rows(coverage: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Rows covering sparse and dense compute_* branches for a fixed Parquet schema."""
+    target_rows: list[dict[str, Any]] = []
+    ref_rows: list[dict[str, Any]] = []
+
+    def _one(
+        *,
+        mint: str,
+        arr: dict[str, np.ndarray],
+        T: float,
+        migration_unix: float | None,
+        primary: dict[str, Any] | None,
+        all_defs: list[dict[str, Any]],
+        ownership_meta: dict[str, Any] | None,
+    ) -> None:
+        if arr["t"].size == 0:
+            ref = {
+                "reference_price": None,
+                "reference_price_time": None,
+                "reference_price_source": None,
+                "reference_price_age_sec": None,
+                "price_target_available": False,
+            }
+            regime = None
+        else:
+            ref = reference_price_at_t(arr, T)
+            regime = ref.get("reference_regime")
+        row: dict[str, Any] = {
+            "observation_id": f"{mint}:proto",
+            "mint": mint,
+            "observation_time_t": T,
+            "token_age_seconds": 0.0,
+            "observation_trigger": "fixed_age",
+            "trigger_value": "launch",
+            "target_dataset_version": "broad_targets_v1",
+            "label_semantics": "target_dataset_v3_compute_reuse",
+            "label_only": True,
+            "reference_regime": regime,
+        }
+        row.update(
+            {
+                k: ref.get(k)
+                for k in (
+                    "reference_price",
+                    "reference_price_time",
+                    "reference_price_source",
+                    "reference_price_age_sec",
+                    "price_target_available",
+                )
+            }
+        )
+        last_path_t = float(arr["t"][-1]) if arr["t"].size else None
+        row.update(compute_return_barrier_mfe(arr, T=T, ref=ref, last_path_t=last_path_t))
+        row.update(
+            compute_activity_survival(
+                arr, T=T, coverage=coverage, migration_unix=migration_unix
+            )
+        )
+        row.update(
+            compute_graduation(T=T, migration_unix=migration_unix, coverage=coverage)
+        )
+        row.update(compute_persistence(arr, T=T, coverage=coverage))
+        row.update(
+            compute_explosion_obs(
+                T=T, primary=primary, all_defs=all_defs, coverage=coverage, ref=ref
+            )
+        )
+        row.update(compute_execution(arr, T=T, ref=ref))
+        row.update(
+            compute_ownership_targets(mint=mint, T=T, ownership_meta=ownership_meta)
+        )
+        target_rows.append(row)
+        ref_rows.append(
+            {
+                "observation_id": row["observation_id"],
+                "mint": mint,
+                "observation_time_t": T,
+                "future_path_store": "broad_partitioned_path_v1",
+                **future_path_refs_for_obs(arr, T=T),
+            }
+        )
+
+    empty = _empty_path_arr()
+    rich = _synthetic_path_arr()
+    t0 = float(rich["t"][0])
+    defs = [
+        {
+            "definition_label": label,
+            "explosion_exists": True,
+            "onset_unix": t0 + 90.0,
+            "peak_unix": t0 + 150.0,
+            "end_unix": t0 + 200.0,
+            "peak_price": 3.0,
+            "explosion_magnitude": 1.2,
+            "onset_to_peak_sec": 60.0,
+            "max_drawdown_after_peak": 0.3,
+            "censoring_status": None,
+        }
+        for label in ("conservative", "primary", "aggressive")
+    ]
+    primary = {**defs[1], "definition_id": "explosion_primary_v1"}
+    _one(
+        mint="proto_empty",
+        arr=empty,
+        T=t0,
+        migration_unix=None,
+        primary=None,
+        all_defs=[],
+        ownership_meta=None,
+    )
+    _one(
+        mint="proto_rich",
+        arr=rich,
+        T=t0 + 10.0,
+        migration_unix=t0 + 10_000.0,
+        primary=primary,
+        all_defs=defs,
+        ownership_meta={
+            "holder_state_reconstructable": True,
+            "ownership_evidence_level": "edges_only",
+        },
+    )
+    # Force definition flags even when no event detected (matches detect_explosions output).
+    _one(
+        mint="proto_defs_absent",
+        arr=rich,
+        T=t0 + 10.0,
+        migration_unix=None,
+        primary={
+            "explosion_exists": False,
+            "onset_unix": None,
+            "censoring_status": "right_censored_path_end",
+        },
+        all_defs=[
+            {
+                "definition_label": label,
+                "explosion_exists": False,
+                "onset_unix": None,
+                "explosion_magnitude": None,
+            }
+            for label in ("conservative", "primary", "aggressive")
+        ],
+        ownership_meta=None,
+    )
+    return target_rows, ref_rows
+
+
 def build_broad_targets_v1(
     *,
     world_root: Path,
@@ -322,6 +580,18 @@ def build_broad_targets_v1(
     out_dir = ensure_dir(broad_root / TARGETS_STORE)
     index_root = broad_root / OBS_INDEX_STORE
     events_root = broad_root / EVENTS_STORE
+    # Drop partial outputs from prior failed runs (keep config copies rewritten below).
+    for name in (
+        "observation_targets",
+        "future_path_refs",
+        "explosion_events",
+        FUTURE_PATH_PARTS,
+    ):
+        p = out_dir / name
+        if p.exists():
+            shutil.rmtree(p, ignore_errors=True)
+    for name in ("explosion_events_v1.parquet", "broad_targets_manifest.json"):
+        (out_dir / name).unlink(missing_ok=True)
     path_parts_dir = ensure_dir(out_dir / FUTURE_PATH_PARTS)
 
     censor = graduation_censor_decision(pump_root)
@@ -355,6 +625,15 @@ def build_broad_targets_v1(
         coverage, out_dir / "target_source_coverage_v2.json"
     )
     write_json(out_dir / "explosion_detector_config_v1.json", detector_config_manifest())
+
+    proto_targets, proto_refs = _prototype_target_and_ref_rows(coverage)
+    target_schema = _schema_from_rows(proto_targets)
+    ref_schema = _schema_from_rows(proto_refs)
+    logger.info(
+        "Locked broad target schemas: targets_cols=%d refs_cols=%d",
+        len(target_schema),
+        len(ref_schema),
+    )
 
     own_path = world_root / "universe" / "ownership_evidence.parquet"
     own_by_mint: dict[str, dict[str, Any]] = {}
@@ -405,15 +684,15 @@ def build_broad_targets_v1(
         nonlocal target_writer, ref_writer, target_batch, ref_batch, part_i
         nonlocal targets_path, refs_path
         if target_batch:
-            table = pa.Table.from_pylist(target_batch)
+            table = pa.Table.from_pylist(target_batch, schema=target_schema)
             if target_writer is None:
-                target_writer = pq.ParquetWriter(targets_path, table.schema)
+                target_writer = pq.ParquetWriter(targets_path, target_schema)
             target_writer.write_table(table)
             target_batch = []
         if ref_batch:
-            table = pa.Table.from_pylist(ref_batch)
+            table = pa.Table.from_pylist(ref_batch, schema=ref_schema)
             if ref_writer is None:
-                ref_writer = pq.ParquetWriter(refs_path, table.schema)
+                ref_writer = pq.ParquetWriter(refs_path, ref_schema)
             ref_writer.write_table(table)
             ref_batch = []
         if force_rotate or (
@@ -564,15 +843,18 @@ def build_broad_targets_v1(
                     mint=mint, T=T, ownership_meta=own_by_mint.get(mint)
                 )
             )
-            target_batch.append(row)
+            target_batch.append(_normalize_row(row, target_schema))
             ref_batch.append(
-                {
-                    "observation_id": oid,
-                    "mint": mint,
-                    "observation_time_t": T,
-                    "future_path_store": "broad_partitioned_path_v1",
-                    **future_path_refs_for_obs(arr, T=T),
-                }
+                _normalize_row(
+                    {
+                        "observation_id": oid,
+                        "mint": mint,
+                        "observation_time_t": T,
+                        "future_path_store": "broad_partitioned_path_v1",
+                        **future_path_refs_for_obs(arr, T=T),
+                    },
+                    ref_schema,
+                )
             )
             observations_processed += 1
             if len(target_batch) >= batch_flush:
