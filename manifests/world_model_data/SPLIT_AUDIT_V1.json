@@ -1,0 +1,371 @@
+{
+  "audit_id": "SPLIT_AUDIT_V1",
+  "generated_at": "2026-09-05T17:17:57.203512+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "contract_version": "SPLIT_CONTRACT_V1",
+  "cutoffs": {
+    "quantiles_unix": {
+      "q40": 1781926383.3689256,
+      "q55": 1782490194.8670735,
+      "q70": 1782869641.017306,
+      "q85": 1783459140.3081825
+    },
+    "quantiles_iso": {
+      "q40": "2026-06-20T03:33:03.368926+00:00",
+      "q55": "2026-06-26T16:09:54.867074+00:00",
+      "q70": "2026-07-01T01:34:01.017306+00:00",
+      "q85": "2026-07-07T21:19:00.308182+00:00"
+    },
+    "launch_min_iso": "2026-06-05T09:12:26.343743+00:00",
+    "launch_max_iso": "2026-07-14T15:01:41.919140+00:00",
+    "method": "global_quantiles_of_event_curve_detected_at_unix",
+    "tie_policy": "tokens sharing an exact detected_at_unix stay on the same side of each boundary; report actual resulting percentages"
+  },
+  "actual_split_percentages": {
+    "broad_event_curve": {
+      "n": 622303,
+      "counts": {
+        "train": 435612,
+        "val": 93345,
+        "test": 93346
+      },
+      "fractions": {
+        "train": 0.6999998393065757,
+        "val": 0.1499992768795908,
+        "test": 0.15000088381383345
+      }
+    },
+    "rich_subset": {
+      "n": 4000,
+      "counts": {
+        "train": 2824,
+        "val": 799,
+        "test": 377
+      },
+      "fractions": {
+        "train": 0.706,
+        "val": 0.19975,
+        "test": 0.09425
+      }
+    }
+  },
+  "token_counts": {
+    "broad_event_curve": {
+      "train": 435612,
+      "val": 93345,
+      "test": 93346
+    },
+    "rich_subset": {
+      "train": 2824,
+      "val": 799,
+      "test": 377
+    }
+  },
+  "observation_counts": {
+    "broad": {
+      "train": 5879063,
+      "val": 1275120,
+      "test": 1295766
+    },
+    "broad_total": 8449949,
+    "broad_late_state_purged": 17713,
+    "rich": {
+      "train": 36228,
+      "val": 10159,
+      "test": 4966
+    },
+    "rich_total": 51353,
+    "rich_late_state_purged": 169
+  },
+  "purge_counts_by_horizon": {
+    "broad_returns": {
+      "10": {
+        "eligible": 8432165,
+        "purged_or_ineligible": 17784
+      },
+      "30": {
+        "eligible": 8432028,
+        "purged_or_ineligible": 17921
+      },
+      "60": {
+        "eligible": 8431833,
+        "purged_or_ineligible": 18116
+      },
+      "300": {
+        "eligible": 8430111,
+        "purged_or_ineligible": 19838
+      },
+      "3600": {
+        "eligible": 8402617,
+        "purged_or_ineligible": 47332
+      },
+      "86400": {
+        "eligible": 7849337,
+        "purged_or_ineligible": 600612
+      }
+    },
+    "broad_survival": {
+      "30": {
+        "eligible": 8417430,
+        "purged_or_ineligible": 32519
+      },
+      "60": {
+        "eligible": 8417188,
+        "purged_or_ineligible": 32761
+      },
+      "300": {
+        "eligible": 8415067,
+        "purged_or_ineligible": 34882
+      },
+      "3600": {
+        "eligible": 8388323,
+        "purged_or_ineligible": 61626
+      },
+      "86400": {
+        "eligible": 7831938,
+        "purged_or_ineligible": 618011
+      }
+    },
+    "broad_explosion_imminence": {
+      "10": {
+        "eligible": 8432165,
+        "purged_or_ineligible": 17784
+      },
+      "30": {
+        "eligible": 8432028,
+        "purged_or_ineligible": 17921
+      },
+      "60": {
+        "eligible": 8431833,
+        "purged_or_ineligible": 18116
+      },
+      "120": {
+        "eligible": 8431402,
+        "purged_or_ineligible": 18547
+      },
+      "300": {
+        "eligible": 8430111,
+        "purged_or_ineligible": 19838
+      }
+    },
+    "rich_returns": {
+      "10": {
+        "eligible": 51183,
+        "purged_or_ineligible": 170
+      },
+      "30": {
+        "eligible": 51182,
+        "purged_or_ineligible": 171
+      },
+      "60": {
+        "eligible": 51181,
+        "purged_or_ineligible": 172
+      },
+      "300": {
+        "eligible": 51172,
+        "purged_or_ineligible": 181
+      },
+      "3600": {
+        "eligible": 50826,
+        "purged_or_ineligible": 527
+      },
+      "86400": {
+        "eligible": 47389,
+        "purged_or_ineligible": 3964
+      }
+    },
+    "rich_survival": {
+      "30": {
+        "eligible": 50982,
+        "purged_or_ineligible": 371
+      },
+      "60": {
+        "eligible": 50978,
+        "purged_or_ineligible": 375
+      },
+      "300": {
+        "eligible": 50946,
+        "purged_or_ineligible": 407
+      },
+      "3600": {
+        "eligible": 50664,
+        "purged_or_ineligible": 689
+      },
+      "86400": {
+        "eligible": 47359,
+        "purged_or_ineligible": 3994
+      }
+    }
+  },
+  "walkforward_folds": {
+    "method": "global_launch_quantiles_expanding",
+    "permanent_test": {
+      "start_unix": 1783459140.3081825,
+      "end_unix_exclusive": null,
+      "launch_max_unix": 1784041301.91914,
+      "rule": "[q85, max]"
+    },
+    "final_test_isolation": {
+      "no_normalization": true,
+      "no_threshold_selection": true,
+      "no_hyperparameter_selection": true,
+      "no_early_stopping": true,
+      "no_architecture_selection": true,
+      "excluded_from_walkforward": true
+    },
+    "folds": [
+      {
+        "fold_id": "wf_fold_1",
+        "train": {
+          "start_unix": 1780650746.343743,
+          "end_unix_exclusive": 1781926383.3689256
+        },
+        "val": {
+          "start_unix": 1781926383.3689256,
+          "end_unix_exclusive": 1782490194.8670735
+        },
+        "rule": "train=[min,q40), val=[q40,q55)"
+      },
+      {
+        "fold_id": "wf_fold_2",
+        "train": {
+          "start_unix": 1780650746.343743,
+          "end_unix_exclusive": 1782490194.8670735
+        },
+        "val": {
+          "start_unix": 1782490194.8670735,
+          "end_unix_exclusive": 1782869641.017306
+        },
+        "rule": "train=[min,q55), val=[q55,q70)"
+      },
+      {
+        "fold_id": "wf_fold_3",
+        "train": {
+          "start_unix": 1780650746.343743,
+          "end_unix_exclusive": 1782869641.017306
+        },
+        "val": {
+          "start_unix": 1782869641.017306,
+          "end_unix_exclusive": 1783459140.3081825
+        },
+        "rule": "train=[min,q70), val=[q70,q85)"
+      }
+    ],
+    "note": "Quantiles are global (full event_curve mass), not pre-test-only.",
+    "test_split_name": "test"
+  },
+  "eval_controls": {
+    "broad": {
+      "population": "broad",
+      "train_creators_n": 96226,
+      "val_creators_n": 23384,
+      "test_creators_n": 22509,
+      "val_creators_unseen_vs_train": 19369,
+      "test_creators_unseen_vs_train": 19726,
+      "val_creator_overlap_vs_train": 4015,
+      "test_creator_overlap_vs_train": 2783,
+      "val_token_creator_flags": {
+        "tokens": 93345,
+        "tokens_unseen_creator_vs_train": 44846,
+        "tokens_creator_overlap_vs_train": 48499
+      },
+      "test_token_creator_flags": {
+        "tokens": 93346,
+        "tokens_unseen_creator_vs_train": 56554,
+        "tokens_creator_overlap_vs_train": 36792
+      },
+      "tokens_launched_during_jul3_outage": 0,
+      "note": "Creator/wallet novelty masks are evaluation controls only; they must not introduce future information into training features.",
+      "observation_summary": {
+        "population": "broad",
+        "observations_assigned": 8449949,
+        "observations_purged_late_state": 17713,
+        "observations_by_base_split": {
+          "train": 5879063,
+          "val": 1275120,
+          "test": 1295766
+        }
+      }
+    },
+    "rich": {
+      "population": "rich",
+      "train_creators_n": 1978,
+      "val_creators_n": 591,
+      "test_creators_n": 313,
+      "val_creators_unseen_vs_train": 481,
+      "test_creators_unseen_vs_train": 266,
+      "val_creator_overlap_vs_train": 110,
+      "test_creator_overlap_vs_train": 47,
+      "val_token_creator_flags": {
+        "tokens": 799,
+        "tokens_unseen_creator_vs_train": 596,
+        "tokens_creator_overlap_vs_train": 203
+      },
+      "test_token_creator_flags": {
+        "tokens": 377,
+        "tokens_unseen_creator_vs_train": 303,
+        "tokens_creator_overlap_vs_train": 74
+      },
+      "tokens_launched_during_jul3_outage": 0,
+      "note": "Creator/wallet novelty masks are evaluation controls only; they must not introduce future information into training features.",
+      "observation_summary": {
+        "population": "rich",
+        "observations_assigned": 51353,
+        "observations_purged_late_state": 169,
+        "observations_by_base_split": {
+          "train": 36228,
+          "val": 10159,
+          "test": 4966
+        }
+      }
+    }
+  },
+  "leakage_invariants": {
+    "token_disjoint": {
+      "passed": true,
+      "counts": {
+        "train": 558286,
+        "val": 124117,
+        "test": 116027
+      },
+      "overlap_samples": {
+        "train_val": [],
+        "train_test": [],
+        "val_test": []
+      }
+    },
+    "chronological_ordering": {
+      "passed": true,
+      "max_train_launch": 1782869635.119335,
+      "min_val_launch": 1782869649.864263,
+      "max_val_launch": 1783459137.742453,
+      "min_test_launch": 1783459141.407781,
+      "q70": 1782869641.017306,
+      "q85": 1783459140.3081825,
+      "reasons": []
+    },
+    "walkforward_excludes_test": {
+      "passed": true,
+      "test_tokens_in_folds": 0
+    },
+    "broad_eligibility_strict": {
+      "passed": true,
+      "rows_checked": 99915,
+      "violations": 0,
+      "parts_sampled": 3
+    },
+    "rich_eligibility_strict": {
+      "passed": true,
+      "rows_checked": 51353,
+      "violations": 0,
+      "parts_sampled": 1
+    },
+    "all_passed": true
+  },
+  "artifacts": {
+    "root": "data/external/world_model/splits/split_v1",
+    "token_assignments": "data/external/world_model/splits/split_v1/token_assignments.parquet",
+    "observation_assignments_broad": "data/external/world_model/splits/split_v1/observation_assignments_broad",
+    "observation_assignments_rich": "data/external/world_model/splits/split_v1/observation_assignments_rich.parquet"
+  }
+}
