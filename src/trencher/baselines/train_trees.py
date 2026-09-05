@@ -355,13 +355,34 @@ def train_catboost_head(
             params["loss_function"] = "MultiClass"
             params["eval_metric"] = "MultiClass"
         model = CatBoostClassifier(**params)
+    else:
+        params = dict(common)
+        model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **common)
+
+    # CatBoost GPU rejects user callbacks. Prefer GPU fit with coarse progress;
+    # fall back to CPU+callbacks if GPU fit fails.
+    if use_gpu:
+        emitter.emit(10, message="gpu fit start", force=True)
+        try:
+            model.fit(train_pool, eval_set=val_pool)
+            trees = int(model.tree_count_ or num_boost_round)
+            emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
+        except Exception as exc:  # noqa: BLE001
+            emitter.emit(15, message=f"gpu failed ({type(exc).__name__}); CPU+callbacks", force=True)
+            cpu_common = {**common, "task_type": "CPU"}
+            if kind in ("binary", "multiclass"):
+                model = CatBoostClassifier(**{**params, "task_type": "CPU"})
+            else:
+                model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **cpu_common)
+            model.fit(train_pool, eval_set=val_pool, callbacks=[_CB()])
+    else:
         model.fit(train_pool, eval_set=val_pool, callbacks=[_CB()])
+
+    if kind in ("binary", "multiclass"):
         raw = model.predict_proba(X_val)
         if kind == "binary":
             raw = raw[:, 1]
     else:
-        model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **common)
-        model.fit(train_pool, eval_set=val_pool, callbacks=[_CB()])
         raw = model.predict(X_val)
 
     emitter.complete(
