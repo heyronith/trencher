@@ -33,6 +33,10 @@ image = (
         "catboost",
         "lifelines",
         "click",
+        "requests",
+        "pyyaml",
+        "tqdm",
+        "rich",
     )
     .env({"PYTHONPATH": "/root/trencher/src"})
 )
