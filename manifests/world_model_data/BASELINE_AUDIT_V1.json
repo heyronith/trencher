@@ -1,6 +1,6 @@
 {
   "audit_version": "BASELINE_AUDIT_V1",
-  "generated_at": "2026-09-05T20:19:10.504576+00:00",
+  "generated_at": "2026-09-05T22:05:47.390805+00:00",
   "contract": "BASELINE_CONTRACT_V1",
   "acceptance": {
     "no_permanent_test_access": true,
@@ -31,8 +31,8 @@
         "survival_30m",
         "survival_24h"
       ],
-      "train_n": 47443,
-      "val_n": 9595
+      "train_n": 731899,
+      "val_n": 157188
     },
     "xgboost": {
       "heads": [
@@ -45,8 +45,8 @@
         "survival_30m",
         "survival_24h"
       ],
-      "train_n": 47443,
-      "val_n": 9595
+      "train_n": 731899,
+      "val_n": 157188
     },
     "catboost": {
       "heads": [
@@ -59,24 +59,44 @@
         "survival_30m",
         "survival_24h"
       ],
-      "train_n": 47443,
-      "val_n": 9595
+      "train_n": 731899,
+      "val_n": 157188
     },
     "survival": {
       "heads": [
         "explosion_tte",
         "graduation_tte"
       ],
-      "train_n": 47443,
-      "val_n": 9595
+      "train_n": 731899,
+      "val_n": 157188
     }
   },
   "modal_usage": {
     "app": "trencher-baselines-v1",
     "volume": "trencher-world-model-v1",
     "artifacts_volume": "trencher-baseline-artifacts-v1",
-    "status": "syncing_splits_and_selective_broad_32_partitions",
-    "local_validation": "2_partition_all_core_heads_no_test_access",
-    "note": "Full population GPU fits launch on Modal after volume sync; local numbers are pipeline validation only"
+    "feature_build_rows": 889087,
+    "feature_build_partitions": 32,
+    "feature_build_runtime_sec": 1395.2,
+    "family_runtime_sec": {
+      "lightgbm": 947.2,
+      "xgboost": 460.1,
+      "catboost": 465.3,
+      "survival": 590.6
+    },
+    "gpu": {
+      "lightgbm": "attempted_with_cpu_fallback",
+      "xgboost": "A10G",
+      "catboost": "A10G",
+      "survival": "CPU"
+    },
+    "runs": {
+      "build_features": "https://modal.com/apps/ronithworks/main/ap-9sYGVbSmvFI87qaXMLSxB1",
+      "lightgbm": "https://modal.com/apps/ronithworks/main/ap-yqT2zDOnakMobwUgixMn6n",
+      "xgboost": "https://modal.com/apps/ronithworks/main/ap-EFVcWGDJjP6WsTi4OZWqYJ",
+      "survival": "https://modal.com/apps/ronithworks/main/ap-fwtGSSwvQy5FZFA1aJh7Qg",
+      "catboost": "https://modal.com/apps/ronithworks/main/ap-StPPuL4ThG3P1BUMPXanXb"
+    },
+    "note": "32 mint-partition Modal population (~889k feature rows / ~732k train / ~157k val); permanent TEST never accessed"
   }
 }
