@@ -13,6 +13,7 @@ Outputs (partitioned by mint hash prefix):
 from __future__ import annotations
 
 import logging
+import shutil
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,48 @@ OBS_INDEX_STORE = "broad_observation_index_v1"
 OBS_REFS_STORE = "broad_observation_sequence_refs_v1"
 BROAD_OBS_VERSION = "broad_observation_v1"
 
+_OBS_INDEX_SCHEMA = pa.schema(
+    [
+        ("mint", pa.string()),
+        ("observation_id", pa.string()),
+        ("observation_time_t", pa.float64()),
+        ("token_age_seconds", pa.float64()),
+        ("observation_trigger", pa.string()),
+        ("trigger_value", pa.string()),
+        ("trigger_numeric", pa.int64()),
+        ("source_freeze_version", pa.string()),
+        ("pit_engine_version", pa.string()),
+        ("observation_dataset_version", pa.string()),
+        ("mint_partition", pa.string()),
+        ("detected_at_unix", pa.float64()),
+    ]
+)
+
+_OBS_REFS_SCHEMA = pa.schema(
+    [
+        ("mint", pa.string()),
+        ("observation_id", pa.string()),
+        ("observation_time_t", pa.float64()),
+        ("mint_partition", pa.string()),
+        ("events_store", pa.string()),
+        ("events_partition", pa.string()),
+        ("events_start_idx", pa.int64()),
+        ("events_end_idx", pa.int64()),
+        ("events_count", pa.int64()),
+        ("curve_store", pa.string()),
+        ("curve_partition", pa.string()),
+        ("curve_start_idx", pa.int64()),
+        ("curve_end_idx", pa.int64()),
+        ("curve_count", pa.int64()),
+        ("creator_store", pa.string()),
+        ("creator_partition", pa.string()),
+        ("creator_start_idx", pa.int64()),
+        ("creator_end_idx", pa.int64()),
+        ("creator_count", pa.int64()),
+        ("shared_sequences_once", pa.bool_()),
+    ]
+)
+
 
 def _projected_obs_upper_bound(n_tokens: int) -> dict[str, Any]:
     """Projected row counts before coincident-time dedupe."""
@@ -66,14 +109,15 @@ def _flush_partition_rows(
     part: str,
     rows: list[dict[str, Any]],
     writers: dict[str, pq.ParquetWriter],
+    schema: pa.Schema,
 ) -> None:
     if not rows:
         return
     ensure_dir(root / part)
-    table = pa.Table.from_pylist(rows)
+    table = pa.Table.from_pylist(rows, schema=schema)
     path = root / part / "part.parquet"
     if part not in writers:
-        writers[part] = pq.ParquetWriter(path, table.schema)
+        writers[part] = pq.ParquetWriter(path, schema)
     writers[part].write_table(table)
 
 
@@ -90,6 +134,15 @@ def build_broad_observations_v1(
     population_path = population_path or broad_root / "broad_population_v1.parquet"
     index_root = ensure_dir(broad_root / OBS_INDEX_STORE)
     refs_root = ensure_dir(broad_root / OBS_REFS_STORE)
+    # Clean partial outputs from prior failed runs.
+    for root in (index_root, refs_root):
+        for child in list(root.iterdir()):
+            if child.is_dir():
+                shutil.rmtree(child, ignore_errors=True)
+            elif child.suffix == ".json":
+                continue
+            else:
+                child.unlink(missing_ok=True)
 
     pop = pq.read_table(population_path)
     event_rows = [
@@ -175,7 +228,7 @@ def build_broad_observations_v1(
                     "token_age_seconds": point["token_age_seconds"],
                     "observation_trigger": point["observation_trigger"],
                     "trigger_value": str(point["trigger_value"]),
-                    "trigger_numeric": point["trigger_numeric"],
+                    "trigger_numeric": int(point["trigger_numeric"]),
                     "source_freeze_version": FREEZE_ID,
                     "pit_engine_version": PIT_ENGINE_VERSION,
                     "observation_dataset_version": BROAD_OBS_VERSION,
@@ -235,16 +288,24 @@ def build_broad_observations_v1(
 
             if sum(len(v) for v in index_batches.values()) >= FLUSH:
                 for p, rows in list(index_batches.items()):
-                    _flush_partition_rows(index_root, p, rows, index_writers)
+                    _flush_partition_rows(
+                        index_root, p, rows, index_writers, _OBS_INDEX_SCHEMA
+                    )
                     index_batches[p] = []
                 for p, rows in list(refs_batches.items()):
-                    _flush_partition_rows(refs_root, p, rows, refs_writers)
+                    _flush_partition_rows(
+                        refs_root, p, rows, refs_writers, _OBS_REFS_SCHEMA
+                    )
                     refs_batches[p] = []
 
         for p, rows in list(index_batches.items()):
-            _flush_partition_rows(index_root, p, rows, index_writers)
+            _flush_partition_rows(
+                index_root, p, rows, index_writers, _OBS_INDEX_SCHEMA
+            )
         for p, rows in list(refs_batches.items()):
-            _flush_partition_rows(refs_root, p, rows, refs_writers)
+            _flush_partition_rows(
+                refs_root, p, rows, refs_writers, _OBS_REFS_SCHEMA
+            )
     finally:
         for w in index_writers.values():
             w.close()
