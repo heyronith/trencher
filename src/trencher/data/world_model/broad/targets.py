@@ -25,7 +25,6 @@ import pyarrow.parquet as pq
 
 from trencher.data.world_model.broad.graduation_censor import graduation_censor_decision
 from trencher.data.world_model.broad.sequences import (
-    ENTITY_INDEX_NAME,
     EVENTS_STORE,
     load_entity_index,
     mint_partition,
@@ -299,7 +298,10 @@ def _path_rows_from_event_partition(
 
 
 def _iter_obs_for_partition(index_root: Path, part: str):
-    part_dir = index_root / f"mint_partition={part}"
+    part_dir = index_root / part
+    if not part_dir.exists():
+        # legacy hive-style layout
+        part_dir = index_root / f"mint_partition={part}"
     if not part_dir.exists():
         return
     for path in sorted(part_dir.glob("*.parquet")):
@@ -361,7 +363,7 @@ def build_broad_targets_v1(
             if row.get("mint") in event_mints:
                 own_by_mint[row["mint"]] = row
 
-    events_index = load_entity_index(events_root / ENTITY_INDEX_NAME)
+    events_index = load_entity_index(events_root)
     partitions = sorted(
         {
             str(meta.get("partition"))
@@ -371,9 +373,15 @@ def build_broad_targets_v1(
     )
     # Also include obs partitions that might exist without events (launch-only)
     if index_root.exists():
-        for p in index_root.glob("mint_partition=*"):
-            part = p.name.split("=", 1)[-1]
-            if part not in partitions:
+        for p in index_root.iterdir():
+            if not p.is_dir():
+                continue
+            part = (
+                p.name.split("=", 1)[-1]
+                if p.name.startswith("mint_partition=")
+                else p.name
+            )
+            if len(part) == 2 and part not in partitions:
                 partitions.append(part)
         partitions = sorted(set(partitions))
 
