@@ -50,10 +50,7 @@ from trencher.data.world_model.targets.future_path import (
     load_path_arrays,
 )
 from trencher.data.world_model.targets.status import (
-    BARRIER_LOWER_FIRST,
-    BARRIER_NEITHER,
     BARRIER_PAIRS,
-    BARRIER_UPPER_FIRST,
     EXPLOSION_IMMINENCE_HORIZONS_SEC,
     HORIZONS_SEC,
     POSITION_SIZES_SOL,
@@ -534,18 +531,23 @@ def _build_audit(
         rets = [
             r[f"h{h}_simple_return"]
             for r in target_rows
-            if r.get(f"h{h}_simple_return") is not None
+            if r.get(f"h{h}_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
+            and r.get(f"h{h}_simple_return") is not None
             and math.isfinite(float(r[f"h{h}_simple_return"]))
         ]
         mfes = [
             r[f"h{h}_mfe"]
             for r in target_rows
-            if r.get(f"h{h}_mfe") is not None and math.isfinite(float(r[f"h{h}_mfe"]))
+            if r.get(f"h{h}_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
+            and r.get(f"h{h}_mfe") is not None
+            and math.isfinite(float(r[f"h{h}_mfe"]))
         ]
         maes = [
             r[f"h{h}_mae"]
             for r in target_rows
-            if r.get(f"h{h}_mae") is not None and math.isfinite(float(r[f"h{h}_mae"]))
+            if r.get(f"h{h}_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
+            and r.get(f"h{h}_mae") is not None
+            and math.isfinite(float(r[f"h{h}_mae"]))
         ]
         barrier_counts = {}
         for _, _, bid in BARRIER_PAIRS:
@@ -756,29 +758,6 @@ def _build_audit(
     frac_meaningful = meaningful / max(1, n_expl)
     frac_zero = zero_prec / max(1, n_expl)
 
-    ret_valid_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("h300_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
-    }
-    bar_pos_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("h3600_barrier_u100_l30_outcome") == BARRIER_UPPER_FIRST
-    }
-    surv_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("surv_h86400_status") in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
-    }
-    surv_pos_tokens = {
-        r["mint"]
-        for r in target_rows
-        if r.get("surv_h86400_status") == STATUS_VALID_POSITIVE
-    }
-    expl_pos_tokens_60 = {
-        r["mint"] for r in target_rows if r.get("explosion_within_60s") is True
-    }
     holder_tokens = {
         r["mint"] for r in target_rows if r.get("holder_state_reconstructable")
     }
@@ -790,130 +769,16 @@ def _build_audit(
             return "marginal"
         return "requires_broader_population"
 
-    def _rec_grad() -> str:
-        if len(grad_pos_tokens) >= 200:
-            return "sufficient_on_rich_4k"
-        if len(grad_pos_tokens) >= 50:
-            return "marginal"
-        return "requires_broader_population"
+    from trencher.data.world_model.targets.sufficiency import compute_rich_sufficiency
 
-    sufficiency = [
-        _sufficiency(
-            name="returns_h300",
-            n_obs=sum(
-                1
-                for r in target_rows
-                if r.get("h300_status")
-                in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
-            ),
-            n_tokens=len(ret_valid_tokens),
-            n_positive_tokens=len(
-                {
-                    r["mint"]
-                    for r in target_rows
-                    if isinstance(r.get("h300_simple_return"), (int, float))
-                    and float(r["h300_simple_return"]) > 0
-                }
-            ),
-            n_independent_events=len(ret_valid_tokens),
-            prevalence=None,
-            censor_rate=horizon_stats["300"]["censored"] / max(1, n_obs),
-            recommendation=(
-                "sufficient_on_rich_4k"
-                if len(ret_valid_tokens) >= 1000
-                else "marginal"
-            ),
-        ),
-        _sufficiency(
-            name="barrier_u100_l30_h3600",
-            n_obs=sum(
-                1
-                for r in target_rows
-                if r.get("h3600_barrier_u100_l30_outcome")
-                in (BARRIER_UPPER_FIRST, BARRIER_LOWER_FIRST, BARRIER_NEITHER)
-            ),
-            n_tokens=len(
-                {
-                    r["mint"]
-                    for r in target_rows
-                    if r.get("h3600_barrier_u100_l30_outcome")
-                    in (BARRIER_UPPER_FIRST, BARRIER_LOWER_FIRST, BARRIER_NEITHER)
-                }
-            ),
-            n_positive_tokens=len(bar_pos_tokens),
-            n_independent_events=len(bar_pos_tokens),
-            prevalence=len(bar_pos_tokens) / max(1, len(mints)),
-            censor_rate=None,
-            recommendation=(
-                "sufficient_on_rich_4k"
-                if len(bar_pos_tokens) >= 200
-                else (
-                    "marginal"
-                    if len(bar_pos_tokens) >= 50
-                    else "requires_broader_population"
-                )
-            ),
-        ),
-        _sufficiency(
-            name="survival_24h",
-            n_obs=sum(
-                1
-                for r in target_rows
-                if r.get("surv_h86400_status")
-                in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
-            ),
-            n_tokens=len(surv_tokens),
-            n_positive_tokens=len(surv_pos_tokens),
-            n_independent_events=len(surv_tokens),
-            prevalence=len(surv_pos_tokens) / max(1, len(surv_tokens)),
-            censor_rate=survival_stats["86400"]["censored"] / max(1, n_obs),
-            recommendation=(
-                "sufficient_on_rich_4k"
-                if len(surv_tokens) >= 1000
-                else "marginal"
-            ),
-        ),
-        _sufficiency(
-            name="graduation",
-            n_obs=sum(1 for r in target_rows if r.get("grad_h86400_graduated") is True),
-            n_tokens=len(
-                {
-                    r["mint"]
-                    for r in target_rows
-                    if r.get("grad_h86400_status")
-                    in (STATUS_VALID_POSITIVE, STATUS_VALID_NEGATIVE)
-                }
-            ),
-            n_positive_tokens=len(grad_pos_tokens),
-            n_independent_events=len(grad_pos_tokens),
-            prevalence=len(grad_pos_tokens) / max(1, len(mints)),
-            censor_rate=None,
-            recommendation=_rec_grad(),
-            notes=(
-                "Negatives use migration-source coverage, not token trade activity."
-            ),
-        ),
-        _sufficiency(
-            name="explosion_onset_primary",
-            n_obs=len(pre_expl_obs),
-            n_tokens=len(tokens_with_expl),
-            n_positive_tokens=len(expl_pos_tokens_60),
-            n_independent_events=n_expl,
-            prevalence=n_expl / max(1, len(mints)),
-            censor_rate=None,
-            recommendation=_rec_explosion(),
-        ),
-        _sufficiency(
-            name="holder_state_targets",
-            n_obs=sum(1 for r in target_rows if r.get("holder_state_reconstructable")),
-            n_tokens=len(holder_tokens),
-            n_positive_tokens=len(holder_tokens),
-            n_independent_events=len(holder_tokens),
-            prevalence=len(holder_tokens) / max(1, len(mints)),
-            censor_rate=None,
-            recommendation="requires_broader_population",
-        ),
-    ]
+    sufficiency = compute_rich_sufficiency(
+        target_rows,
+        primary_explosion_events=n_expl,
+        tokens_with_primary_explosion=set(tokens_with_expl),
+        pre_explosion_obs=len(pre_expl_obs),
+        explosion_obs_before_60s=int(obs_before.get("60") or 0),
+        holder_tokens=holder_tokens,
+    )
 
     exec_cov = {}
     for sz in POSITION_SIZES_SOL:
@@ -1033,6 +898,7 @@ def _build_audit(
         },
         "isolation_proof": isolation,
         "supervision_sufficiency": sufficiency,
+        "sufficiency_field_contract_version": "supervision_sufficiency_v2",
         "v2_comparison": v2_compare,
         "estimated_disk_bytes": disk,
         "estimated_disk_mb": disk / (1024 * 1024),
@@ -1149,9 +1015,12 @@ def _write_audit_markdown(path: Path, audit: dict[str, Any]) -> None:
     ]
     for s in audit["supervision_sufficiency"]:
         lines.append(
-            f"- `{s['head']}`: tokens={s['unique_tokens_with_valid_supervision']}, "
+            f"- `{s['head']}`: valid_obs={s.get('valid_observations', s.get('observations'))}, "
+            f"valid_tokens={s['unique_tokens_with_valid_supervision']}, "
+            f"pos_obs={s.get('positive_observations')}, "
             f"pos_tokens={s['distinct_positive_tokens']}, "
-            f"events={s['independent_event_count']}, "
+            f"events={s.get('independent_events', s.get('independent_event_count'))}, "
+            f"prev_valid={s.get('prevalence_among_valid_observations')}, "
             f"**{s['recommendation']}**"
         )
     grad_n = audit["graduation"]["distinct_graduated_tokens_any_horizon"]

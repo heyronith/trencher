@@ -357,6 +357,7 @@ def data_probe_world_model_sources(
             "observations",
             "sequences",
             "targets",
+            "broad",
         ]
     ),
     help="Subset of pipeline stages (default: all)",

@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-09-05T01:12:37.023797+00:00",
+  "decision_id": "broad_graduation_censor_v1",
+  "tracking_expires_at_is_proven_graduation_tracking_end": false,
+  "retain_conservative_v3_graduation_treatment": true,
+  "rationale": [
+    "tracking_expires_at - detected_at is uniform +48h (mode=172800s, uniform=True)",
+    "87 graduations occur after tracking_expires_at \u2014 field cannot be a hard graduation-observation end",
+    "KNOWN_ISSUES.md is silent on tracking_expires_at",
+    "README claims continuous collection over a fixed 39-day window (Jun 5 \u2013 Jul 14, 2026), not a 48h per-token follow window",
+    "Therefore do not treat tracking_expires_at as migration-source coverage end; keep target_dataset_v3 compute_graduation + target_source_coverage_v2 absence semantics unchanged"
+  ],
+  "policy": {
+    "absence_of_migration": "censored_unless_migration_source_coverage_proves_negative",
+    "use_tracking_expires_at_as_coverage_end": false,
+    "reuse_compute_graduation": true,
+    "reuse_target_source_coverage_v2": true,
+    "target_value_semantics": "unchanged_from_target_dataset_v3"
+  },
+  "investigation": {
+    "tokens_n": 798430,
+    "rows_with_detected_and_expire": 798430,
+    "null_detected_at": 0,
+    "null_tracking_expires_at": 0,
+    "delta_sec_mode": 172800,
+    "delta_sec_mode_count": 798430,
+    "unique_delta_sec_values": 1,
+    "uniform_plus_48h": true,
+    "expected_tracking_window_sec": 172800,
+    "graduated_n": 5689,
+    "grads_after_tracking_expires": 87,
+    "grads_at_or_before_tracking_expires": 5602,
+    "known_issues_mentions_tracking_expires_at": false,
+    "readme_claims_39_day_continuous_collection": true,
+    "known_issues_path": "data/external/pumpfun_memecoin_corpus/KNOWN_ISSUES.md",
+    "readme_path": "data/external/pumpfun_memecoin_corpus/README.md"
+  }
+}

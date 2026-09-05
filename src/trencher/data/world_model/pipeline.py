@@ -17,6 +17,7 @@ from trencher.data.world_model.acquire import (
 )
 from trencher.data.world_model.acquire.funding import run_native_sol_funding_acquisition
 from trencher.data.world_model.acquire.rpc import SolanaRpc
+from trencher.data.world_model.broad import build_broad_supervision_v1
 from trencher.data.world_model.freeze import build_data_freeze
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
 from trencher.data.world_model.observations import build_observation_dataset_v1
@@ -179,6 +180,7 @@ def run_world_model_pipeline(
         or "observations" in stages
         or "sequences" in stages
         or "targets" in stages
+        or "broad" in stages
     ):
         from trencher.data.world_model.io import read_json
 
@@ -304,6 +306,22 @@ def run_world_model_pipeline(
                     }
                     for s in (tgt.get("supervision_sufficiency") or [])
                 ],
+            }
+
+        if "broad" in stages:
+            logger.info(
+                "Building broad event/curve supervision v1 "
+                "(no acquisition/splits/training; freeze unchanged)"
+            )
+            broad = build_broad_supervision_v1(
+                world_root=world_root,
+                manifest_dir=manifest_dir,
+                pump_root=external_root / "pumpfun_memecoin_corpus",
+            )
+            summary["broad_supervision_v1"] = {
+                "phases": broad.get("phases"),
+                "timings_sec": broad.get("timings_sec"),
+                "broad_root": broad.get("broad_root"),
             }
 
         if "report" in stages:
