@@ -8,10 +8,8 @@ from typing import Any
 
 from trencher.data.world_model.splits.cutoffs import SPLIT_TRAIN
 from trencher.data.world_model.training.collate import collate_examples
-from trencher.data.world_model.training.dataset import (
-    StreamingSplitDataset,
-    synthetic_example_from_assignment,
-)
+from trencher.data.world_model.training.dataset import StreamingSplitDataset
+from trencher.data.world_model.training.example import ProductionExampleBuilder
 
 STRATEGY_BROAD_PRETRAIN = "broad_event_curve_pretrain"
 STRATEGY_RICH_MULTIMODAL = "rich_multimodal"
@@ -38,6 +36,7 @@ def resolve_assignment_paths(split_root: Path, population: str) -> list[Path]:
 
 def iter_loader(
     *,
+    world_root: Path | None = None,
     split_root: Path,
     population: str,
     split: str = SPLIT_TRAIN,
@@ -46,8 +45,9 @@ def iter_loader(
     shuffle: bool = False,
     strategy: str = STRATEGY_BROAD_PRETRAIN,
     max_batches: int | None = None,
+    use_production: bool = True,
 ) -> Iterator[dict[str, Any]]:
-    """Yield collated batches reflecting true population distribution (no pos sampling)."""
+    """Yield collated batches from frozen stores (true population distribution)."""
     paths = resolve_assignment_paths(split_root, population)
     ds = StreamingSplitDataset(
         assignment_paths=paths,
@@ -56,36 +56,58 @@ def iter_loader(
         shuffle=shuffle,
         population=population if population != "mixed" else "broad",
     )
-    n = 0
-    for batch_rows in ds.iter_batches(batch_size, max_batches=max_batches):
-        examples = [synthetic_example_from_assignment(r) for r in batch_rows]
-        if strategy == STRATEGY_RICH_MULTIMODAL:
-            examples = [e for e in examples if e["meta"].get("population") == "rich"]
-            if not examples:
-                continue
+    world_root = Path(world_root or Path(split_root).parents[1])
+    # split_root = world_root/splits/split_v1 → parents[1] = world_root
+    if Path(split_root).name == "split_v1":
+        world_root = Path(split_root).parent.parent
+
+    builder = None
+    if use_production:
+        builder = ProductionExampleBuilder(
+            world_root=world_root,
+            split_root=Path(split_root),
+            population="rich" if population == "rich" else "broad",
+        )
+
+    for n, batch_rows in enumerate(
+        ds.iter_batches(batch_size, max_batches=max_batches), start=1
+    ):
+        if builder is None:
+            from trencher.data.world_model.training.dataset import (
+                synthetic_example_from_assignment,
+            )
+
+            examples = [synthetic_example_from_assignment(r) for r in batch_rows]
+        else:
+            oids = [str(r["observation_id"]) for r in batch_rows]
+            builder.targets.prefetch(oids)
+            builder.tte.prefetch(oids)
+            examples = [builder.build(r) for r in batch_rows]
         batch = collate_examples(examples)
         batch["strategy"] = strategy
         batch["population"] = population
         batch["split"] = split
-        # Hooks for later GPU training
+        batch["production"] = bool(use_production)
         batch["prefetch_ready"] = False
         batch["pin_memory"] = False
         yield batch
-        n += 1
         if max_batches is not None and n >= max_batches:
             return
 
 
 def mixed_loader(
     *,
+    world_root: Path | None = None,
     split_root: Path,
     split: str = SPLIT_TRAIN,
     batch_size: int = 32,
     seed: int = 0,
     max_batches: int | None = None,
+    use_production: bool = True,
 ) -> Iterator[dict[str, Any]]:
-    """Alternate broad/rich batches with availability masks (true mixture, no outcome sampling)."""
+    """Alternate broad/rich production batches (no outcome sampling)."""
     broad = iter_loader(
+        world_root=world_root,
         split_root=split_root,
         population="broad",
         split=split,
@@ -94,8 +116,10 @@ def mixed_loader(
         shuffle=True,
         strategy=STRATEGY_MIXED,
         max_batches=None,
+        use_production=use_production,
     )
     rich = iter_loader(
+        world_root=world_root,
         split_root=split_root,
         population="rich",
         split=split,
@@ -104,6 +128,7 @@ def mixed_loader(
         shuffle=True,
         strategy=STRATEGY_MIXED,
         max_batches=None,
+        use_production=use_production,
     )
     n = 0
     while True:
@@ -126,6 +151,7 @@ def mixed_loader(
             "batch_size": b["batch_size"] + r["batch_size"],
             "prefetch_ready": False,
             "pin_memory": False,
+            "production": use_production,
         }
         n += 1
         if max_batches is not None and n >= max_batches:

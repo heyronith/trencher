@@ -1,0 +1,191 @@
+{
+  "audit_id": "TRAINING_LOADER_AUDIT_V2",
+  "generated_at": "2026-09-05T17:54:14.015835+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "contract_version": "TRAINING_LOADER_CONTRACT_V2",
+  "supersedes": "TRAINING_LOADER_AUDIT_V1",
+  "tte_overlays": {
+    "generated_at": "2026-09-05T17:43:41.364528+00:00",
+    "q70": 1782869641.017306,
+    "q85": 1783459140.3081825,
+    "corpus_end_unix": 1784073600.0,
+    "rule": "event_time < split_end may remain observed; else admin right-censor",
+    "never_admin_censor_to_negative": true,
+    "stats": {
+      "broad_rows": 8449949,
+      "broad_grad_admin_censored": 8382533,
+      "broad_expl_admin_censored": 7600147,
+      "rich_rows": 51353,
+      "rich_grad_admin_censored": 51060,
+      "rich_expl_admin_censored": 47602
+    },
+    "artifacts": {
+      "broad": "data/external/world_model/splits/split_v1/tte_overlays_broad",
+      "rich": "data/external/world_model/splits/split_v1/tte_overlays_rich.parquet"
+    }
+  },
+  "transforms": {
+    "rows_seen": 2087596,
+    "train_mints_n": 435612,
+    "columns": [
+      "sol_amount",
+      "token_amount",
+      "price_sol",
+      "v_sol",
+      "v_tok"
+    ],
+    "fit_scope": "unique_underlying_training_sequence_rows"
+  },
+  "smoke_benchmark": {
+    "batch_size": 16,
+    "max_batches": 20,
+    "broad": {
+      "examples": 320,
+      "batches": 20,
+      "examples_per_sec": 7.689491804445362,
+      "batches_per_sec": 0.48059323777783514,
+      "elapsed_sec": 41.61523389816284,
+      "sequence_shapes": {
+        "creator": [
+          16,
+          256,
+          2
+        ],
+        "curve": [
+          16,
+          42,
+          5
+        ],
+        "events": [
+          16,
+          42,
+          6
+        ]
+      },
+      "length_means": {
+        "creator": 76.040625,
+        "curve": 16.009375,
+        "events": 16.009375
+      },
+      "truncation_rate_mean": {
+        "events": 0.00625,
+        "curve": 0.00625,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.0
+      },
+      "modality_availability_mean": {
+        "modality_mask_creator": 0.775,
+        "modality_mask_curve": 0.88125,
+        "modality_mask_events": 0.88125
+      },
+      "target_status_example": {
+        "available": true,
+        "returns_h60": {
+          "is_missing": false,
+          "frozen_status": "valid_negative"
+        },
+        "graduation_tte": {
+          "effective_event_observed": false,
+          "split_boundary_censored": true,
+          "frozen_tte_sec": null
+        },
+        "explosion_tte": {
+          "effective_event_observed": false,
+          "split_boundary_censored": true
+        }
+      },
+      "causal_failures": 0,
+      "production": true
+    },
+    "rich": {
+      "examples": 320,
+      "batches": 20,
+      "examples_per_sec": 2.5054350726463683,
+      "batches_per_sec": 0.15658969204039802,
+      "elapsed_sec": 127.72232794761658,
+      "sequence_shapes": {
+        "curve": [
+          16,
+          41,
+          4
+        ],
+        "events": [
+          16,
+          13,
+          6
+        ],
+        "graph_token": [
+          16,
+          14,
+          2
+        ],
+        "micro": [
+          16,
+          6,
+          2
+        ],
+        "ownership": [
+          16,
+          2,
+          2
+        ],
+        "wallet_prior": [
+          16,
+          1,
+          2
+        ]
+      },
+      "length_means": {
+        "curve": 15.375,
+        "events": 12.765625,
+        "graph_token": 14.0,
+        "micro": 2.996875,
+        "ownership": 2.01875,
+        "wallet_prior": 1.0
+      },
+      "truncation_rate_mean": {
+        "events": 0.0125,
+        "curve": 0.0,
+        "creator": 0.0,
+        "micro": 0.0,
+        "ownership": 0.0,
+        "graph": 0.015625
+      },
+      "modality_availability_mean": {
+        "modality_mask_curve": 0.75625,
+        "modality_mask_events": 0.7625,
+        "modality_mask_graph": 1.0,
+        "modality_mask_micro": 0.771875,
+        "modality_mask_ownership": 0.734375,
+        "modality_mask_wallet_prior": 1.0
+      },
+      "target_status_example": {
+        "available": true,
+        "returns_h60": {
+          "is_missing": true,
+          "frozen_status": "right_censored"
+        },
+        "graduation_tte": {
+          "effective_event_observed": false,
+          "split_boundary_censored": true,
+          "frozen_tte_sec": null
+        },
+        "explosion_tte": {
+          "effective_event_observed": false,
+          "split_boundary_censored": true
+        }
+      },
+      "causal_failures": 0,
+      "production": true
+    },
+    "mixed": {
+      "batches": 6,
+      "batches_per_sec": 0.1669304720766536,
+      "elapsed_sec": 35.94310808181763,
+      "production": true
+    },
+    "peak_rss_mb": 8091.78125
+  }
+}

@@ -367,5 +367,25 @@
     "token_assignments": "data/external/world_model/splits/split_v1/token_assignments.parquet",
     "observation_assignments_broad": "data/external/world_model/splits/split_v1/observation_assignments_broad",
     "observation_assignments_rich": "data/external/world_model/splits/split_v1/observation_assignments_rich.parquet"
+  },
+  "tte_admin_censor_overlays": {
+    "generated_at": "2026-09-05T17:43:41.364528+00:00",
+    "q70": 1782869641.017306,
+    "q85": 1783459140.3081825,
+    "corpus_end_unix": 1784073600.0,
+    "rule": "event_time < split_end may remain observed; else admin right-censor",
+    "never_admin_censor_to_negative": true,
+    "stats": {
+      "broad_rows": 8449949,
+      "broad_grad_admin_censored": 8382533,
+      "broad_expl_admin_censored": 7600147,
+      "rich_rows": 51353,
+      "rich_grad_admin_censored": 51060,
+      "rich_expl_admin_censored": 47602
+    },
+    "artifacts": {
+      "broad": "data/external/world_model/splits/split_v1/tte_overlays_broad",
+      "rich": "data/external/world_model/splits/split_v1/tte_overlays_rich.parquet"
+    }
   }
 }

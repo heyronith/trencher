@@ -1,0 +1,93 @@
+{
+  "contract_version": "TRAINING_LOADER_CONTRACT_V2",
+  "supersedes": "TRAINING_LOADER_CONTRACT_V1",
+  "generated_at": "2026-09-05T17:54:14.013750+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "depends_on_splits": "SPLIT_CONTRACT_V1",
+  "no_model_training": true,
+  "runtime": "numpy_pyarrow_streaming_production",
+  "production_loader": true,
+  "synthetic_path": "tests_only",
+  "tte_admin_censor": {
+    "rule": "event_time < split_end may remain observed; else hide + right_censor",
+    "never_admin_censor_to_negative": true,
+    "test_bound": "CORPUS_END_UNIX"
+  },
+  "forbidden_predictive_features": [
+    "artifact_id",
+    "base58_address",
+    "base_split",
+    "censor_reason",
+    "creator",
+    "label_semantics",
+    "mint",
+    "model_state_digest",
+    "observation_dataset_version",
+    "observation_id",
+    "pit_engine_version",
+    "purge_reason",
+    "sequence_store_version",
+    "source_freeze_version",
+    "source_identity",
+    "split_assignment",
+    "target_dataset_version",
+    "tx_signature",
+    "wallet",
+    "wallet_id"
+  ],
+  "train_only_transforms": {
+    "fit_on": "unique_underlying_training_sequence_rows",
+    "apply_on": "production_sequence_numeric_channels",
+    "never_fit_on": [
+      "val",
+      "test"
+    ],
+    "no_raw_unix_as_generic_feature": true
+  },
+  "window_presets": [
+    {
+      "name": "last_n_64",
+      "kind": "last_n",
+      "n": 64
+    },
+    {
+      "name": "last_n_256",
+      "kind": "last_n",
+      "n": 256
+    },
+    {
+      "name": "last_10s",
+      "kind": "last_seconds",
+      "seconds": 10
+    },
+    {
+      "name": "last_30s",
+      "kind": "last_seconds",
+      "seconds": 30
+    },
+    {
+      "name": "last_2m",
+      "kind": "last_seconds",
+      "seconds": 120
+    },
+    {
+      "name": "full_capped_4096",
+      "kind": "full_capped",
+      "cap": 4096
+    }
+  ],
+  "stores": {
+    "broad": [
+      "broad_sequence_events_v1",
+      "broad_sequence_curve_v1",
+      "broad_sequence_creator_v1",
+      "broad_targets_v3",
+      "tte_overlays_broad"
+    ],
+    "rich": [
+      "sequence_dataset_v2",
+      "target_dataset_v3",
+      "tte_overlays_rich"
+    ]
+  }
+}
