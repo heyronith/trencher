@@ -710,14 +710,15 @@ def build_broad_targets_v1(
                 refs_path = refs_parts / f"part-{part_i:05d}.parquet"
 
     for pi, part in enumerate(partitions):
-        if pi % 16 == 0:
-            logger.info(
-                "targets partition %s (%d/%d) obs_so_far=%d",
-                part,
-                pi + 1,
-                len(partitions),
-                observations_processed,
-            )
+        pct = int(100 * pi / max(len(partitions), 1))
+        logger.info(
+            "targets progress=%d%% partition=%s (%d/%d) obs_so_far=%d",
+            pct,
+            part,
+            pi + 1,
+            len(partitions),
+            observations_processed,
+        )
         events_part = events_root / part
         path_rows = _path_rows_from_event_partition(
             events_part, migration_unix, postgrad_by_mint

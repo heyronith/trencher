@@ -437,7 +437,10 @@ def aggregate_sufficiency_streaming(
         if c.startswith("grad_h") and c.endswith("_status")
     ]
 
-    for batch in dataset.scanner(columns=use_cols + grad_h_cols, batch_size=50_000).to_batches():
+    for batch in dataset.scanner(
+        columns=list(dict.fromkeys(use_cols + grad_h_cols)),
+        batch_size=50_000,
+    ).to_batches():
         names = batch.schema.names
         colmap = {n: batch.column(n).to_pylist() for n in names}
         n = batch.num_rows

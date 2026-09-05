@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,12 @@ logger = logging.getLogger(__name__)
 
 CONTRACT_ID = "BROAD_SUPERVISION_CONTRACT_V1"
 AUDIT_ID = "BROAD_SUPERVISION_AUDIT_V1"
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def build_broad_supervision_contract_v1() -> dict[str, Any]:
