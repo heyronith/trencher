@@ -37,6 +37,7 @@ image = (
         "pyyaml",
         "tqdm",
         "rich",
+        "tenacity",
     )
     .env({"PYTHONPATH": "/root/trencher/src"})
 )
