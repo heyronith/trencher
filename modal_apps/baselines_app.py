@@ -45,6 +45,7 @@ image = (
 image = image.add_local_dir(
     str(Path(__file__).resolve().parents[1] / "src" / "trencher"),
     remote_path="/root/trencher/src/trencher",
+    ignore=["**/__pycache__/**", "**/*.pyc", "**/*.pyo", "**/.DS_Store"],
 )
 
 app = modal.App(APP_NAME)
