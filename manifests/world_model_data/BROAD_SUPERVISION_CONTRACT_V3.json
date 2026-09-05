@@ -1,0 +1,29 @@
+{
+  "contract_version": "BROAD_SUPERVISION_CONTRACT_V3",
+  "generated_at": "2026-09-05T16:11:50.025511+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "supersedes": "BROAD_SUPERVISION_CONTRACT_V2",
+  "scope": "broad_event_curve_supervision",
+  "explosion_primary_semantics": "Keep every stored primary_event row whether explosion_exists is true or false. If no stored primary detector row exists for a mint, explosion imminence is modality_unavailable \u2014 never fabricate a synthetic explosion_exists=False stub.",
+  "invariant": "no_detector_row_never_valid_explosion_negative",
+  "targets": {
+    "v1_preserved": "broad_targets_v1",
+    "v2_preserved": "broad_targets_v2",
+    "v3_canonical": "broad_targets_v3",
+    "v3_repair": "explosion_columns_only; missing_primary_no_stub_from_v2"
+  },
+  "frozen_semantics_not_modified": [
+    "world_model_freeze_v1",
+    "pit_v4",
+    "observation_dataset_v1",
+    "sequence_dataset_v2",
+    "model_input_contract_v2",
+    "target_dataset_v3_target_values",
+    "target_contract_v3",
+    "target_source_coverage_v2",
+    "explosion_detector_v1"
+  ],
+  "no_splits": true,
+  "no_training": true,
+  "no_external_acquisition": true
+}

@@ -437,6 +437,87 @@ def test_repair_explosion_row_matches_rich_primary_semantics() -> None:
     assert repaired["target_dataset_version"] == "broad_targets_v2"
 
 
+def test_missing_primary_stays_modality_unavailable_v3() -> None:
+    """No stored detector row → modality_unavailable (never stubbed negative)."""
+    from trencher.data.world_model.broad.targets_v3 import (
+        repair_explosion_columns_for_row_v3,
+    )
+    from trencher.data.world_model.targets.status import (
+        STATUS_MODALITY_UNAVAILABLE,
+        STATUS_VALID_NEGATIVE,
+    )
+
+    class _Cov:
+        def covers_window(self, start: float, end: float) -> bool:
+            return True
+
+        def absence_status(self, start: float, end: float) -> str:
+            return STATUS_VALID_NEGATIVE
+
+    class _Reg:
+        pump_trades = _Cov()
+
+    row = {
+        "observation_id": "z:1",
+        "mint": "z",
+        "observation_time_t": 1_800_000_000.0,
+        "price_target_available": False,
+        "reference_price": None,
+        "explosion_within_60s": False,
+        "explosion_within_60s_status": STATUS_VALID_NEGATIVE,  # v2 stub leakage
+        "h300_status": STATUS_VALID_NEGATIVE,
+        "target_dataset_version": "broad_targets_v2",
+    }
+    fixed = repair_explosion_columns_for_row_v3(
+        row, primary=None, all_defs=[], coverage=_Reg()
+    )
+    assert fixed["explosion_within_60s"] is None
+    assert fixed["explosion_within_60s_status"] == STATUS_MODALITY_UNAVAILABLE
+    assert fixed["h300_status"] == STATUS_VALID_NEGATIVE
+    assert fixed["target_dataset_version"] == "broad_targets_v3"
+
+
+def test_stored_exists_false_primary_still_valid_negative_v3() -> None:
+    from trencher.data.world_model.broad.targets_v3 import (
+        repair_explosion_columns_for_row_v3,
+    )
+    from trencher.data.world_model.targets.explosion import PRIMARY_DEFINITION_ID
+    from trencher.data.world_model.targets.status import STATUS_VALID_NEGATIVE
+
+    class _Cov:
+        def covers_window(self, start: float, end: float) -> bool:
+            return True
+
+        def absence_status(self, start: float, end: float) -> str:
+            return STATUS_VALID_NEGATIVE
+
+    class _Reg:
+        pump_trades = _Cov()
+
+    prim = {
+        "definition_id": PRIMARY_DEFINITION_ID,
+        "definition_label": "primary",
+        "explosion_exists": False,
+        "onset_unix": None,
+        "censoring_status": None,
+    }
+    row = {
+        "observation_id": "m:2",
+        "mint": "m",
+        "observation_time_t": 1_800_000_000.0,
+        "price_target_available": False,
+        "reference_price": None,
+        "h300_status": STATUS_VALID_NEGATIVE,
+        "target_dataset_version": "broad_targets_v2",
+    }
+    out = repair_explosion_columns_for_row_v3(
+        row, primary=prim, all_defs=[prim], coverage=_Reg()
+    )
+    assert out["explosion_within_60s"] is False
+    assert out["explosion_within_60s_status"] == STATUS_VALID_NEGATIVE
+    assert out["h300_status"] == STATUS_VALID_NEGATIVE
+
+
 def test_graduation_censor_decision_documents_conservative_retain(
     tmp_path: Path,
 ) -> None:

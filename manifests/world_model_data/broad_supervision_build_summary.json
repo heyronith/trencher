@@ -1,32 +1,35 @@
 {
-  "generated_at": "2026-09-05T04:26:37.749901+00:00",
+  "generated_at": "2026-09-05T15:14:44.046024+00:00",
   "phases": [
-    "targets_v2",
-    "audit_v2"
+    "targets_v3",
+    "audit_v3"
   ],
   "broad_root": "data/external/world_model/broad",
   "pump_root": "data/external/pumpfun_memecoin_corpus",
   "world_root": "data/external/world_model",
   "timings_sec": {
-    "targets_v2": 5406.331738124994,
-    "audit_v2": 1261.7452203339926
+    "targets_v3": 3425.8987888339907,
+    "audit_v3": 1284.630289875
   },
   "metas": {
-    "targets_v2": {
-      "generated_at": "2026-09-05T14:29:17.718266+00:00",
-      "version": "broad_targets_v2",
-      "repaired_from": "broad_targets_v1",
+    "targets_v3": {
+      "generated_at": "2026-09-05T16:11:49.337464+00:00",
+      "version": "broad_targets_v3",
+      "repaired_from": "broad_targets_v2",
       "observations_processed": 8449949,
       "primary_explosion_events": 49836,
       "mints_with_primary_explosion": 49836,
       "mints_with_primary_definition_row": 596397,
+      "mints_seen_in_observations": 622303,
+      "mints_without_primary_definition_row": 25906,
+      "observations_copied_with_primary": 8109739,
+      "observations_recomputed_missing_primary": 340210,
       "explosion_repair": {
-        "method": "recompute_compute_explosion_obs_from_stored_explosion_events",
-        "primary_semantics": "store every primary_event(events) whether explosion_exists true or false (match target_dataset_v3)",
-        "non_explosion_fields": "copied_unchanged_from_v1",
-        "modality_unavailable_60s_before": 7600130,
-        "modality_unavailable_60s_after": 0,
-        "valid_negative_60s_after": 8323607,
+        "method": "copy_v2_explosion_cols_when_primary_row_exists;recompute_with_primary_None_when_absent",
+        "primary_semantics": "stored primary row (exists true/false) kept; missing primary \u2192 modality_unavailable (no _stub_primary_absent)",
+        "non_explosion_fields": "copied_unchanged_from_v2",
+        "modality_unavailable_60s_after": 340210,
+        "valid_negative_60s_after": 7983493,
         "valid_positive_60s_after": 120638,
         "horizons_sec": [
           10,
@@ -34,28 +37,39 @@
           60,
           120,
           300
-        ]
+        ],
+        "invariant_no_detector_row_never_valid_negative": true
       },
       "artifacts": {
-        "observation_targets": "data/external/world_model/broad/broad_targets_v2/observation_targets",
-        "future_path_refs": "data/external/world_model/broad/broad_targets_v2/future_path_refs",
-        "explosion_events": "data/external/world_model/broad/broad_targets_v2/explosion_events_v1.parquet",
-        "source_v1": "data/external/world_model/broad/broad_targets_v1",
+        "observation_targets": "data/external/world_model/broad/broad_targets_v3/observation_targets",
+        "future_path_refs": "data/external/world_model/broad/broad_targets_v3/future_path_refs",
+        "explosion_events": "data/external/world_model/broad/broad_targets_v3/explosion_events_v1.parquet",
+        "source_v2": "data/external/world_model/broad/broad_targets_v2",
         "observation_index": "data/external/world_model/broad/broad_observation_index_v1"
       }
     },
-    "audit_v2": {
-      "audit_id": "BROAD_SUPERVISION_AUDIT_V2",
-      "generated_at": "2026-09-05T14:50:21.111302+00:00",
+    "audit_v3": {
+      "audit_id": "BROAD_SUPERVISION_AUDIT_V3",
+      "generated_at": "2026-09-05T16:33:14.215540+00:00",
       "freeze_id": "world_model_freeze_v1",
-      "contract_version": "BROAD_SUPERVISION_CONTRACT_V2",
-      "supersedes": "BROAD_SUPERVISION_AUDIT_V1",
+      "contract_version": "BROAD_SUPERVISION_CONTRACT_V3",
+      "supersedes": "BROAD_SUPERVISION_AUDIT_V2",
       "population_counts": {
         "launch_population": 798430,
         "event_curve_population": 622303,
         "price_target_population": 596338,
         "graduation_event_population": 798430,
         "has_migration_evidence_metadata": 5697
+      },
+      "detector_row_breakdown": {
+        "event_curve_mints": 622303,
+        "price_capable_mints": 596338,
+        "mints_with_stored_primary_detector_row": 596397,
+        "mints_without_detector_row": 25906,
+        "primary_exists_true": 49836,
+        "primary_exists_false": 546561,
+        "price_capable_without_primary": 0,
+        "event_curve_without_primary": 25906
       },
       "sequence_counts": {
         "event_rows": 26886634,
@@ -84,16 +98,17 @@
       },
       "target_counts": {
         "v1_preserved": true,
-        "v2_observations_processed": 8449949,
+        "v2_preserved": true,
+        "v3_observations_processed": 8449949,
         "primary_explosion_events": 49836,
-        "mints_with_primary_explosion": 49836,
+        "mints_with_primary_definition_row": 596397,
+        "mints_without_primary_definition_row": 25906,
         "explosion_repair": {
-          "method": "recompute_compute_explosion_obs_from_stored_explosion_events",
-          "primary_semantics": "store every primary_event(events) whether explosion_exists true or false (match target_dataset_v3)",
-          "non_explosion_fields": "copied_unchanged_from_v1",
-          "modality_unavailable_60s_before": 7600130,
-          "modality_unavailable_60s_after": 0,
-          "valid_negative_60s_after": 8323607,
+          "method": "copy_v2_explosion_cols_when_primary_row_exists;recompute_with_primary_None_when_absent",
+          "primary_semantics": "stored primary row (exists true/false) kept; missing primary \u2192 modality_unavailable (no _stub_primary_absent)",
+          "non_explosion_fields": "copied_unchanged_from_v2",
+          "modality_unavailable_60s_after": 340210,
+          "valid_negative_60s_after": 7983493,
           "valid_positive_60s_after": 120638,
           "horizons_sec": [
             10,
@@ -101,7 +116,8 @@
             60,
             120,
             300
-          ]
+          ],
+          "invariant_no_detector_row_never_valid_negative": true
         }
       },
       "disk": {
@@ -110,8 +126,9 @@
         "observations_bytes": 4103783880,
         "targets_v1_bytes": 9591427442,
         "targets_v2_bytes": 8593516611,
-        "total_bytes": 43026602199,
-        "total_mb": 41033.365
+        "targets_v3_bytes": 8594995602,
+        "total_bytes": 51621597801,
+        "total_mb": 49230.192
       },
       "build_timings_sec": {
         "population": 8.99655670800712,
@@ -119,10 +136,12 @@
         "observations": 312.90213095900253,
         "targets": 5507.716352957999,
         "audit": 614.5539309169981,
-        "targets_v2": 5406.331738124994
+        "targets_v2": 5406.331738124994,
+        "audit_v2": 1261.7452203339926,
+        "targets_v3": 3425.8987888339907
       },
       "graduation_decision": {
-        "generated_at": "2026-09-05T14:29:22.018245+00:00",
+        "generated_at": "2026-09-05T16:11:52.708000+00:00",
         "decision_id": "broad_graduation_censor_v1",
         "tracking_expires_at_is_proven_graduation_tracking_end": false,
         "retain_conservative_v3_graduation_treatment": true,
@@ -221,7 +240,7 @@
           "notes": "Broad increases independent explosion events"
         }
       ],
-      "supervision_sufficiency_v2": [
+      "supervision_sufficiency_v3": [
         {
           "head": "returns_h300",
           "valid_observations": 973601,
@@ -238,7 +257,7 @@
           "observations": 973601,
           "independent_event_count": 122695,
           "prevalence": 0.29654139632149107,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v3_no_stub"
         },
         {
           "head": "barrier_u100_l30_h3600",
@@ -256,7 +275,7 @@
           "observations": 1485269,
           "independent_event_count": 72786,
           "prevalence": 0.15944249829492166,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v3_no_stub"
         },
         {
           "head": "survival_24h",
@@ -274,7 +293,7 @@
           "observations": 8024475,
           "independent_event_count": 592798,
           "prevalence": 0.00825761186868923,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v3_no_stub"
         },
         {
           "head": "graduation_time_to_event",
@@ -292,7 +311,7 @@
           "observations": 8449949,
           "independent_event_count": 4150,
           "prevalence": 0.0058919882238342505,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v3_no_stub"
         },
         {
           "head": "graduated_within_h86400_binary",
@@ -310,7 +329,225 @@
           "observations": 68938,
           "independent_event_count": 4018,
           "prevalence": 0.6835272273637181,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_within_10s",
+          "valid_observations": 8104230,
+          "unique_tokens_with_valid_supervision": 596397,
+          "positive_observations": 77297,
+          "distinct_positive_tokens": 43694,
+          "independent_events": 49836,
+          "censored_observations": 5509,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.009537858624446739,
+          "prevalence_among_valid_tokens": 0.07326327932568406,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Imminence@10s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+          "observations": 8104230,
+          "independent_event_count": 49836,
+          "prevalence": 0.009537858624446739,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_within_30s",
+          "valid_observations": 8104190,
+          "unique_tokens_with_valid_supervision": 596397,
+          "positive_observations": 109114,
+          "distinct_positive_tokens": 47031,
+          "independent_events": 49836,
+          "censored_observations": 5549,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.013463899538386934,
+          "prevalence_among_valid_tokens": 0.07885854556612458,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Imminence@30s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+          "observations": 8104190,
+          "independent_event_count": 49836,
+          "prevalence": 0.013463899538386934,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_within_60s",
+          "valid_observations": 8104131,
+          "unique_tokens_with_valid_supervision": 596397,
+          "positive_observations": 120638,
+          "distinct_positive_tokens": 47887,
+          "independent_events": 49836,
+          "censored_observations": 5608,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.014885988392833236,
+          "prevalence_among_valid_tokens": 0.08029383112255763,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Imminence@60s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+          "observations": 8104131,
+          "independent_event_count": 49836,
+          "prevalence": 0.014885988392833236,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_within_120s",
+          "valid_observations": 8103930,
+          "unique_tokens_with_valid_supervision": 596389,
+          "positive_observations": 128367,
+          "distinct_positive_tokens": 48556,
+          "independent_events": 49836,
+          "censored_observations": 5809,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.01584009239961352,
+          "prevalence_among_valid_tokens": 0.0814166592609857,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Imminence@120s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+          "observations": 8103930,
+          "independent_event_count": 49836,
+          "prevalence": 0.01584009239961352,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_within_300s",
+          "valid_observations": 8103129,
+          "unique_tokens_with_valid_supervision": 596325,
+          "positive_observations": 140230,
+          "distinct_positive_tokens": 49226,
+          "independent_events": 49836,
+          "censored_observations": 6610,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.017305660566430573,
+          "prevalence_among_valid_tokens": 0.08254894562528822,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Imminence@300s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
+          "observations": 8103129,
+          "independent_event_count": 49836,
+          "prevalence": 0.017305660566430573,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "explosion_onset_primary",
+          "valid_observations": 8104131,
+          "unique_tokens_with_valid_supervision": 596397,
+          "positive_observations": 120638,
+          "distinct_positive_tokens": 47887,
+          "independent_events": 49836,
+          "censored_observations": 5608,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.014885988392833236,
+          "prevalence_among_valid_tokens": 0.08029383112255763,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Alias of explosion_within_60s (status-gated imminence).",
+          "observations": 8104131,
+          "independent_event_count": 49836,
+          "prevalence": 0.014885988392833236,
+          "population": "broad_targets_v3_no_stub"
+        },
+        {
+          "head": "holder_state_targets",
+          "valid_observations": 85,
+          "unique_tokens_with_valid_supervision": 6,
+          "positive_observations": 85,
+          "distinct_positive_tokens": 6,
+          "independent_events": 6,
+          "censored_observations": 0,
+          "unavailable_observations": 8449864,
+          "prevalence_among_valid_observations": 1.0,
+          "prevalence_among_valid_tokens": 1.0,
+          "recommendation": "still_sparse_ownership",
+          "notes": "",
+          "observations": 85,
+          "independent_event_count": 6,
+          "prevalence": 1.0,
+          "population": "broad_targets_v3_no_stub"
+        }
+      ],
+      "supervision_sufficiency_v2_stub_baseline": [
+        {
+          "head": "returns_h300",
+          "valid_observations": 973601,
+          "unique_tokens_with_valid_supervision": 122695,
+          "positive_observations": 288713,
+          "distinct_positive_tokens": 63726,
+          "independent_events": 122695,
+          "censored_observations": 6148904,
+          "unavailable_observations": 1327444,
+          "prevalence_among_valid_observations": 0.29654139632149107,
+          "prevalence_among_valid_tokens": 0.5193854680304821,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 973601,
+          "independent_event_count": 122695,
+          "prevalence": 0.29654139632149107,
+          "population": "broad_targets_v2_stub_missing_primary"
+        },
+        {
+          "head": "barrier_u100_l30_h3600",
+          "valid_observations": 1485269,
+          "unique_tokens_with_valid_supervision": 269007,
+          "positive_observations": 236815,
+          "distinct_positive_tokens": 72786,
+          "independent_events": 72786,
+          "censored_observations": 6964680,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.15944249829492166,
+          "prevalence_among_valid_tokens": 0.270572884720472,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 1485269,
+          "independent_event_count": 72786,
+          "prevalence": 0.15944249829492166,
+          "population": "broad_targets_v2_stub_missing_primary"
+        },
+        {
+          "head": "survival_24h",
+          "valid_observations": 8024475,
+          "unique_tokens_with_valid_supervision": 592798,
+          "positive_observations": 66263,
+          "distinct_positive_tokens": 4412,
+          "independent_events": 592798,
+          "censored_observations": 425474,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.00825761186868923,
+          "prevalence_among_valid_tokens": 0.007442670184447316,
+          "recommendation": "sufficient_on_broad",
+          "notes": "",
+          "observations": 8024475,
+          "independent_event_count": 592798,
+          "prevalence": 0.00825761186868923,
+          "population": "broad_targets_v2_stub_missing_primary"
+        },
+        {
+          "head": "graduation_time_to_event",
+          "valid_observations": 8449949,
+          "unique_tokens_with_valid_supervision": 622303,
+          "positive_observations": 49787,
+          "distinct_positive_tokens": 4150,
+          "independent_events": 4150,
+          "censored_observations": 8381011,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.0058919882238342505,
+          "prevalence_among_valid_tokens": 0.006668777106972006,
+          "recommendation": "sufficient_on_broad",
+          "notes": "Survival-style time_to_graduation_status. Right-censored observations are legitimate supervision in the usable denominator. ~4k observed graduation events may be sufficient.",
+          "observations": 8449949,
+          "independent_event_count": 4150,
+          "prevalence": 0.0058919882238342505,
+          "population": "broad_targets_v2_stub_missing_primary"
+        },
+        {
+          "head": "graduated_within_h86400_binary",
+          "valid_observations": 68938,
+          "unique_tokens_with_valid_supervision": 4150,
+          "positive_observations": 47121,
+          "distinct_positive_tokens": 4018,
+          "independent_events": 4018,
+          "censored_observations": 8381011,
+          "unavailable_observations": 0,
+          "prevalence_among_valid_observations": 0.6835272273637181,
+          "prevalence_among_valid_tokens": 0.9681927710843373,
+          "recommendation": "marginal_on_broad",
+          "notes": "Binary within-24h only. Censored absence is not an ordinary binary negative; excluded from valid denominator.",
+          "observations": 68938,
+          "independent_event_count": 4018,
+          "prevalence": 0.6835272273637181,
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_within_10s",
@@ -328,7 +565,7 @@
           "observations": 8444347,
           "independent_event_count": 49836,
           "prevalence": 0.009153697734117274,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_within_30s",
@@ -346,7 +583,7 @@
           "observations": 8444307,
           "independent_event_count": 49836,
           "prevalence": 0.012921605052966453,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_within_60s",
@@ -364,7 +601,7 @@
           "observations": 8444245,
           "independent_event_count": 49836,
           "prevalence": 0.01428641636996558,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_within_120s",
@@ -382,7 +619,7 @@
           "observations": 8444043,
           "independent_event_count": 49836,
           "prevalence": 0.015202077961943112,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_within_300s",
@@ -400,7 +637,7 @@
           "observations": 8443237,
           "independent_event_count": 49836,
           "prevalence": 0.016608559015931924,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "explosion_onset_primary",
@@ -418,7 +655,7 @@
           "observations": 8444245,
           "independent_event_count": 49836,
           "prevalence": 0.01428641636996558,
-          "population": "broad_targets_v2_repaired"
+          "population": "broad_targets_v2_stub_missing_primary"
         },
         {
           "head": "holder_state_targets",
@@ -436,225 +673,7 @@
           "observations": 85,
           "independent_event_count": 6,
           "prevalence": 1.0,
-          "population": "broad_targets_v2_repaired"
-        }
-      ],
-      "supervision_sufficiency_v1_broken_baseline": [
-        {
-          "head": "returns_h300",
-          "valid_observations": 973601,
-          "unique_tokens_with_valid_supervision": 122695,
-          "positive_observations": 288713,
-          "distinct_positive_tokens": 63726,
-          "independent_events": 122695,
-          "censored_observations": 6148904,
-          "unavailable_observations": 1327444,
-          "prevalence_among_valid_observations": 0.29654139632149107,
-          "prevalence_among_valid_tokens": 0.5193854680304821,
-          "recommendation": "sufficient_on_broad",
-          "notes": "",
-          "observations": 973601,
-          "independent_event_count": 122695,
-          "prevalence": 0.29654139632149107,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "barrier_u100_l30_h3600",
-          "valid_observations": 1485269,
-          "unique_tokens_with_valid_supervision": 269007,
-          "positive_observations": 236815,
-          "distinct_positive_tokens": 72786,
-          "independent_events": 72786,
-          "censored_observations": 6964680,
-          "unavailable_observations": 0,
-          "prevalence_among_valid_observations": 0.15944249829492166,
-          "prevalence_among_valid_tokens": 0.270572884720472,
-          "recommendation": "sufficient_on_broad",
-          "notes": "",
-          "observations": 1485269,
-          "independent_event_count": 72786,
-          "prevalence": 0.15944249829492166,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "survival_24h",
-          "valid_observations": 8024475,
-          "unique_tokens_with_valid_supervision": 592798,
-          "positive_observations": 66263,
-          "distinct_positive_tokens": 4412,
-          "independent_events": 592798,
-          "censored_observations": 425474,
-          "unavailable_observations": 0,
-          "prevalence_among_valid_observations": 0.00825761186868923,
-          "prevalence_among_valid_tokens": 0.007442670184447316,
-          "recommendation": "sufficient_on_broad",
-          "notes": "",
-          "observations": 8024475,
-          "independent_event_count": 592798,
-          "prevalence": 0.00825761186868923,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "graduation_time_to_event",
-          "valid_observations": 8449949,
-          "unique_tokens_with_valid_supervision": 622303,
-          "positive_observations": 49787,
-          "distinct_positive_tokens": 4150,
-          "independent_events": 4150,
-          "censored_observations": 8381011,
-          "unavailable_observations": 0,
-          "prevalence_among_valid_observations": 0.0058919882238342505,
-          "prevalence_among_valid_tokens": 0.006668777106972006,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Survival-style time_to_graduation_status. Right-censored observations are legitimate supervision in the usable denominator. ~4k observed graduation events may be sufficient.",
-          "observations": 8449949,
-          "independent_event_count": 4150,
-          "prevalence": 0.0058919882238342505,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "graduated_within_h86400_binary",
-          "valid_observations": 68938,
-          "unique_tokens_with_valid_supervision": 4150,
-          "positive_observations": 47121,
-          "distinct_positive_tokens": 4018,
-          "independent_events": 4018,
-          "censored_observations": 8381011,
-          "unavailable_observations": 0,
-          "prevalence_among_valid_observations": 0.6835272273637181,
-          "prevalence_among_valid_tokens": 0.9681927710843373,
-          "recommendation": "marginal_on_broad",
-          "notes": "Binary within-24h only. Censored absence is not an ordinary binary negative; excluded from valid denominator.",
-          "observations": 68938,
-          "independent_event_count": 4018,
-          "prevalence": 0.6835272273637181,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_within_10s",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 77297,
-          "distinct_positive_tokens": 43694,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.09095701555272358,
-          "prevalence_among_valid_tokens": 0.8767557588891565,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Imminence@10s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.09095701555272358,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_within_30s",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 109114,
-          "distinct_positive_tokens": 47031,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.12839675272028514,
-          "prevalence_among_valid_tokens": 0.9437153864676138,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Imminence@30s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.12839675272028514,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_within_60s",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 120638,
-          "distinct_positive_tokens": 47887,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.14195728737531169,
-          "prevalence_among_valid_tokens": 0.9608917248575327,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Imminence@60s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.14195728737531169,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_within_120s",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 128367,
-          "distinct_positive_tokens": 48556,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.1510521652257716,
-          "prevalence_among_valid_tokens": 0.9743157556786259,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Imminence@120s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.1510521652257716,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_within_300s",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 140230,
-          "distinct_positive_tokens": 49226,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.16501160835424955,
-          "prevalence_among_valid_tokens": 0.9877598523155952,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Imminence@300s status-gated. Valid denominator includes valid_negative (no-explosion) tokens.",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.16501160835424955,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "explosion_onset_primary",
-          "valid_observations": 849819,
-          "unique_tokens_with_valid_supervision": 49836,
-          "positive_observations": 120638,
-          "distinct_positive_tokens": 47887,
-          "independent_events": 49836,
-          "censored_observations": 0,
-          "unavailable_observations": 7600130,
-          "prevalence_among_valid_observations": 0.14195728737531169,
-          "prevalence_among_valid_tokens": 0.9608917248575327,
-          "recommendation": "sufficient_on_broad",
-          "notes": "Alias of explosion_within_60s (status-gated imminence).",
-          "observations": 849819,
-          "independent_event_count": 49836,
-          "prevalence": 0.14195728737531169,
-          "population": "broad_targets_v1_broken_primary_gate"
-        },
-        {
-          "head": "holder_state_targets",
-          "valid_observations": 85,
-          "unique_tokens_with_valid_supervision": 6,
-          "positive_observations": 85,
-          "distinct_positive_tokens": 6,
-          "independent_events": 6,
-          "censored_observations": 0,
-          "unavailable_observations": 8449864,
-          "prevalence_among_valid_observations": 1.0,
-          "prevalence_among_valid_tokens": 1.0,
-          "recommendation": "still_sparse_ownership",
-          "notes": "",
-          "observations": 85,
-          "independent_event_count": 6,
-          "prevalence": 1.0,
-          "population": "broad_targets_v1_broken_primary_gate"
+          "population": "broad_targets_v2_stub_missing_primary"
         }
       ],
       "explosion_imminence_comparison": {
@@ -728,74 +747,7 @@
           },
           "observations_scanned": 51353
         },
-        "broad_targets_v1_broken": {
-          "10": {
-            "valid_observations": 849819,
-            "valid_negative_observations": 772522,
-            "valid_positive_observations": 77297,
-            "unique_tokens_with_valid_supervision": 49836,
-            "distinct_positive_tokens": 43694,
-            "distinct_valid_negative_tokens": 49836,
-            "censored_observations": 0,
-            "unavailable_observations": 7600130,
-            "prevalence_among_valid_observations": 0.09095701555272358,
-            "prevalence_among_valid_tokens": 0.8767557588891565,
-            "independent_primary_explosion_events": 49836
-          },
-          "30": {
-            "valid_observations": 849819,
-            "valid_negative_observations": 740705,
-            "valid_positive_observations": 109114,
-            "unique_tokens_with_valid_supervision": 49836,
-            "distinct_positive_tokens": 47031,
-            "distinct_valid_negative_tokens": 49836,
-            "censored_observations": 0,
-            "unavailable_observations": 7600130,
-            "prevalence_among_valid_observations": 0.12839675272028514,
-            "prevalence_among_valid_tokens": 0.9437153864676138,
-            "independent_primary_explosion_events": 49836
-          },
-          "60": {
-            "valid_observations": 849819,
-            "valid_negative_observations": 729181,
-            "valid_positive_observations": 120638,
-            "unique_tokens_with_valid_supervision": 49836,
-            "distinct_positive_tokens": 47887,
-            "distinct_valid_negative_tokens": 49836,
-            "censored_observations": 0,
-            "unavailable_observations": 7600130,
-            "prevalence_among_valid_observations": 0.14195728737531169,
-            "prevalence_among_valid_tokens": 0.9608917248575327,
-            "independent_primary_explosion_events": 49836
-          },
-          "120": {
-            "valid_observations": 849819,
-            "valid_negative_observations": 721452,
-            "valid_positive_observations": 128367,
-            "unique_tokens_with_valid_supervision": 49836,
-            "distinct_positive_tokens": 48556,
-            "distinct_valid_negative_tokens": 49836,
-            "censored_observations": 0,
-            "unavailable_observations": 7600130,
-            "prevalence_among_valid_observations": 0.1510521652257716,
-            "prevalence_among_valid_tokens": 0.9743157556786259,
-            "independent_primary_explosion_events": 49836
-          },
-          "300": {
-            "valid_observations": 849819,
-            "valid_negative_observations": 709589,
-            "valid_positive_observations": 140230,
-            "unique_tokens_with_valid_supervision": 49836,
-            "distinct_positive_tokens": 49226,
-            "distinct_valid_negative_tokens": 49836,
-            "censored_observations": 0,
-            "unavailable_observations": 7600130,
-            "prevalence_among_valid_observations": 0.16501160835424955,
-            "prevalence_among_valid_tokens": 0.9877598523155952,
-            "independent_primary_explosion_events": 49836
-          }
-        },
-        "broad_targets_v2_repaired": {
+        "broad_targets_v2_stub_missing_primary": {
           "10": {
             "valid_observations": 8444347,
             "valid_negative_observations": 8367050,
@@ -862,10 +814,161 @@
             "independent_primary_explosion_events": 49836
           }
         },
+        "broad_targets_v3_no_stub": {
+          "10": {
+            "valid_observations": 8104230,
+            "valid_negative_observations": 8026933,
+            "valid_positive_observations": 77297,
+            "unique_tokens_with_valid_supervision": 596397,
+            "distinct_positive_tokens": 43694,
+            "distinct_valid_negative_tokens": 596397,
+            "censored_observations": 5509,
+            "unavailable_observations": 340210,
+            "prevalence_among_valid_observations": 0.009537858624446739,
+            "prevalence_among_valid_tokens": 0.07326327932568406,
+            "independent_primary_explosion_events": 49836
+          },
+          "30": {
+            "valid_observations": 8104190,
+            "valid_negative_observations": 7995076,
+            "valid_positive_observations": 109114,
+            "unique_tokens_with_valid_supervision": 596397,
+            "distinct_positive_tokens": 47031,
+            "distinct_valid_negative_tokens": 596397,
+            "censored_observations": 5549,
+            "unavailable_observations": 340210,
+            "prevalence_among_valid_observations": 0.013463899538386934,
+            "prevalence_among_valid_tokens": 0.07885854556612458,
+            "independent_primary_explosion_events": 49836
+          },
+          "60": {
+            "valid_observations": 8104131,
+            "valid_negative_observations": 7983493,
+            "valid_positive_observations": 120638,
+            "unique_tokens_with_valid_supervision": 596397,
+            "distinct_positive_tokens": 47887,
+            "distinct_valid_negative_tokens": 596397,
+            "censored_observations": 5608,
+            "unavailable_observations": 340210,
+            "prevalence_among_valid_observations": 0.014885988392833236,
+            "prevalence_among_valid_tokens": 0.08029383112255763,
+            "independent_primary_explosion_events": 49836
+          },
+          "120": {
+            "valid_observations": 8103930,
+            "valid_negative_observations": 7975563,
+            "valid_positive_observations": 128367,
+            "unique_tokens_with_valid_supervision": 596389,
+            "distinct_positive_tokens": 48556,
+            "distinct_valid_negative_tokens": 596389,
+            "censored_observations": 5809,
+            "unavailable_observations": 340210,
+            "prevalence_among_valid_observations": 0.01584009239961352,
+            "prevalence_among_valid_tokens": 0.0814166592609857,
+            "independent_primary_explosion_events": 49836
+          },
+          "300": {
+            "valid_observations": 8103129,
+            "valid_negative_observations": 7962899,
+            "valid_positive_observations": 140230,
+            "unique_tokens_with_valid_supervision": 596325,
+            "distinct_positive_tokens": 49226,
+            "distinct_valid_negative_tokens": 596325,
+            "censored_observations": 6610,
+            "unavailable_observations": 340210,
+            "prevalence_among_valid_observations": 0.017305660566430573,
+            "prevalence_among_valid_tokens": 0.08254894562528822,
+            "independent_primary_explosion_events": 49836
+          }
+        },
+        "detector_row_breakdown": {
+          "event_curve_mints": 622303,
+          "price_capable_mints": 596338,
+          "mints_with_stored_primary_detector_row": 596397,
+          "mints_without_detector_row": 25906,
+          "primary_exists_true": 49836,
+          "primary_exists_false": 546561,
+          "price_capable_without_primary": 0,
+          "event_curve_without_primary": 25906
+        },
+        "invariant_scan": {
+          "horizon_sec": 60,
+          "observations_scanned": 8449949,
+          "observations_without_primary_row": 340210,
+          "valid_negative_violations": 0,
+          "passed": true
+        },
         "invariants": {
-          "positive_subseteq_valid_v2": true,
-          "valid_negative_tokens_substantial_v2": true,
-          "primary_event_count_unchanged": true
+          "positive_subseteq_valid_v3": true,
+          "primary_event_count_unchanged": true,
+          "no_detector_row_never_valid_explosion_negative": true
+        }
+      },
+      "explosion_imminence_by_horizon_v3": {
+        "10": {
+          "valid_observations": 8104230,
+          "valid_negative_observations": 8026933,
+          "valid_positive_observations": 77297,
+          "unique_tokens_with_valid_supervision": 596397,
+          "distinct_positive_tokens": 43694,
+          "distinct_valid_negative_tokens": 596397,
+          "censored_observations": 5509,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.009537858624446739,
+          "prevalence_among_valid_tokens": 0.07326327932568406,
+          "independent_primary_explosion_events": 49836
+        },
+        "30": {
+          "valid_observations": 8104190,
+          "valid_negative_observations": 7995076,
+          "valid_positive_observations": 109114,
+          "unique_tokens_with_valid_supervision": 596397,
+          "distinct_positive_tokens": 47031,
+          "distinct_valid_negative_tokens": 596397,
+          "censored_observations": 5549,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.013463899538386934,
+          "prevalence_among_valid_tokens": 0.07885854556612458,
+          "independent_primary_explosion_events": 49836
+        },
+        "60": {
+          "valid_observations": 8104131,
+          "valid_negative_observations": 7983493,
+          "valid_positive_observations": 120638,
+          "unique_tokens_with_valid_supervision": 596397,
+          "distinct_positive_tokens": 47887,
+          "distinct_valid_negative_tokens": 596397,
+          "censored_observations": 5608,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.014885988392833236,
+          "prevalence_among_valid_tokens": 0.08029383112255763,
+          "independent_primary_explosion_events": 49836
+        },
+        "120": {
+          "valid_observations": 8103930,
+          "valid_negative_observations": 7975563,
+          "valid_positive_observations": 128367,
+          "unique_tokens_with_valid_supervision": 596389,
+          "distinct_positive_tokens": 48556,
+          "distinct_valid_negative_tokens": 596389,
+          "censored_observations": 5809,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.01584009239961352,
+          "prevalence_among_valid_tokens": 0.0814166592609857,
+          "independent_primary_explosion_events": 49836
+        },
+        "300": {
+          "valid_observations": 8103129,
+          "valid_negative_observations": 7962899,
+          "valid_positive_observations": 140230,
+          "unique_tokens_with_valid_supervision": 596325,
+          "distinct_positive_tokens": 49226,
+          "distinct_valid_negative_tokens": 596325,
+          "censored_observations": 6610,
+          "unavailable_observations": 340210,
+          "prevalence_among_valid_observations": 0.017305660566430573,
+          "prevalence_among_valid_tokens": 0.08254894562528822,
+          "independent_primary_explosion_events": 49836
         }
       },
       "sufficiency_field_contract_version": "supervision_sufficiency_v3"
