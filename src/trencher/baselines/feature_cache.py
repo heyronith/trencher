@@ -127,6 +127,8 @@ def _index_assignments(
     max_partitions: int | None,
     progress: ProgressEmitter,
 ) -> tuple[dict[str, list[dict[str, Any]]], int]:
+    from trencher.data.world_model.broad.sequences import mint_partition as _mint_partition
+
     assign_parts = sorted(assign_dir.glob("part-*.parquet"))
     if max_partitions is not None:
         # Keep full assignment scan for correct population counts; max_partitions
@@ -163,7 +165,13 @@ def _index_assignments(
             if det is not None and float(det) >= q85:
                 n_skipped_test += 1
                 continue
-            mp = str(row.get("mint_partition") or "")
+            mint = str(row.get("mint") or "")
+            mp = str(row.get("mint_partition") or "") or (
+                _mint_partition(mint) if mint else ""
+            )
+            # Do not mutate frozen parquet; only the in-memory grouping key/row.
+            row = dict(row)
+            row["mint_partition"] = mp
             by_mp.setdefault(mp, []).append(row)
         progress.update(
             i + 1,
@@ -402,13 +410,55 @@ def build_baseline_features_v1(
     out_parts = ensure_dir(population_feature_dir(out_root, population))
 
     rich_refs = rich_index.refs() if rich_index is not None else None
-    progress.emit(8, message="preflight sequence-ref coverage")
-    _preflight_ref_coverage(
-        by_mp=by_mp,
-        refs_root=refs_root,
-        rich_refs=rich_refs,
-        include_rich=include_rich,
-    )
+    bridge_root: Path | None = None
+    bridge_manifest: dict[str, Any] | None = None
+
+    if include_rich:
+        # Rich OIDs are a separate namespace from broad_observation_sequence_refs_v1.
+        # Derive causal broad slices at frozen (mint, T); keep rich OIDs unchanged.
+        from trencher.baselines.rich_broad_bridge import (
+            BRIDGE_STORE,
+            assert_bridge_matches_assignments,
+            build_rich_broad_sequence_refs_v1,
+        )
+
+        progress.emit(8, message="build rich→broad causal bridge (mint+T)")
+        assign_rows = [r for rows in by_mp.values() for r in rows]
+        try:
+            built = build_rich_broad_sequence_refs_v1(
+                world_root=world_root,
+                assignment_rows=assign_rows,
+                out_root=world_root / "broad" / BRIDGE_STORE,
+                progress=progress,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise FeatureCacheCoverageError(str(exc)) from exc
+        assert_bridge_matches_assignments(
+            assignment_rows=assign_rows, bridge_by_mp=built["by_mp"]
+        )
+        bridge_root = Path(built["out_root"])
+        bridge_manifest = built["manifest"]
+        progress.emit(12, message="preflight sequence_dataset_v2 rich-ref coverage")
+        missing_rich: list[str] = []
+        if rich_refs is not None:
+            for rows in by_mp.values():
+                for row in rows:
+                    oid = str(row["observation_id"])
+                    if oid not in rich_refs:
+                        missing_rich.append(oid)
+        if missing_rich:
+            raise FeatureCacheCoverageError(
+                f"missing sequence_dataset_v2 observation refs: "
+                f"count={len(missing_rich)} sample={missing_rich[:20]}"
+            )
+    else:
+        progress.emit(8, message="preflight sequence-ref coverage")
+        _preflight_ref_coverage(
+            by_mp=by_mp,
+            refs_root=refs_root,
+            rich_refs=None,
+            include_rich=False,
+        )
 
     total = max(len(mps), 1)
     rows_written = 0
@@ -458,12 +508,18 @@ def build_baseline_features_v1(
                     continue
 
         refs_by_oid: dict[str, dict[str, Any]] = {}
-        ref_path = refs_root / mp / "part.parquet"
-        if ref_path.exists():
-            for r in pq.read_table(ref_path).to_pylist():
-                oid = str(r.get("observation_id") or "")
-                if oid:
-                    refs_by_oid[oid] = r
+        if include_rich:
+            from trencher.baselines.rich_broad_bridge import load_bridge_refs_for_partition
+
+            assert bridge_root is not None
+            refs_by_oid = load_bridge_refs_for_partition(bridge_root, mp)
+        else:
+            ref_path = refs_root / mp / "part.parquet"
+            if ref_path.exists():
+                for r in pq.read_table(ref_path).to_pylist():
+                    oid = str(r.get("observation_id") or "")
+                    if oid:
+                        refs_by_oid[oid] = r
 
         ev_path = events_root / mp / "part.parquet"
         ev = _load_events_partition(ev_path) if ev_path.exists() else None
@@ -475,6 +531,16 @@ def build_baseline_features_v1(
             oid = str(row["observation_id"])
             T = float(row["observation_time_t"])
             ref = _require_ref(refs_by_oid, oid)
+            # Guard: bridge mint/T must match assignment exactly (rich path).
+            if include_rich:
+                if str(ref.get("mint")) != str(row.get("mint")):
+                    raise FeatureCacheCoverageError(
+                        f"bridge mint mismatch oid={oid}"
+                    )
+                if abs(float(ref.get("observation_time_t") or 0) - T) > 1e-9:
+                    raise FeatureCacheCoverageError(
+                        f"bridge T mismatch oid={oid}"
+                    )
             feat = _broad_features_for_row(
                 row=row, ref=ref, ev=ev, cr=cr, global_reader=global_reader
             )
@@ -556,11 +622,18 @@ def build_baseline_features_v1(
         "populations": [population],
         "include_rich": include_rich,
         "rich_source": "sequences/sequence_dataset_v2" if include_rich else None,
+        "rich_broad_bridge": bridge_manifest if include_rich else None,
+        "broad_ref_source": (
+            "rich_broad_sequence_refs_v1 (derived mint+T)"
+            if include_rich
+            else "broad_observation_sequence_refs_v1"
+        ),
         "missing_broad_refs": 0,
         "missing_rich_refs": 0,
         "no_permanent_test": True,
         "forbidden_sources": [
             "graph/edges_wallet_token.parquet lifetime aggregates",
+            "nearest_time_oid_matching_across_populations",
         ]
         if include_rich
         else [],

@@ -97,6 +97,17 @@ def build_features(
         status_path=ART / f"feature_cache_{population}_progress.json",
     )
     ART.mkdir(parents=True, exist_ok=True)
+    if population == "rich":
+        import importlib.resources as _res
+        try:
+            diag_text = (
+                _res.files("trencher.baselines.data")
+                .joinpath("RICH_BROAD_REF_DIAGNOSTIC_V1.json")
+                .read_text(encoding="utf-8")
+            )
+            (ART / "RICH_BROAD_REF_DIAGNOSTIC_V1.json").write_text(diag_text, encoding="utf-8")
+        except Exception as _exc:  # noqa: BLE001
+            print(f"warn: could not ship RICH_BROAD_REF_DIAGNOSTIC_V1: {_exc}")
     meta = build_baseline_features_v1(
         world_root=WORLD,
         split_root=SPLIT,

@@ -1,0 +1,57 @@
+{
+  "diagnostic_version": "RICH_BROAD_REF_DIAGNOSTIC_V1",
+  "assignment_rows_all": 51353,
+  "assignment_rows_train_val": 46387,
+  "assignment_rows_test_excluded": 4966,
+  "unique_observation_ids_train_val": 46387,
+  "equals_46387_verified": true,
+  "base_split_train_val": {
+    "train": 36228,
+    "val": 10159
+  },
+  "oid_overlap_broad_observation_sequence_refs_v1": 38358,
+  "oid_missing_broad_refs": 8029,
+  "oid_overlap_sequence_dataset_v2_refs": 46387,
+  "oid_missing_sequence_dataset_v2_refs": 0,
+  "mints_train_val": 3623,
+  "mint_overlap_events_entity_index": 2810,
+  "mint_overlap_creator_entity_index": 2200,
+  "mint_partition_null_in_assignments": true,
+  "curve_store_present": false,
+  "broad_population_v1_present": false,
+  "counts_by_trigger": {
+    "fixed_age": 36230,
+    "event_count": 10157
+  },
+  "missing_broad_ref_counts_by_trigger": {
+    "fixed_age": 7990,
+    "event_count": 39
+  },
+  "exact_observation_T_match_same_mint_vs_broad_obs": null,
+  "nearest_T_delta_summary": null,
+  "launch_proxy_first_event_minus_rich_detected": {
+    "status": "deferred_volume_io",
+    "note": "broad_population_v1 absent; full first-event scan deferred. Mint-level entity coverage shows 813/3623 rich mints lack events index rows."
+  },
+  "cause": {
+    "same_oid_namespace_formula": true,
+    "cross_population_oid_identity_invalid_as_requirement": true,
+    "partial_oid_overlap_does_not_justify_join": true,
+    "launch_timestamp_differences": true,
+    "event_time_source_differences": true,
+    "both_launch_and_event_time_sources": true,
+    "evidence": [
+      "OID formula identical (sha256 mint|T:.6f|trigger|value) across populations",
+      "Only 38358/46387 rich train+val OIDs appear in broad_observation_sequence_refs_v1",
+      "Missing OIDs are almost all fixed_age (7990/8029), consistent with launch-time (detected_at) differences shifting T=launch+age",
+      "813 rich mints absent from broad events entity index \u2192 modality unavailable, not OID-joinable",
+      "100% coverage in sequence_dataset_v2 refs \u2014 rich namespace is intact",
+      "Rich assignment mint_partition is null for all rows (indexing bug compounded the failure)"
+    ],
+    "notes": [
+      "Do NOT solve via nearest-time OID matching",
+      "Derive causal broad event/curve/creator slices at frozen rich (mint, T)",
+      "Preserve frozen rich observation_id and observation_time_t"
+    ]
+  }
+}
