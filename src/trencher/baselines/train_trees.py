@@ -314,6 +314,16 @@ def train_catboost_head(
     class_weights: list[float] | None = None,
     use_gpu: bool = True,
 ) -> dict[str, Any]:
+    """Train one CatBoost head.
+
+    Logging: use only ``verbose`` (never also ``logging_level``).
+
+    When ``early_stopping_rounds`` is set (wf1/wf2): eval_set + OD early stopping.
+    When ``early_stopping_rounds is None`` (V2 final fit): fit exactly
+    ``num_boost_round`` trees with ``use_best_model=False`` and **no** eval_set,
+    so the train calibration slice cannot truncate the model. Callers then score
+    the calibration slice separately for Platt fitting.
+    """
     import re
     import sys
     import threading
@@ -323,6 +333,8 @@ def train_catboost_head(
     emitter = ProgressEmitter(tag, status_path=out_dir / "progress.json")
     emitter.emit(1, message="start", force=True)
     t0 = time.time()
+    fixed_iters = early_stopping_rounds is None
+    # Only ``verbose`` controls logging — never pair with ``logging_level``.
     common: dict[str, Any] = {
         "iterations": num_boost_round,
         "learning_rate": 0.05,
@@ -331,15 +343,17 @@ def train_catboost_head(
         "allow_writing_files": False,
         "task_type": "GPU" if use_gpu else "CPU",
         "metric_period": 1,
-        "logging_level": "Verbose",
-        "verbose": True,
+        "verbose": 1 if use_gpu else False,
+        "use_best_model": (not fixed_iters),
     }
     if early_stopping_rounds:
         common["od_type"] = "Iter"
         common["od_wait"] = int(early_stopping_rounds)
     train_pool = Pool(X_train, y_train)
     has_val = X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0
-    val_pool = Pool(X_val, y_val) if has_val else None
+    # Eval set only for development folds with early stopping — never for fixed final fit.
+    use_eval_set = bool(has_val and early_stopping_rounds)
+    val_pool = Pool(X_val, y_val) if use_eval_set else None
 
     iter_re = re.compile(r"^(\d+)\s*:")
 
@@ -365,7 +379,7 @@ def train_catboost_head(
             return True
 
     class _StdoutIterTee:
-        """Parse CatBoost Verbose stdout lines into ProgressEmitter updates (GPU path)."""
+        """Parse CatBoost per-iteration stdout into ProgressEmitter updates (GPU)."""
 
         def __init__(self, wrapped):  # noqa: ANN001
             self._wrapped = wrapped
@@ -399,7 +413,7 @@ def train_catboost_head(
         params = dict(common)
         if kind == "binary":
             params["loss_function"] = "Logloss"
-            if has_val:
+            if use_eval_set:
                 n_pos = float(np.sum(np.asarray(y_val) >= 0.5))
                 n_neg = float(len(y_val) - n_pos)
                 params["eval_metric"] = "PRAUC" if n_pos > 0 and n_neg > 0 else "Logloss"
@@ -416,8 +430,18 @@ def train_catboost_head(
         model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **common)
 
     fit_kwargs: dict[str, Any] = {}
-    if has_val and val_pool is not None:
+    if use_eval_set and val_pool is not None:
         fit_kwargs["eval_set"] = val_pool
+
+    def _predict_raw(mdl: Any) -> np.ndarray:
+        if not has_val:
+            return np.array([], dtype=np.float64)
+        if kind in ("binary", "multiclass"):
+            raw = mdl.predict_proba(X_val)
+            if kind == "binary":
+                return np.asarray(raw[:, 1], dtype=np.float64)
+            return np.asarray(raw, dtype=np.float64)
+        return np.asarray(mdl.predict(X_val), dtype=np.float64)
 
     if use_gpu:
         emitter.emit(5, message="gpu fit with stdout iteration progress", force=True)
@@ -434,11 +458,12 @@ def train_catboost_head(
                     message=f"gpu failed ({type(exc).__name__}); CPU+callbacks",
                     force=True,
                 )
+                # CPU fallback: callbacks drive progress; verbose=False only (no logging_level).
                 cpu_common = {
-                    **common,
+                    **{k: v for k, v in common.items() if k != "logging_level"},
                     "task_type": "CPU",
-                    "logging_level": "Silent",
                     "verbose": False,
+                    "use_best_model": (not fixed_iters),
                 }
                 if kind in ("binary", "multiclass"):
                     model = CatBoostClassifier(
@@ -456,24 +481,27 @@ def train_catboost_head(
         trees = int(model.tree_count_ or num_boost_round)
         emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
     else:
+        # CPU: progress via callbacks; only verbose=False (never logging_level).
+        if hasattr(model, "set_params"):
+            model.set_params(verbose=False)
         cb_kwargs = dict(fit_kwargs)
         cb_kwargs["callbacks"] = [_CB()]
-        # Quiet native logging when callbacks drive progress.
-        if hasattr(model, "set_params"):
-            model.set_params(logging_level="Silent", verbose=False)
         model.fit(train_pool, **cb_kwargs)
 
-    if kind in ("binary", "multiclass"):
-        raw = model.predict_proba(X_val) if has_val else np.array([])
-        if kind == "binary" and has_val:
-            raw = raw[:, 1]
+    raw = _predict_raw(model)
+    actual = int(model.tree_count_ or num_boost_round)
+    # Fixed-iter final fit: best_iteration is the planned count (no OD selection).
+    if fixed_iters:
+        best_it = int(num_boost_round)
     else:
-        raw = model.predict(X_val) if has_val else np.array([])
+        best_it = int(model.get_best_iteration() or actual or 0)
 
     emitter.complete(
         message="COMPLETE",
-        best_iteration=int(model.get_best_iteration() or 0),
-        actual_iterations=int(model.tree_count_),
+        best_iteration=best_it,
+        actual_iterations=actual,
+        fixed_iterations=fixed_iters,
+        use_best_model=bool(common.get("use_best_model")),
     )
     model_path = out_dir / "model.cbm"
     model.save_model(str(model_path))
@@ -481,13 +509,15 @@ def train_catboost_head(
         "family": "catboost",
         "model_path": str(model_path),
         "checksum": _checksum(model_path),
-        "best_iteration": int(model.get_best_iteration() or model.tree_count_ or 0),
-        "actual_iterations": int(model.tree_count_),
+        "best_iteration": best_it,
+        "actual_iterations": actual,
         "planned_iterations": num_boost_round,
         "raw_val_pred": np.asarray(raw, dtype=np.float64),
         "runtime_sec": time.time() - t0,
-        "params": common,
+        "params": {k: v for k, v in common.items() if k != "logging_level"},
         "early_stopping_rounds": early_stopping_rounds,
+        "use_best_model": bool(common.get("use_best_model")),
+        "eval_set_used": use_eval_set,
     }
 
 

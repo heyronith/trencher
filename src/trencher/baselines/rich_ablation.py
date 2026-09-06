@@ -205,15 +205,53 @@ def run_rich_ablation_v2(
         write_json(out_dir / "BASELINE_RICH_ABLATION_V2.json", payload)
         return payload
 
-    # Align arms on identical rows / targets.
+    # Coverage invariants before any fitting.
+    if train["X"].shape[1] != len(rich_names) or val["X"].shape[1] != len(rich_names):
+        raise RuntimeError(
+            f"rich feature dims mismatch: train={train['X'].shape[1]} "
+            f"val={val['X'].shape[1]} expected={len(rich_names)}"
+        )
+    tr_oids = [str(m["observation_id"]) for m in train["meta"]]
+    va_oids = [str(m["observation_id"]) for m in val["meta"]]
+    if len(tr_oids) != len(set(tr_oids)) or len(va_oids) != len(set(va_oids)):
+        raise RuntimeError("rich feature cache has duplicate observation_ids")
+    # Target-join coverage must be 100% (every feature row has a target dict).
+    if any(not t for t in train["targets"]) or any(not t for t in val["targets"]):
+        n_miss_tr = sum(1 for t in train["targets"] if not t)
+        n_miss_va = sum(1 for t in val["targets"] if not t)
+        raise RuntimeError(
+            f"rich target-join incomplete: train_missing={n_miss_tr} val_missing={n_miss_va}"
+        )
+    # Derive expected train/val sizes from frozen rich assignments (not hardcoded).
+    from trencher.baselines.feature_cache import _index_assignments
+    from trencher.baselines.progress import ProgressEmitter
+
+    cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
+    q85 = float(cutoffs["quantiles_unix"]["q85"])
+    by_mp, _ = _index_assignments(
+        assign_dir=split_root / "observation_assignments_rich",
+        q85=q85,
+        max_partitions=max_partitions or (2 if smoke else None),
+        progress=ProgressEmitter("rich ablation assign check"),
+    )
+    expect_tr = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "train")
+    expect_va = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "val")
+    if train["n"] != expect_tr or val["n"] != expect_va:
+        raise RuntimeError(
+            f"rich feature rows != assignment population: "
+            f"train {train['n']}!={expect_tr} val {val['n']}!={expect_va}"
+        )
+
+    # Align arms on identical rows / targets (bit-identical oid order).
     X_b_tr = train["X"][:, : len(broad_names)]
     X_r_tr = train["X"]
     X_b_va = val["X"][:, : len(broad_names)]
     X_r_va = val["X"]
     assert X_b_tr.shape[0] == X_r_tr.shape[0]
     assert X_b_va.shape[0] == X_r_va.shape[0]
+    assert tr_oids == [str(m["observation_id"]) for m in train["meta"]]
+    assert va_oids == [str(m["observation_id"]) for m in val["meta"]]
 
-    cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
     selection_folds = [
         f
         for f in build_walkforward_folds(cutoffs)["folds"]

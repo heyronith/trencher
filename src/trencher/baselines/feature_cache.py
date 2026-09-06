@@ -262,6 +262,56 @@ def _broad_features_for_row(
     return feat
 
 
+class FeatureCacheCoverageError(RuntimeError):
+    """Raised when assignment→sequence-ref coverage is incomplete."""
+
+
+def _require_ref(
+    refs_by_oid: dict[str, dict[str, Any]],
+    oid: str,
+) -> dict[str, Any]:
+    ref = refs_by_oid.get(oid)
+    if ref is None:
+        raise FeatureCacheCoverageError(f"missing sequence ref for observation_id={oid}")
+    return ref
+
+
+def _preflight_ref_coverage(
+    *,
+    by_mp: dict[str, list[dict[str, Any]]],
+    refs_root: Path,
+    rich_refs: dict[str, dict[str, Any]] | None,
+    include_rich: bool,
+) -> None:
+    """Fail fast with counts/samples — never proceed with silent empty-ref joins."""
+    missing_broad: list[str] = []
+    missing_rich: list[str] = []
+    for mp, rows in by_mp.items():
+        refs_by_oid: dict[str, dict[str, Any]] = {}
+        ref_path = refs_root / mp / "part.parquet"
+        if ref_path.exists():
+            for r in pq.read_table(ref_path).to_pylist():
+                oid = str(r.get("observation_id") or "")
+                if oid:
+                    refs_by_oid[oid] = r
+        for row in rows:
+            oid = str(row["observation_id"])
+            if oid not in refs_by_oid:
+                missing_broad.append(oid)
+            if include_rich and rich_refs is not None and oid not in rich_refs:
+                missing_rich.append(oid)
+    if missing_broad:
+        raise FeatureCacheCoverageError(
+            f"missing broad sequence refs: count={len(missing_broad)} "
+            f"sample={missing_broad[:20]}"
+        )
+    if missing_rich:
+        raise FeatureCacheCoverageError(
+            f"missing sequence_dataset_v2 observation refs: "
+            f"count={len(missing_rich)} sample={missing_rich[:20]}"
+        )
+
+
 def build_baseline_features_v1(
     *,
     world_root: Path,
@@ -282,7 +332,7 @@ def build_baseline_features_v1(
     split_root = Path(split_root or world_root / "splits" / "split_v1")
 
     if population is None:
-        if populations and "rich" in populations and "broad" not in populations or include_rich:
+        if (populations and "rich" in populations and "broad" not in populations) or include_rich:
             population = "rich"
         else:
             population = "broad"
@@ -330,11 +380,23 @@ def build_baseline_features_v1(
     creator_root = world_root / "broad" / "broad_sequence_creator_v1"
     out_parts = ensure_dir(population_feature_dir(out_root, population))
 
+    rich_refs = rich_index.refs() if rich_index is not None else None
+    progress.emit(8, message="preflight sequence-ref coverage")
+    _preflight_ref_coverage(
+        by_mp=by_mp,
+        refs_root=refs_root,
+        rich_refs=rich_refs,
+        include_rich=include_rich,
+    )
+
     total = max(len(mps), 1)
     rows_written = 0
     rows_resumed = 0
     partitions_skipped = 0
     partitions_built = 0
+    seen_oids: set[str] = set()
+    expected_rows = sum(len(v) for v in by_mp.values())
+
     for pi, mp in enumerate(mps):
         obs_rows = by_mp[mp]
         part_dir = out_parts / mp
@@ -344,6 +406,16 @@ def build_baseline_features_v1(
                 out_path, feature_names=feature_names, population=population
             )
             if schema_ok:
+                try:
+                    oids = (
+                        pq.read_table(out_path, columns=["observation_id"])
+                        .column(0)
+                        .to_pylist()
+                    )
+                    for oid in oids:
+                        seen_oids.add(str(oid))
+                except Exception:  # noqa: BLE001
+                    pass
                 rows_written += int(n_exist)
                 rows_resumed += int(n_exist)
                 partitions_skipped += 1
@@ -373,7 +445,7 @@ def build_baseline_features_v1(
         for row in obs_rows:
             oid = str(row["observation_id"])
             T = float(row["observation_time_t"])
-            ref = refs_by_oid.get(oid) or {}
+            ref = _require_ref(refs_by_oid, oid)
             feat = _broad_features_for_row(
                 row=row, ref=ref, ev=ev, cr=cr, global_reader=global_reader
             )
@@ -399,6 +471,7 @@ def build_baseline_features_v1(
             for j, name in enumerate(names):
                 rec[name] = float(vec[j])
             feat_rows.append(rec)
+            seen_oids.add(oid)
 
         if feat_rows:
             part_dir = ensure_dir(out_parts / mp)
@@ -419,6 +492,21 @@ def build_baseline_features_v1(
             partitions_skipped=partitions_skipped,
         )
 
+    if partitions_skipped == 0:
+        if len(seen_oids) != expected_rows:
+            raise FeatureCacheCoverageError(
+                f"unique observation_ids={len(seen_oids)} != assignment rows={expected_rows}"
+            )
+        if rows_written != expected_rows:
+            raise FeatureCacheCoverageError(
+                f"rows_written={rows_written} != assignment rows={expected_rows}"
+            )
+    if len(feature_names) != (146 if include_rich else 124):
+        raise FeatureCacheCoverageError(
+            f"feature_n={len(feature_names)} expected "
+            f"{146 if include_rich else 124}"
+        )
+
     train_n = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "train")
     val_n = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "val")
     manifest = {
@@ -429,6 +517,8 @@ def build_baseline_features_v1(
         "rows_resumed": rows_resumed,
         "train_n": train_n,
         "val_n": val_n,
+        "assignment_rows_expected": expected_rows,
+        "unique_observation_ids": len(seen_oids),
         "partitions": len(mps),
         "partitions_built": partitions_built,
         "partitions_skipped": partitions_skipped,
@@ -438,6 +528,8 @@ def build_baseline_features_v1(
         "populations": [population],
         "include_rich": include_rich,
         "rich_source": "sequences/sequence_dataset_v2" if include_rich else None,
+        "missing_broad_refs": 0,
+        "missing_rich_refs": 0,
         "no_permanent_test": True,
         "forbidden_sources": [
             "graph/edges_wallet_token.parquet lifetime aggregates",
