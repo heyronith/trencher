@@ -139,7 +139,8 @@ def _discrete_hazard_fit_predict(
     }
 
     def _cb(env):  # noqa: ANN001
-        it = env.iteration + 1
+        # LightGBM accepts plain callables as callbacks (no LambdaCallback needed).
+        it = int(getattr(env, "iteration", 0)) + 1
         emitter.update(
             30 + int(50 * it / planned),
             100,
@@ -150,7 +151,7 @@ def _discrete_hazard_fit_predict(
         params,
         dtrain,
         num_boost_round=planned,
-        callbacks=[lgb.callback.LambdaCallback(on_iteration=_cb)],
+        callbacks=[_cb],
     )
 
     # Vectorized val risk over first K bins (no per-row booster.predict loop).
