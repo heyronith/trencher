@@ -76,6 +76,46 @@ def build_baseline_contract_v2() -> dict[str, Any]:
     }
 
 
+def _load_family_status(artifacts_root: Path, fam: str) -> dict[str, Any]:
+    """Load explicit FAMILY_STATUS.json or infer from results.json."""
+    status_path = artifacts_root / fam / "FAMILY_STATUS.json"
+    results_path = artifacts_root / fam / "results.json"
+    if status_path.exists():
+        st = json.loads(status_path.read_text(encoding="utf-8"))
+        payload = None
+        if results_path.exists():
+            payload = json.loads(results_path.read_text(encoding="utf-8"))
+        return {
+            "status": st.get("status", "unknown"),
+            "status_meta": st,
+            "results": payload,
+            "partial": bool(st.get("partial_artifacts_retained")),
+        }
+    if results_path.exists():
+        payload = json.loads(results_path.read_text(encoding="utf-8"))
+        # Prefer explicit family_status inside results when present.
+        st = payload.get("family_status") or "complete"
+        # Legacy CatBoost artifacts without V2 protocol are not a completed family.
+        if (
+            payload.get("protocol_version") is None
+            and fam == "catboost"
+            and not payload.get("family_status")
+        ):
+            st = "incomplete_compute_cost_stop"
+        return {
+            "status": st,
+            "status_meta": {"family": fam, "status": st, "inferred": True},
+            "results": payload,
+            "partial": st != "complete",
+        }
+    return {
+        "status": "missing",
+        "status_meta": {"family": fam, "status": "missing"},
+        "results": None,
+        "partial": True,
+    }
+
+
 def publish_baseline_artifacts_v2(
     *,
     manifest_dir: Path,
@@ -89,20 +129,39 @@ def publish_baseline_artifacts_v2(
     contract = build_baseline_contract_v2()
     write_json(manifest_dir / f"{CONTRACT_ID}.json", contract)
 
+    family_statuses: dict[str, Any] = {}
     results: dict[str, Any] = {
         "results_version": RESULTS_ID,
         "generated_at": utc_now(),
         "label": contract["label"],
         "v1_preserved_as": contract["v1_label"],
         "families": {},
+        "family_statuses": family_statuses,
         "feature_manifest": feature_manifest,
         "modal_usage": modal_usage or {},
         "rich_ablation": rich_ablation,
     }
     for fam in ("lightgbm", "xgboost", "catboost", "survival"):
-        path = artifacts_root / fam / "results.json"
-        if path.exists():
-            results["families"][fam] = json.loads(path.read_text(encoding="utf-8"))
+        entry = _load_family_status(artifacts_root, fam)
+        family_statuses[fam] = {
+            "status": entry["status"],
+            "partial": entry["partial"],
+            **{k: v for k, v in (entry.get("status_meta") or {}).items() if k not in ("family",)},
+        }
+        if entry["results"] is not None:
+            payload = dict(entry["results"])
+            payload["family_status"] = entry["status"]
+            if entry["status"] != "complete":
+                payload["metrics_scope"] = "partial_or_incomplete"
+                payload["do_not_treat_as_full_population_complete"] = True
+            results["families"][fam] = payload
+        else:
+            results["families"][fam] = {
+                "family": fam,
+                "family_status": entry["status"],
+                "heads": {},
+                "metrics_scope": "absent",
+            }
 
     write_json(manifest_dir / f"{RESULTS_ID}.json", results)
     flat = []
@@ -131,8 +190,10 @@ def publish_baseline_artifacts_v2(
     # Core metrics digest
     core: dict[str, Any] = {}
     for fam, payload in (results["families"] or {}).items():
+        st = (family_statuses.get(fam) or {}).get("status")
         if fam == "survival":
             core[fam] = {
+                "family_status": st,
                 "_n": {"train_n": payload.get("train_n"), "val_n": payload.get("val_n")},
                 **{
                     h: {
@@ -146,6 +207,7 @@ def publish_baseline_artifacts_v2(
                             "method",
                             "counts_train",
                             "counts_val",
+                            "status",
                         )
                     }
                     for h in (payload.get("heads") or {})
@@ -178,11 +240,14 @@ def publish_baseline_artifacts_v2(
                 }
             heads[h] = item
         core[fam] = {
+            "family_status": st,
+            "metrics_scope": payload.get("metrics_scope"),
             "train_n": payload.get("train_n"),
             "val_n": payload.get("val_n"),
             "feature_n": payload.get("feature_n"),
             "eval_only_proof": payload.get("eval_only_proof"),
             "heads": heads,
+            "partial_only": st != "complete",
         }
     write_json(manifest_dir / f"{CORE_ID}.json", core)
 
@@ -217,13 +282,27 @@ def publish_baseline_artifacts_v2(
         "partitions": (feature_manifest or {}).get("partitions"),
         "results_summary": {
             fam: {
+                "status": (family_statuses.get(fam) or {}).get("status"),
+                "partial": (family_statuses.get(fam) or {}).get("partial"),
                 "heads": list((payload.get("heads") or {}).keys()),
                 "train_n": payload.get("train_n"),
                 "val_n": payload.get("val_n"),
                 "protocol_version": payload.get("protocol_version"),
+                "metrics_scope": payload.get("metrics_scope"),
             }
             for fam, payload in (results["families"] or {}).items()
         },
+        "family_statuses": family_statuses,
+        "completed_controls": [
+            fam
+            for fam, st in family_statuses.items()
+            if st.get("status") == "complete"
+        ],
+        "incomplete_controls": [
+            fam
+            for fam, st in family_statuses.items()
+            if st.get("status") not in ("complete",)
+        ],
         "modal_usage": modal_usage or {},
         "eval_only_proof": next(
             (
@@ -234,6 +313,18 @@ def publish_baseline_artifacts_v2(
             contract["split_discipline"],
         ),
     }
+    # Drop incorrect global full_population claim when any tree family incomplete.
+    incomplete = [
+        fam
+        for fam, st in family_statuses.items()
+        if fam in ("lightgbm", "xgboost", "catboost", "survival")
+        and st.get("status") != "complete"
+    ]
+    audit["acceptance"]["full_population"] = len(incomplete) == 0
+    audit["acceptance"]["per_family_completion"] = {
+        fam: st.get("status") for fam, st in family_statuses.items()
+    }
+    audit["acceptance"]["incomplete_families"] = incomplete
     write_json(manifest_dir / f"{AUDIT_ID}.json", audit)
     md = [
         f"# {AUDIT_ID}",
@@ -244,6 +335,10 @@ def publish_baseline_artifacts_v2(
         f"- V1 preserved as: `{audit['v1_preserved_as']}`",
         f"- Feature dims: `{audit['feature_dims']}`",
         f"- Feature rows: **{audit.get('feature_rows')}** partitions={audit.get('partitions')}",
+        "",
+        "## Family statuses",
+        "",
+        f"```json\n{json.dumps(family_statuses, indent=2)}\n```",
         "",
         "## Permanent validation evaluation-only proof",
         "",

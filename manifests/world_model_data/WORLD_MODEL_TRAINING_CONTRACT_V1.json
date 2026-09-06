@@ -1,0 +1,67 @@
+{
+  "contract_version": "WORLD_MODEL_TRAINING_CONTRACT_V1",
+  "generated_at": "2026-09-06T18:00:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "depends_on": [
+    "TRAINING_LOADER_CONTRACT_V4",
+    "training_cache_v1",
+    "split_v1",
+    "pit_v4",
+    "sequence_dataset_v2",
+    "broad_targets_v3"
+  ],
+  "constraints": {
+    "pure_on_chain": true,
+    "no_social_text_image": true,
+    "no_learned_mint_wallet_creator_id_tables": true,
+    "no_permanent_test_access": true,
+    "no_post_T_features": true
+  },
+  "phases": {
+    "ssl": {
+      "objective": "event next-side / next-log-dt / next-size / hawkes-inspired intensity",
+      "modalities": ["events"]
+    },
+    "broad": {
+      "objective": "multi-task explosion/survival/barrier/quantile/mfe-mae",
+      "modalities": ["events", "curve", "global", "creator"]
+    },
+    "rich": {
+      "objective": "fine-tune with microstructure/ownership/wallet_prior/graph",
+      "modalities": [
+        "events",
+        "curve",
+        "global",
+        "creator",
+        "microstructure",
+        "ownership",
+        "wallet_prior",
+        "graph"
+      ]
+    }
+  },
+  "heads": [
+    "explosion",
+    "survival",
+    "barrier",
+    "quantile_return",
+    "mfe_mae",
+    "persistence",
+    "path",
+    "execution"
+  ],
+  "amp": {
+    "preferred": "bf16",
+    "hardware": "A100"
+  },
+  "checkpointing": {
+    "atomic": true,
+    "store_rng": true,
+    "refuse_config_hash_mismatch": true
+  },
+  "split_policy": {
+    "train": "pre_q70",
+    "val": "[q70, q85)",
+    "test": "refused_until_final_unlock"
+  }
+}

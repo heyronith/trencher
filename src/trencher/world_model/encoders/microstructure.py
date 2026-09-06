@@ -1,0 +1,59 @@
+"""Transaction microstructure encoder with availability masking."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import torch
+import torch.nn as nn
+
+from trencher.world_model.config import SequenceEncoderConfig
+from trencher.world_model.encoders._common import SequenceBackbone, last_valid_token
+
+
+@dataclass
+class MicrostructureEncoderOutput:
+    hidden: torch.Tensor
+    pooled: torch.Tensor
+    available: torch.Tensor
+
+
+class MicrostructureEncoder(nn.Module):
+    """Encode fee/CU/priority-fee microstructure; zeros out when unavailable."""
+
+    def __init__(self, cfg: SequenceEncoderConfig | None = None) -> None:
+        super().__init__()
+        self.cfg = cfg or SequenceEncoderConfig(n_channels=11)
+        c = self.cfg
+        self.backbone = SequenceBackbone(
+            n_channels=c.n_channels,
+            d_model=c.d_model,
+            n_layers=c.n_layers,
+            n_heads=c.n_heads,
+            ffn_mult=c.ffn_mult,
+            dropout=c.dropout,
+            n_time_freqs=16,
+            use_time=True,
+        )
+        self.availability_emb = nn.Parameter(torch.zeros(c.d_model))
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        times: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        available: torch.Tensor | None = None,
+    ) -> MicrostructureEncoderOutput:
+        """
+        Args:
+            available: [B] float/bool — modality present for the observation
+        """
+        h = self.backbone(x, times=times, mask=mask)
+        pooled = last_valid_token(h, mask)
+        if available is None:
+            avail = torch.ones(x.size(0), device=x.device, dtype=x.dtype)
+        else:
+            avail = available.to(dtype=pooled.dtype).view(-1)
+        # Missing modality → learned null vector (not noisy zeros alone)
+        pooled = pooled * avail.unsqueeze(-1) + self.availability_emb * (1.0 - avail).unsqueeze(-1)
+        return MicrostructureEncoderOutput(hidden=h, pooled=pooled, available=avail)

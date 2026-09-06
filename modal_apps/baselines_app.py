@@ -206,17 +206,39 @@ def train_catboost(smoke: bool = False) -> dict:
     memory=65536,
 )
 def train_survival(smoke: bool = False) -> dict:
+    import threading
+    import time
+
     from trencher.baselines.survival import run_survival_suite
 
     ART.mkdir(parents=True, exist_ok=True)
-    out = run_survival_suite(
-        world_root=WORLD,
-        split_root=SPLIT,
-        artifacts_root=ART,
-        smoke=smoke,
-        max_partitions=2 if smoke else None,
-    )
-    art_vol.commit()
+    stop = threading.Event()
+
+    def _periodic_commit() -> None:
+        # Make progress JSON visible while long matrix loads run.
+        while not stop.wait(30.0):
+            try:
+                art_vol.commit()
+            except Exception as exc:  # noqa: BLE001
+                print(f"[survival] volume commit warning: {exc}", flush=True)
+
+    thr = threading.Thread(target=_periodic_commit, daemon=True)
+    thr.start()
+    t0 = time.time()
+    try:
+        out = run_survival_suite(
+            world_root=WORLD,
+            split_root=SPLIT,
+            artifacts_root=ART,
+            smoke=smoke,
+            max_partitions=2 if smoke else None,
+            method="discrete_hazard",
+        )
+    finally:
+        stop.set()
+        thr.join(timeout=5)
+        art_vol.commit()
+    print(f"[survival] finished in {time.time() - t0:.1f}s", flush=True)
     return out
 
 

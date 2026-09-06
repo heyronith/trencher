@@ -1,0 +1,29 @@
+{
+  "audit_version": "WORLD_MODEL_READINESS_AUDIT_V1",
+  "generated_at": "2026-09-06T18:50:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "package": "trencher.world_model",
+  "status": "implementation_ready_cpu_validated",
+  "checks": {
+    "pure_on_chain": true,
+    "no_id_embedding_tables": true,
+    "config_yaml_present": true,
+    "three_phase_trainer_present": true,
+    "checkpoint_atomic_hash_guard": true,
+    "test_split_refused": true,
+    "causality_mutation_test": true,
+    "missing_modality_availability": true,
+    "torch_optional_extra": true,
+    "gpu_training_not_launched_by_ci": true,
+    "full_colab_training_not_launched": true
+  },
+  "parameter_count_trainable": 15059774,
+  "blockers_for_full_a100_run": [
+    "Wire production DataLoaders to frozen V4 cache partitions at scale",
+    "Stage full GCS artifact set with verified sha256 manifests",
+    "Confirm BF16 throughput / batch size on target A100/H100 SKU",
+    "Operator approval before spending Colab GPU quota"
+  ],
+  "unit_tests": "tests/test_world_model_smoke.py",
+  "first_real_launch_command_after_approval": "TRENCHER_GCS_URI=gs://YOUR_BUCKET/world_model_freeze_v1 TRENCHER_WM_DEVICE=cuda bash scripts/colab/launch_training.sh"
+}

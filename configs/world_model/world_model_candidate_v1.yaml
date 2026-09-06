@@ -1,0 +1,145 @@
+# World Model Candidate V1 — A100-oriented production scaffold
+# Pure on-chain modalities only. No social/text/image. No ID embedding tables.
+# Freeze concepts: TRAINING_LOADER_CONTRACT_V4 / world_model_freeze_v1
+
+name: world_model_candidate_v1
+d_model: 256
+dropout: 0.1
+pure_on_chain: true
+forbid_id_embedding_tables: true
+freeze_id: world_model_freeze_v1
+contract: WORLD_MODEL_TRAINING_CONTRACT_V1
+
+modalities_broad:
+  - events
+  - curve
+  - global
+  - creator
+
+modalities_rich:
+  - events
+  - curve
+  - global
+  - creator
+  - microstructure
+  - ownership
+  - wallet_prior
+  - graph
+
+event:
+  n_channels: 13
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  ffn_mult: 4
+  dropout: 0.1
+  max_len: 512
+  n_sides: 3
+  time_encoding: continuous_fourier
+  n_time_freqs: 32
+
+curve:
+  n_channels: 7
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  ffn_mult: 4
+  dropout: 0.1
+  max_len: 256
+
+global_temporal:
+  n_bucket_channels: 8
+  n_scalars: 9
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  ffn_mult: 4
+  dropout: 0.1
+  max_buckets: 128
+
+microstructure:
+  n_channels: 11
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  ffn_mult: 4
+  dropout: 0.1
+  max_len: 128
+
+ownership:
+  n_channels: 9
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  ffn_mult: 4
+  dropout: 0.1
+  max_len: 128
+
+wallet_prior:
+  n_channels: 7
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  ffn_mult: 4
+  dropout: 0.1
+  max_len: 256
+
+graph:
+  n_edge_channels: 7
+  d_model: 256
+  n_layers: 2
+  n_heads: 4
+  dropout: 0.1
+  max_neighbors: 64
+  time_encoding: continuous_fourier
+  n_time_freqs: 16
+
+fusion:
+  d_model: 256
+  n_modalities: 7
+  dropout: 0.1
+  gate_hidden: 256
+
+heads:
+  d_model: 256
+  # P(explosion within H seconds); already-exploding follows left-truncation masks.
+  explosion_horizons: [10, 30, 60, 120, 300]
+  survival_horizons: [10, 30, 60, 120, 300]
+  # Frozen barrier families (+up / -down); head emits competing-class logits elsewhere.
+  barrier_levels: [10, 25, 50, 100]
+  quantile_taus: [0.1, 0.25, 0.5, 0.75, 0.9]
+  path_steps: 8
+  path_dim: 4
+  persistence_classes: 4
+  # Size-specific execution slots: 0.1 / 0.5 / 1 / 2 / 5 SOL × impact classes
+  execution_dim: 15
+  dropout: 0.1
+
+loss:
+  ssl_side_weight: 1.0
+  ssl_log_dt_weight: 1.0
+  ssl_size_weight: 1.0
+  explosion_weight: 1.0
+  survival_weight: 1.0
+  barrier_weight: 1.0
+  quantile_weight: 1.0
+  mfe_mae_weight: 1.0
+  persistence_weight: 0.5
+  path_weight: 0.5
+  execution_weight: 0.5
+
+train:
+  lr: 3.0e-4
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  warmup_steps: 1000
+  ssl_steps: 50000
+  broad_steps: 100000
+  rich_steps: 25000
+  batch_size: 64
+  accum_steps: 1
+  bf16: true
+  seed: 42
+  log_every: 50
+  ckpt_every: 2000
+  set_to_none: true
