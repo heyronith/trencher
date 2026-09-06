@@ -18,6 +18,12 @@ from trencher.data.world_model.targets.status import (
     POSITION_SIZES_SOL,
     SURVIVAL_HORIZONS_SEC,
 )
+from trencher.world_model.input_sanitize import (
+    assert_finite_model_inputs,
+    build_event_ssl_from_raw,
+    sanitize_feature_matrix,
+    sanitize_vector,
+)
 from trencher.world_model.split_guard import PermanentTestAccessError, refuse_test_split
 
 _BARRIER_CLASS = {
@@ -43,6 +49,15 @@ def barrier_bids_from_pairs(pairs: tuple[tuple[float, float], ...]) -> tuple[str
             d = int(round(abs(down)))
         out.append(f"u{u}_l{d}")
     return tuple(out)
+
+
+def _as_float_keep_nan(v: Any) -> float:
+    if v is None:
+        return float("nan")
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 def _as_float(v: Any, default: float = 0.0) -> float:
@@ -154,25 +169,37 @@ def example_to_tensors(
         m = np.ones((arr.shape[0],), dtype=bool)
         return arr, m
 
-    events, em = _get_seq("events", 13)
-    curve, cm = _get_seq("curve", 7)
-    micro, mm = _get_seq("micro", 11)
-    own, om = _get_seq("ownership", 9)
-    graph, gm = _get_seq("graph_token", 7)
-    wallet, wm = _get_seq("wallet_prior", 7)
-    glob, gbm = _get_seq("global", 8)
+    events_raw, em = _get_seq("events", 13)
+    curve_raw, cm = _get_seq("curve", 7)
+    micro_raw, mm = _get_seq("micro", 11)
+    own_raw, om = _get_seq("ownership", 9)
+    graph_raw, gm = _get_seq("graph_token", 7)
+    wallet_raw, wm = _get_seq("wallet_prior", 7)
+    glob_raw, gbm = _get_seq("global", 8)
+
+    # SSL targets/masks from pre-sanitization event numerics
+    ssl = build_event_ssl_from_raw(events_raw)
+
+    events, events_finite, _ = sanitize_feature_matrix(events_raw)
+    curve, curve_finite, _ = sanitize_feature_matrix(curve_raw)
+    micro, micro_finite, _ = sanitize_feature_matrix(micro_raw)
+    own, own_finite, _ = sanitize_feature_matrix(own_raw)
+    graph, graph_finite, _ = sanitize_feature_matrix(graph_raw)
+    wallet, wallet_finite, _ = sanitize_feature_matrix(wallet_raw)
+    glob, glob_finite, _ = sanitize_feature_matrix(glob_raw)
 
     # Creator as 4-d behavioral vector from structured features when present
     feats = example.get("features") or {}
-    creator = np.asarray(
+    creator_raw = np.asarray(
         [
-            _as_float(feats.get("token_age_log1p")),
-            _as_float(feats.get("token_age_day_frac")),
-            _as_float(feats.get("creator_prior_rank"), 0.0),
-            _as_float(feats.get("mask_creator"), 1.0),
+            _as_float_keep_nan(feats.get("token_age_log1p")),
+            _as_float_keep_nan(feats.get("token_age_day_frac")),
+            _as_float_keep_nan(feats.get("creator_prior_rank")),
+            _as_float_keep_nan(feats.get("mask_creator") if "mask_creator" in feats else 1.0),
         ],
         dtype=np.float32,
     )
+    creator, creator_finite, _ = sanitize_vector(creator_raw)
 
     edges = tte_bin_edges
     if edges is None:
@@ -303,26 +330,6 @@ def example_to_tensors(
     _, exp_event, exp_bin, exp_risk = _tte_fields("explosion_tte")
     _, grad_event, grad_bin, grad_risk = _tte_fields("graduation_tte")
 
-    # SSL next-step from events if length>=2
-    ssl = {}
-    if events.shape[0] >= 2:
-        # side channel index 3 in EVENT_CHANNELS
-        ssl["ssl_next_side"] = torch.tensor(events[1:, 3].astype(np.int64), dtype=torch.long)
-        dt = np.diff(events[:, 0])
-        ssl["ssl_next_log_dt"] = torch.tensor(np.log1p(np.maximum(dt, 0.0)), dtype=torch.float32)
-        ssl["ssl_next_size"] = torch.tensor(events[1:, 4], dtype=torch.float32)  # sol_amount
-        # reserve delta: v_sol channel 7
-        ssl["ssl_reserve_delta"] = torch.tensor(
-            events[1:, 7] - events[:-1, 7], dtype=torch.float32
-        )
-        ssl["ssl_mask"] = torch.ones(events.shape[0] - 1, dtype=torch.bool)
-        # Positive next-event interarrival Δt (seconds) for exponential intensity NLL.
-        inter = np.asarray(events[1:, 1], dtype=np.float64)
-        dt = np.diff(np.asarray(events[:, 0], dtype=np.float64))
-        delta = np.where(inter > 1e-9, inter, dt)
-        delta = np.maximum(delta, 1e-6)
-        ssl["ssl_intensity_delta_t"] = torch.tensor(delta, dtype=torch.float32)
-
     oid = str(meta.get("observation_id") or "")
     oid_hash = (
         int(hashlib.sha256(oid.encode("utf-8")).hexdigest()[:16], 16) % (2**63)
@@ -330,36 +337,49 @@ def example_to_tensors(
         else 0
     )
 
+    global_scalars_raw = np.zeros(9, dtype=np.float32)
+    global_scalars, global_scalars_finite, _ = sanitize_vector(global_scalars_raw)
+
     out: dict[str, torch.Tensor] = {
         "observation_id_hash": torch.tensor(oid_hash, dtype=torch.long),
         "loader_worker_id": torch.tensor(0, dtype=torch.long),
+        "deep_input_schema_version": torch.tensor(1, dtype=torch.long),  # deep_input_finite_v1
         "event_x": torch.from_numpy(events),
+        "event_x_orig_finite": torch.from_numpy(events_finite),
         "event_times": torch.from_numpy(_rel_times_from_feat(events)),
         "event_mask": torch.from_numpy(em),
         "event_available": torch.tensor(
             float(masks_mod.get("mask_events", events.shape[0] > 0)), dtype=torch.float32
         ),
         "curve_x": torch.from_numpy(curve),
+        "curve_x_orig_finite": torch.from_numpy(curve_finite),
         "curve_times": torch.from_numpy(_rel_times_from_feat(curve)),
         "curve_mask": torch.from_numpy(cm),
         "curve_available": torch.tensor(
             float(masks_mod.get("mask_curve", curve.shape[0] > 0)), dtype=torch.float32
         ),
         "global_buckets": torch.from_numpy(glob if glob.size else np.zeros((0, 8), np.float32)),
+        "global_buckets_orig_finite": torch.from_numpy(
+            glob_finite if glob_finite.size else np.zeros((0, 8), dtype=bool)
+        ),
         "global_times": torch.from_numpy(_rel_times_from_feat(glob)),
-        "global_scalars": torch.zeros(9, dtype=torch.float32),
+        "global_scalars": torch.from_numpy(global_scalars),
+        "global_scalars_orig_finite": torch.from_numpy(global_scalars_finite),
         "global_mask": torch.from_numpy(gbm),
         "global_available": torch.tensor(
             float(masks_mod.get("mask_global", glob.shape[0] > 0)), dtype=torch.float32
         ),
         "creator_feat": torch.from_numpy(creator),
+        "creator_feat_orig_finite": torch.from_numpy(creator_finite),
         "micro_x": torch.from_numpy(micro),
+        "micro_x_orig_finite": torch.from_numpy(micro_finite),
         "micro_times": torch.from_numpy(_rel_times_from_feat(micro)),
         "micro_mask": torch.from_numpy(mm),
         "micro_available": torch.tensor(
             float(masks_mod.get("mask_micro", micro.shape[0] > 0)), dtype=torch.float32
         ),
         "own_x": torch.from_numpy(own),
+        "own_x_orig_finite": torch.from_numpy(own_finite),
         "own_times": torch.from_numpy(_rel_times_from_feat(own)),
         "own_mask": torch.from_numpy(om),
         "own_available": torch.tensor(
@@ -370,6 +390,7 @@ def example_to_tensors(
             dtype=torch.float32,
         ),
         "wallet_x": torch.from_numpy(wallet),
+        "wallet_x_orig_finite": torch.from_numpy(wallet_finite),
         "wallet_times": torch.from_numpy(_rel_times_from_feat(wallet)),
         "wallet_mask": torch.from_numpy(wm),
         "wallet_available": torch.tensor(
@@ -377,6 +398,7 @@ def example_to_tensors(
             dtype=torch.float32,
         ),
         "graph_edge_feat": torch.from_numpy(graph),
+        "graph_edge_feat_orig_finite": torch.from_numpy(graph_finite),
         "graph_times": torch.from_numpy(_rel_times_from_feat(graph)),
         "graph_mask": torch.from_numpy(gm),
         "graph_available": torch.tensor(
@@ -416,6 +438,19 @@ def example_to_tensors(
         "causal_ok": torch.tensor(
             float(bool(example.get("causal_ok", True))), dtype=torch.float32
         ),
+        "had_original_nonfinite": torch.tensor(
+            float(
+                (events_finite.size and not bool(events_finite.all()))
+                or (curve_finite.size and not bool(curve_finite.all()))
+                or (micro_finite.size and not bool(micro_finite.all()))
+                or (own_finite.size and not bool(own_finite.all()))
+                or (graph_finite.size and not bool(graph_finite.all()))
+                or (wallet_finite.size and not bool(wallet_finite.all()))
+                or (glob_finite.size and not bool(glob_finite.all()))
+                or (not bool(creator_finite.all()))
+            ),
+            dtype=torch.float32,
+        ),
     }
     out.update(ssl)
     return out
@@ -429,38 +464,58 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
         refuse_test_split(None)
 
     seq_keys = [
-        ("event_x", "event_times", "event_mask"),
-        ("curve_x", "curve_times", "curve_mask"),
-        ("global_buckets", "global_times", "global_mask"),
-        ("micro_x", "micro_times", "micro_mask"),
-        ("own_x", "own_times", "own_mask"),
-        ("wallet_x", "wallet_times", "wallet_mask"),
-        ("graph_edge_feat", "graph_times", "graph_mask"),
+        ("event_x", "event_times", "event_mask", "event_x_orig_finite"),
+        ("curve_x", "curve_times", "curve_mask", "curve_x_orig_finite"),
+        ("global_buckets", "global_times", "global_mask", "global_buckets_orig_finite"),
+        ("micro_x", "micro_times", "micro_mask", "micro_x_orig_finite"),
+        ("own_x", "own_times", "own_mask", "own_x_orig_finite"),
+        ("wallet_x", "wallet_times", "wallet_mask", "wallet_x_orig_finite"),
+        ("graph_edge_feat", "graph_times", "graph_mask", "graph_edge_feat_orig_finite"),
     ]
     out: dict[str, torch.Tensor] = {}
     b = len(rows)
 
-    for xk, tk, mk in seq_keys:
+    for xk, tk, mk, fk in seq_keys:
         xs = [r[xk] for r in rows]
         ts = [r[tk] for r in rows]
         ms = [r[mk] for r in rows]
+        fs = []
+        for r in rows:
+            if fk in r:
+                fs.append(r[fk])
+            elif r[xk].numel():
+                fs.append(torch.ones_like(r[xk], dtype=torch.bool))
+            else:
+                fs.append(torch.zeros(0, dtype=torch.bool))
         lmax = max((int(x.shape[0]) for x in xs), default=0)
         d = int(xs[0].shape[-1]) if xs and xs[0].ndim == 2 else 1
         xpad = torch.zeros(b, lmax, d, dtype=torch.float32)
         tpad = torch.zeros(b, lmax, dtype=torch.float32)
         mpad = torch.zeros(b, lmax, dtype=torch.bool)
-        for i, (x, t, m) in enumerate(zip(xs, ts, ms, strict=True)):
+        fpad = torch.zeros(b, lmax, d, dtype=torch.bool)
+        for i, (x, t, m, f) in enumerate(zip(xs, ts, ms, fs, strict=True)):
             n = int(x.shape[0])
             if n == 0:
                 continue
             xpad[i, :n] = x[:n]
             tpad[i, :n] = t[:n]
             mpad[i, :n] = m[:n]
+            if f.ndim == 2 and f.shape[0] >= n:
+                fpad[i, :n] = f[:n]
         out[xk] = xpad
         out[tk] = tpad
         out[mk] = mpad
+        out[fk] = fpad
 
     # SSL variable length — pad to max T-1
+    ssl_mask_keys = (
+        "ssl_side_mask",
+        "ssl_log_dt_mask",
+        "ssl_size_mask",
+        "ssl_intensity_mask",
+        "ssl_reserve_mask",
+        "ssl_mask",
+    )
     if any("ssl_next_side" in r for r in rows):
         sides = [r.get("ssl_next_side", torch.zeros(0, dtype=torch.long)) for r in rows]
         lmax = max((int(s.shape[0]) for s in sides), default=0)
@@ -469,7 +524,7 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
         size = torch.zeros(b, lmax)
         intens = torch.zeros(b, lmax)
         rdel = torch.zeros(b, lmax)
-        sm = torch.zeros(b, lmax, dtype=torch.bool)
+        masks = {k: torch.zeros(b, lmax, dtype=torch.bool) for k in ssl_mask_keys}
         for i, r in enumerate(rows):
             if "ssl_next_side" not in r:
                 continue
@@ -479,13 +534,19 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
             size[i, :n] = r["ssl_next_size"]
             intens[i, :n] = r.get("ssl_intensity_delta_t", torch.zeros(n))
             rdel[i, :n] = r.get("ssl_reserve_delta", torch.zeros(n))
-            sm[i, :n] = r.get("ssl_mask", torch.ones(n, dtype=torch.bool))
+            for k in ssl_mask_keys:
+                src = r.get(k)
+                if src is None and k == "ssl_mask":
+                    src = torch.ones(n, dtype=torch.bool)
+                elif src is None:
+                    src = torch.zeros(n, dtype=torch.bool)
+                masks[k][i, :n] = src[:n]
         out["ssl_next_side"] = side
         out["ssl_next_log_dt"] = log_dt
         out["ssl_next_size"] = size
         out["ssl_intensity_delta_t"] = intens
         out["ssl_reserve_delta"] = rdel
-        out["ssl_mask"] = sm
+        out.update(masks)
 
     skip = {xk for trip in seq_keys for xk in trip}
     skip |= {
@@ -494,7 +555,7 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
         "ssl_next_size",
         "ssl_intensity_delta_t",
         "ssl_reserve_delta",
-        "ssl_mask",
+        *ssl_mask_keys,
         "ssl_recon_target",
         "ssl_recon_mask",
     }
@@ -507,4 +568,5 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
             out[k] = torch.stack(vals)  # type: ignore[arg-type]
         else:
             out[k] = torch.stack(vals)  # type: ignore[arg-type]
+    assert_finite_model_inputs(out)
     return out

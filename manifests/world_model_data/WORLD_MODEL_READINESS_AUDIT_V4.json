@@ -1,0 +1,21 @@
+{
+  "audit_version": "WORLD_MODEL_READINESS_AUDIT_V4",
+  "generated_at": "2026-09-06T23:00:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "status": "ready_for_first_stage_a_gpu_run",
+  "parent_audit": "WORLD_MODEL_READINESS_AUDIT_V3",
+  "deep_input_schema_version": "deep_input_finite_v1",
+  "checks": {
+    "deep_input_finite_after_tensorization": true,
+    "finite_audit_exercises_original_missing": true,
+    "ssl_per_objective_masks": true,
+    "recon_excludes_original_missing": true,
+    "durable_resume_latest_gcs_or_mirror": true,
+    "two_worker_interleave_limitation_documented": true,
+    "full_gpu_training_not_launched": true,
+    "baseline_compute_not_rerun": true
+  },
+  "finite_audit": "manifests/world_model_data/DEEP_INPUT_FINITE_AUDIT_V1.json",
+  "first_stage_a_max_steps": 500,
+  "contract": "WORLD_MODEL_TRAINING_CONTRACT_V2"
+}

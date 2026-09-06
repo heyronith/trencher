@@ -18,6 +18,15 @@ Stage the **minimal frozen V4 training dependency set** to Colab local SSD and r
 root (`splits/...`, `broad/...`, …). `stage_from_gcs.py` defaults `--dest` to
 `$TRENCHER_WORLD_ROOT` (or `$TRENCHER_LOCAL_STAGE/world_model`).
 
+Deep inputs are sanitized at the tensorization boundary (`deep_input_finite_v1`):
+NaN/Inf → transformed-space `0.0` with original-finite masks retained. SSL uses
+per-objective masks. See `DEEP_INPUT_FINITE_AUDIT_V1.json`.
+
+**Two-worker note:** assignment paths are duplicate-free and deterministically
+owned; PyTorch multi-worker *batch interleave* is not bit-stable across preempt.
+Exact param-resume equivalence is validated at `num_workers=0`. This is acceptable
+for Stage-A SSL.
+
 ## Preconditions
 
 1. Approved Git SHA checked out on the runtime.
@@ -55,7 +64,11 @@ Durable checkpoints sync under `$TRENCHER_GCS_URI/runs/$TRENCHER_WM_RUN_ID/`
 4. `bash scripts/colab/launch_training.sh`  
    This calls `python -m trencher.world_model.launch` over **real** frozen DataLoaders.
 
-## First approved command (DO NOT run until review)
+## First approved command — bounded Stage-A continuation segment (DO NOT run until review)
+
+This is the first production Stage-A checkpoint lineage start (not a throwaway).
+Use `TRENCHER_WM_MAX_STEPS=500` to measure throughput/VRAM/loss stability, then
+resume into the remaining planned SSL steps.
 
 ```bash
 export TRENCHER_GCS_URI=gs://YOUR_BUCKET/world_model_freeze_v1
@@ -69,9 +82,14 @@ export TRENCHER_WM_MODE=final_train
 export TRENCHER_WM_POPULATION=broad
 export TRENCHER_WM_NUM_WORKERS=2
 export TRENCHER_WM_RUN_ID=stage_a_ssl
+export TRENCHER_WM_MAX_STEPS=500
 export TRENCHER_GIT_SHA=<APPROVED_SHA>
 python scripts/colab/stage_from_gcs.py
 bash scripts/colab/launch_training.sh
 ```
+
+Resume later with `TRENCHER_WM_RESUME=latest` (resolves
+`$TRENCHER_GCS_URI/runs/$TRENCHER_WM_RUN_ID/latest.pt`) after clearing
+`TRENCHER_WM_MAX_STEPS` or raising it.
 
 Stage B/C are separate launches from approved checkpoints (`TRENCHER_WM_PHASE=broad|rich` + `TRENCHER_WM_RESUME=...`).

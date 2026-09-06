@@ -1,0 +1,828 @@
+{
+  "broad": {
+    "audit_version": "DEEP_INPUT_FINITE_AUDIT_V1",
+    "deep_input_schema_version": "deep_input_finite_v1",
+    "population": "broad",
+    "observations_scanned": 10000,
+    "observations_with_original_missing": 10000,
+    "causal_violations": 0,
+    "q85_test_rows": 0,
+    "original_nonfinite_total": 30671,
+    "model_input_nonfinite_after_tensorization_total": 0,
+    "acceptance_model_input_nonfinite_after_tensorization": true,
+    "ssl_valid_support": {
+      "ssl_side_mask": 135261,
+      "ssl_log_dt_mask": 135261,
+      "ssl_size_mask": 131243,
+      "ssl_intensity_mask": 135261,
+      "ssl_reserve_mask": 130960
+    },
+    "creator_feat": {
+      "values_inspected": 40000,
+      "model_input_nonfinite_after_tensorization": 0
+    },
+    "modalities": {
+      "events": {
+        "rel_dt": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "interarrival": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_buy": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "side_id": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4139,
+          "sanitized": 4139,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "price_sol": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4139,
+          "sanitized": 4139,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_sol": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4422,
+          "sanitized": 4422,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_tok": {
+          "values_inspected": 143929,
+          "original_nonfinite": 283,
+          "sanitized": 283,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "curve_pct_depleted": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4422,
+          "sanitized": 4422,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_reserves": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_finite_price": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "curve": {
+        "rel_dt": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "price_sol": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4139,
+          "sanitized": 4139,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_sol": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4422,
+          "sanitized": 4422,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_tok": {
+          "values_inspected": 143929,
+          "original_nonfinite": 283,
+          "sanitized": 283,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "curve_pct_depleted": {
+          "values_inspected": 143929,
+          "original_nonfinite": 4422,
+          "sanitized": 4422,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_reserves": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 143929,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "global": {
+        "rel_dt": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "trades": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "buys": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sells": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "buy_sol": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sell_sol": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "unique_mints": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "unique_wallets": {
+          "values_inspected": 1280000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "micro": {
+        "rel_dt": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "success": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "fee_lamports": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "compute_units_consumed": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "priority_fee_lamports": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "account_key_count": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "balance_change_count": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "log_message_count": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "inner_instruction_groups": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "availability_priority_fee": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "ownership": {
+        "rel_dt": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "event_kind_id": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "transfer_type_id": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "value": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "decimals": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "pre_ui_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "post_ui_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "delta_ui": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "wallet_prior": {
+        "rel_dt": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "edge_type_id": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "direction": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_cohort_derived": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "graph": {
+        "rel_dt": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "edge_type_id": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "direction": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_cohort_derived": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 0,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      }
+    },
+    "elapsed_sec": 13.805984735488892,
+    "examples_per_sec": 724.3235590645381
+  },
+  "rich": {
+    "audit_version": "DEEP_INPUT_FINITE_AUDIT_V1",
+    "deep_input_schema_version": "deep_input_finite_v1",
+    "population": "rich",
+    "observations_scanned": 1000,
+    "observations_with_original_missing": 1000,
+    "causal_violations": 0,
+    "q85_test_rows": 0,
+    "original_nonfinite_total": 136889,
+    "model_input_nonfinite_after_tensorization_total": 0,
+    "acceptance_model_input_nonfinite_after_tensorization": true,
+    "ssl_valid_support": {
+      "ssl_side_mask": 10819,
+      "ssl_log_dt_mask": 10819,
+      "ssl_size_mask": 10571,
+      "ssl_intensity_mask": 10819,
+      "ssl_reserve_mask": 10568
+    },
+    "creator_feat": {
+      "values_inspected": 4000,
+      "model_input_nonfinite_after_tensorization": 0
+    },
+    "modalities": {
+      "events": {
+        "rel_dt": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "interarrival": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_buy": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "side_id": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 11523,
+          "original_nonfinite": 283,
+          "sanitized": 283,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "price_sol": {
+          "values_inspected": 11523,
+          "original_nonfinite": 283,
+          "sanitized": 283,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_sol": {
+          "values_inspected": 11523,
+          "original_nonfinite": 286,
+          "sanitized": 286,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_tok": {
+          "values_inspected": 11523,
+          "original_nonfinite": 3,
+          "sanitized": 3,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "curve_pct_depleted": {
+          "values_inspected": 11523,
+          "original_nonfinite": 286,
+          "sanitized": 286,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_reserves": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_finite_price": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 11523,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "curve": {
+        "rel_dt": {
+          "values_inspected": 15848,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "price_sol": {
+          "values_inspected": 15848,
+          "original_nonfinite": 283,
+          "sanitized": 283,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_sol": {
+          "values_inspected": 15848,
+          "original_nonfinite": 286,
+          "sanitized": 286,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "v_tok": {
+          "values_inspected": 15848,
+          "original_nonfinite": 3,
+          "sanitized": 3,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "curve_pct_depleted": {
+          "values_inspected": 15848,
+          "original_nonfinite": 286,
+          "sanitized": 286,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "has_reserves": {
+          "values_inspected": 15848,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 15848,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "global": {
+        "rel_dt": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "trades": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "buys": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sells": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "buy_sol": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sell_sol": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "unique_mints": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "unique_wallets": {
+          "values_inspected": 128000,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "micro": {
+        "rel_dt": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "success": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "fee_lamports": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "compute_units_consumed": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "priority_fee_lamports": {
+          "values_inspected": 2765,
+          "original_nonfinite": 2765,
+          "sanitized": 2765,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "account_key_count": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "balance_change_count": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "log_message_count": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "inner_instruction_groups": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "availability_priority_fee": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 2765,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "ownership": {
+        "rel_dt": {
+          "values_inspected": 1444,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "event_kind_id": {
+          "values_inspected": 1444,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "transfer_type_id": {
+          "values_inspected": 1444,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "value": {
+          "values_inspected": 1444,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "decimals": {
+          "values_inspected": 1444,
+          "original_nonfinite": 1318,
+          "sanitized": 1318,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "pre_ui_amount": {
+          "values_inspected": 1444,
+          "original_nonfinite": 146,
+          "sanitized": 146,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "post_ui_amount": {
+          "values_inspected": 1444,
+          "original_nonfinite": 146,
+          "sanitized": 146,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "delta_ui": {
+          "values_inspected": 1444,
+          "original_nonfinite": 146,
+          "sanitized": 146,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 1444,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "wallet_prior": {
+        "rel_dt": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "edge_type_id": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "direction": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 733250,
+          "original_nonfinite": 126511,
+          "sanitized": 126511,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_cohort_derived": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 733250,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      },
+      "graph": {
+        "rel_dt": {
+          "values_inspected": 14098,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "edge_type_id": {
+          "values_inspected": 14098,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "direction": {
+          "values_inspected": 14098,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "sol_amount": {
+          "values_inspected": 14098,
+          "original_nonfinite": 1409,
+          "sanitized": 1409,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "token_amount": {
+          "values_inspected": 14098,
+          "original_nonfinite": 2449,
+          "sanitized": 2449,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "is_cohort_derived": {
+          "values_inspected": 14098,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        },
+        "source_quality": {
+          "values_inspected": 14098,
+          "original_nonfinite": 0,
+          "sanitized": 0,
+          "model_input_nonfinite_after_tensorization": 0
+        }
+      }
+    },
+    "elapsed_sec": 11.774362087249756,
+    "examples_per_sec": 84.93029113508256
+  }
+}

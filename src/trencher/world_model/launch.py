@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 
 from trencher.world_model.checkpoint import load_checkpoint
@@ -92,22 +93,48 @@ def _check_loader_identity(
 
 
 def _maybe_fetch_durable_resume(resume: str, ckpt_dir: Path) -> str:
-    """If resume path missing, try durable mirror / GCS run prefix for latest.pt."""
+    """Resolve durable ``latest`` via local-mirror or GCS; never silent-fail if requested."""
+    resume = (resume or "").strip()
     if resume and Path(resume).is_file():
         return resume
+
+    explicit_latest = resume.lower() in {"latest", "durable", "durable:latest"}
+    if not explicit_latest:
+        # Empty / non-latest paths are left for the caller (fresh start or direct path).
+        return resume
+
     run_id = os.environ.get("TRENCHER_WM_RUN_ID", "default_run")
     mirror = os.environ.get("TRENCHER_DURABLE_MIRROR") or os.environ.get(
         "TRENCHER_WM_DURABLE_MIRROR"
     )
+    gcs = os.environ.get("TRENCHER_GCS_URI") or ""
+    store = None
     if mirror:
         store = LocalMirrorStore(Path(mirror) / run_id)
-        dest = ckpt_dir / "latest.pt"
-        try:
-            store.download_file("latest.pt", dest)
-            return str(dest)
-        except DurableSyncError:
-            pass
-    return resume
+    elif gcs:
+        from trencher.world_model.durable import GCSStore
+
+        store = GCSStore(gcs, run_id)
+    else:
+        raise DurableSyncError(
+            "TRENCHER_WM_RESUME=latest requested but neither "
+            "TRENCHER_DURABLE_MIRROR nor TRENCHER_GCS_URI is set"
+        )
+
+    dest = ckpt_dir / "latest.pt"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        store.download_file("latest.pt", dest)
+    except DurableSyncError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise DurableSyncError(
+            f"failed to download durable latest.pt from {store.uri_for('latest.pt')}: {exc}"
+        ) from exc
+    if not dest.is_file():
+        raise DurableSyncError(f"durable latest.pt missing after download: {dest}")
+    print(f"durable resume downloaded from {store.uri_for('latest.pt')} -> {dest}")
+    return str(dest)
 
 
 def main() -> None:
@@ -146,6 +173,8 @@ def main() -> None:
         print(f"accelerator={props.name} total_mem_gb={props.total_memory / 1e9:.1f}")
 
     cfg = load_world_model_config(config_path)
+    torch.manual_seed(int(cfg.train.seed))
+    np.random.seed(int(cfg.train.seed))
     model = WorldModel(cfg)
     print(f"parameters={count_parameters(model):,}")
     print(f"config_hash={cfg.config_hash()}")

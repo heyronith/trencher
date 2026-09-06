@@ -247,7 +247,7 @@ class MultiTaskLoss(nn.Module):
             side_logits = outputs.get("ssl_next_side_logits")
             if side_logits is not None and "ssl_next_side" in batch:
                 tgt = batch["ssl_next_side"].long()
-                m = batch.get("ssl_mask")
+                m = batch.get("ssl_side_mask", batch.get("ssl_mask"))
                 loss = F.cross_entropy(
                     side_logits.reshape(-1, side_logits.size(-1)),
                     tgt.reshape(-1),
@@ -262,7 +262,7 @@ class MultiTaskLoss(nn.Module):
             if "ssl_next_log_dt" in outputs and "ssl_next_log_dt" in batch:
                 pred = outputs["ssl_next_log_dt"]
                 tgt = batch["ssl_next_log_dt"]
-                m = batch.get("ssl_mask")
+                m = batch.get("ssl_log_dt_mask", batch.get("ssl_mask"))
                 loss = masked_mean(F.smooth_l1_loss(pred, tgt, reduction="none"), m)
                 total = self._add(
                     terms, support, total, "ssl_log_dt", loss, c.ssl_log_dt_weight,
@@ -272,7 +272,7 @@ class MultiTaskLoss(nn.Module):
             if "ssl_next_size" in outputs and "ssl_next_size" in batch:
                 pred = outputs["ssl_next_size"]
                 tgt = batch["ssl_next_size"]
-                m = batch.get("ssl_mask")
+                m = batch.get("ssl_size_mask", batch.get("ssl_mask"))
                 loss = masked_mean(F.smooth_l1_loss(pred, tgt, reduction="none"), m)
                 total = self._add(
                     terms, support, total, "ssl_size", loss, c.ssl_size_weight,
@@ -282,7 +282,7 @@ class MultiTaskLoss(nn.Module):
             if "ssl_intensity_log" in outputs and "ssl_intensity_delta_t" in batch:
                 log_lam = outputs["ssl_intensity_log"].clamp(-20.0, 20.0)
                 delta = batch["ssl_intensity_delta_t"].clamp_min(1e-6)
-                m = batch.get("ssl_mask")
+                m = batch.get("ssl_intensity_mask", batch.get("ssl_mask"))
                 # Conditional exponential waiting-time NLL: λΔt − log λ
                 # with λ = exp(log λ).
                 nll = log_lam.exp() * delta - log_lam
@@ -295,7 +295,7 @@ class MultiTaskLoss(nn.Module):
             if "ssl_reserve_delta" in outputs and "ssl_reserve_delta" in batch:
                 pred = outputs["ssl_reserve_delta"]
                 tgt = batch["ssl_reserve_delta"]
-                m = batch.get("ssl_mask")
+                m = batch.get("ssl_reserve_mask", batch.get("ssl_mask"))
                 loss = masked_mean(F.smooth_l1_loss(pred, tgt, reduction="none"), m)
                 total = self._add(
                     terms, support, total, "ssl_reserve", loss, c.ssl_reserve_weight,

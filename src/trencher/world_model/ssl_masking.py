@@ -14,12 +14,10 @@ def apply_ssl_event_masking(
     seed: int,
     mask_ratio: float = 0.15,
 ) -> dict[str, Any]:
-    """Corrupt selected valid event cells; attach recon target/mask.
+    """Corrupt selected valid+originally-finite event cells; attach recon target/mask.
 
-    - Preserves original values in ``ssl_recon_target`` (positions 0..T-2 to match
-      the existing recon head over ``h[:, :-1]``).
-    - Corrupts ``event_x`` only at deliberately masked valid cells (never padding).
-    - Mask pattern is deterministic from ``seed`` + ``observation_id_hash``.
+    ``ssl_recon_mask`` = deliberately selected ∧ valid position ∧ originally finite.
+    Never asks the network to reconstruct an original NaN/Inf cell.
     """
     if "event_x" not in batch:
         return batch
@@ -36,9 +34,16 @@ def apply_ssl_event_masking(
         return out
 
     event_mask = batch.get("event_mask")
+    orig_finite = batch.get("event_x_orig_finite")
+    if orig_finite is None:
+        orig_finite = torch.ones(B, T, C, dtype=torch.bool, device=device)
+    else:
+        orig_finite = orig_finite.to(device=device, dtype=torch.bool)
 
-    # Target matches recon head: positions 0..T-2
+    # Target is already-sanitized finite values at positions 0..T-2
     target = x[:, :-1].detach().clone()
+    # Defensive: never leave non-finite in recon targets
+    target = torch.where(torch.isfinite(target), target, torch.zeros_like(target))
     recon_mask = torch.zeros(B, T - 1, C, dtype=torch.bool, device=device)
     x_corrupt = x.clone()
 
@@ -61,10 +66,11 @@ def apply_ssl_event_masking(
                 valid = bool(event_mask[b, t].item())
             if not valid:
                 continue
-            # Never mask using padding at t+1 either for next-step SSL alignment
             if event_mask is not None and not bool(event_mask[b, t + 1].item()):
                 continue
             for c in range(C):
+                if not bool(orig_finite[b, t, c].item()):
+                    continue  # never reconstruct originally missing cells
                 if rng.random() < ratio:
                     recon_mask[b, t, c] = True
                     x_corrupt[b, t, c] = torch.zeros((), dtype=dtype, device=device)
@@ -77,5 +83,4 @@ def apply_ssl_event_masking(
 
 
 def _mix_seed(seed: int, oid_hash: int) -> int:
-    # Stable 63-bit mix; independent of Python hash randomization.
     return int((int(seed) * 1_000_003) ^ (int(oid_hash) & 0x7FFFFFFFFFFFFFFF)) & 0x7FFFFFFF

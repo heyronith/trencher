@@ -16,6 +16,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from trencher.world_model.checkpoint import save_checkpoint
 from trencher.world_model.config import WorldModelConfig
 from trencher.world_model.durable import DurableStore, DurableSyncError, write_progress_sidecar
+from trencher.world_model.input_sanitize import assert_finite_model_inputs
 from trencher.world_model.losses import MultiTaskLoss
 from trencher.world_model.model import WorldModel
 from trencher.world_model.progress import ProgressEmitter
@@ -236,6 +237,7 @@ class ThreePhaseTrainer:
             batch, h2d = self._move_batch(batch, profile=profile)
             for k, w in self.class_weights.items():
                 batch[k] = w.to(self.device)
+            assert_finite_model_inputs(batch)
 
             if self.microstep == 0:
                 self.optimizer.zero_grad(set_to_none=self.cfg.train.set_to_none)
