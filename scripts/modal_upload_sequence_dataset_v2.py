@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Bulk-upload frozen sequence_dataset_v2 stores to Modal (no broad re-upload)."""
+"""Bulk-upload frozen sequence_dataset_v2 stores to Modal (no broad re-upload).
+
+Uploads one file per ``batch_upload`` context so large blobs (wallet prior)
+do not hit expired multipart tokens from long multi-file batches.
+"""
 
 from __future__ import annotations
 
@@ -20,11 +24,12 @@ REQUIRED = (
     "sequence_ownership_v2_entity_index.parquet",
     "sequence_graph_token_v2.parquet",
     "sequence_graph_token_v2_entity_index.parquet",
-    "sequence_graph_wallet_prior_v2.parquet",
     "sequence_graph_wallet_prior_v2_entity_index.parquet",
     "observation_sequence_refs_v2.parquet",
     "MODEL_INPUT_CONTRACT_V2.json",
     "sequence_dataset_manifest.json",
+    # largest last
+    "sequence_graph_wallet_prior_v2.parquet",
 )
 
 
@@ -44,15 +49,29 @@ def main() -> int:
     vol = modal.Volume.from_name(VOL_NAME)
     remote = "/sequences/sequence_dataset_v2"
     t0 = time.time()
-    _log(f"BATCH UPLOAD sequence_dataset_v2 → {VOL_NAME}:{remote} force=True")
-    with vol.batch_upload(force=True) as batch:
-        for name in REQUIRED:
-            local = SEQ / name
-            _log(f"  put_file {local} ({local.stat().st_size / 1e6:.1f} MB)")
-            batch.put_file(str(local), f"{remote}/{name}")
+    _log(f"UPLOAD sequence_dataset_v2 → {VOL_NAME}:{remote} (one file / batch, force=True)")
+
+    for name in REQUIRED:
+        local = SEQ / name
+        size_mb = local.stat().st_size / 1e6
+        _log(f"  put_file {name} ({size_mb:.1f} MB)…")
+        t1 = time.time()
+        retries = 3
+        for attempt in range(1, retries + 1):
+            try:
+                with vol.batch_upload(force=True) as batch:
+                    batch.put_file(str(local), f"{remote}/{name}")
+                _log(f"    OK in {time.time() - t1:.1f}s")
+                break
+            except Exception as exc:  # noqa: BLE001
+                _log(f"    attempt {attempt}/{retries} failed: {type(exc).__name__}: {exc}")
+                if attempt >= retries:
+                    print(f"ERROR: failed to upload {name}", file=sys.stderr)
+                    return 1
+                time.sleep(5 * attempt)
+
     _log(f"SEQUENCE UPLOAD done in {time.time() - t0:.1f}s")
 
-    # Verify listing
     entries = list(vol.listdir(remote, recursive=False))
     names = {Path(getattr(e, "path", str(e))).name for e in entries}
     still = [n for n in REQUIRED if n not in names]
