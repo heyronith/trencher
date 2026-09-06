@@ -299,6 +299,87 @@ def train_xgboost_head(
     }
 
 
+def binary_catboost_live_eval_metric() -> str:
+    """Live per-iteration CatBoost eval metric for binary heads.
+
+    Never returns ``PRAUC``: GPU CatBoost falls back to CPU for PRAUC every
+    iteration, which dominates wall time on full-population folds.
+    """
+    return "Logloss"
+
+
+def select_iteration_by_postfit_prauc(
+    model: Any,
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    *,
+    tree_step: int = 5,
+    emitter: ProgressEmitter | None = None,
+    train_progress_end: int = 80,
+) -> tuple[int, list[dict[str, Any]]]:
+    """Choose best tree count from sparse post-fit PR-AUC on the val slice only.
+
+    Scores every ``tree_step`` trees plus the final tree via one
+    ``staged_predict_proba`` pass (no train-set metric recomputation).
+    """
+    from trencher.baselines.metrics import average_precision
+
+    n_trees = int(getattr(model, "tree_count_", 0) or 0)
+    if n_trees <= 0 or X_val is None or len(X_val) == 0 or y_val is None or len(y_val) == 0:
+        return max(n_trees, 1), []
+
+    targets = set(range(tree_step, n_trees + 1, tree_step))
+    targets.add(n_trees)
+    ordered = sorted(targets)
+    n_eval = len(ordered)
+    target_set = set(ordered)
+
+    grid: list[dict[str, Any]] = []
+    best_it = ordered[-1]
+    best_score = float("-inf")
+    done = 0
+    if emitter is not None:
+        emitter.emit(
+            train_progress_end,
+            message=f"train trees complete; prauc_scan 0/{n_eval}",
+            force=True,
+            prauc_scan_done=0,
+            prauc_scan_planned=n_eval,
+        )
+
+    for it, proba in enumerate(model.staged_predict_proba(X_val), start=1):
+        if it not in target_set:
+            continue
+        scores = np.asarray(proba[:, 1], dtype=np.float64)
+        prauc = average_precision(y_val, scores)
+        grid.append({"iteration": int(it), "pr_auc": prauc})
+        if prauc is not None and float(prauc) >= best_score:
+            best_score = float(prauc)
+            best_it = int(it)
+        done += 1
+        if emitter is not None:
+            span = max(1, 99 - train_progress_end)
+            step = train_progress_end + max(1, int(span * done / max(n_eval, 1)))
+            emitter.emit(
+                min(99, step),
+                message=(
+                    f"prauc_scan {done}/{n_eval} trees={it} "
+                    f"pr_auc={prauc if prauc is not None else 'nan'}"
+                ),
+                force=True,
+                prauc_scan_done=done,
+                prauc_scan_planned=n_eval,
+                best_iteration=best_it,
+                best_pr_auc=None if best_score == float("-inf") else best_score,
+            )
+        if it >= n_trees:
+            break
+
+    if not grid:
+        return n_trees, []
+    return best_it, grid
+
+
 def train_catboost_head(
     *,
     X_train: np.ndarray,
@@ -313,16 +394,22 @@ def train_catboost_head(
     seed: int = 0,
     class_weights: list[float] | None = None,
     use_gpu: bool = True,
+    prauc_tree_step: int = 5,
 ) -> dict[str, Any]:
     """Train one CatBoost head.
 
     Logging: use only ``verbose`` (never also ``logging_level``).
 
-    When ``early_stopping_rounds`` is set (wf1/wf2): eval_set + OD early stopping.
-    When ``early_stopping_rounds is None`` (V2 final fit): fit exactly
-    ``num_boost_round`` trees with ``use_best_model=False`` and **no** eval_set,
-    so the train calibration slice cannot truncate the model. Callers then score
-    the calibration slice separately for Platt fitting.
+    Binary development folds (``early_stopping_rounds`` set):
+      train with ``Logloss`` on GPU (never live ``PRAUC``), then select
+      ``best_iteration`` from a sparse post-fit PR-AUC grid on the fold val
+      slice. Permanent q70–q85 validation must not be passed here.
+
+    Multiclass / regression development folds: retain CatBoost OD + native
+    GPU eval metrics (MultiClass / MAE).
+
+    Final fit (``early_stopping_rounds is None``): exactly ``num_boost_round``
+    trees with ``use_best_model=False`` and **no** eval_set.
     """
     import re
     import sys
@@ -330,10 +417,18 @@ def train_catboost_head(
 
     from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 
+    out_dir = ensure_dir(Path(out_dir))
     emitter = ProgressEmitter(tag, status_path=out_dir / "progress.json")
     emitter.emit(1, message="start", force=True)
     t0 = time.time()
     fixed_iters = early_stopping_rounds is None
+    # Binary wf folds: PR-AUC selection is post-fit → train full planned trees,
+    # no CatBoost OD / use_best_model truncation on Logloss.
+    binary_postfit_select = bool(kind == "binary" and not fixed_iters)
+    train_progress_end = 80 if binary_postfit_select else 100
+    # Sparse GPU stdout (avoid per-tree flood / "Logs may not be continuous").
+    metric_period = 10 if use_gpu else 1
+
     # Only ``verbose`` controls logging — never pair with ``logging_level``.
     common: dict[str, Any] = {
         "iterations": num_boost_round,
@@ -342,20 +437,46 @@ def train_catboost_head(
         "random_seed": seed,
         "allow_writing_files": False,
         "task_type": "GPU" if use_gpu else "CPU",
-        "metric_period": 1,
+        "metric_period": metric_period,
         "verbose": 1 if use_gpu else False,
-        "use_best_model": (not fixed_iters),
+        "use_best_model": not (fixed_iters or binary_postfit_select),
     }
-    if early_stopping_rounds:
+    # OD only for non-binary development folds (native GPU metrics).
+    if early_stopping_rounds and not binary_postfit_select:
         common["od_type"] = "Iter"
         common["od_wait"] = int(early_stopping_rounds)
+
     train_pool = Pool(X_train, y_train)
     has_val = X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0
-    # Eval set only for development folds with early stopping — never for fixed final fit.
-    use_eval_set = bool(has_val and early_stopping_rounds)
+    # Eval set: never for fixed final fit; never for binary post-fit PR-AUC path
+    # (val is scored after fit). Multiclass/regression development keep eval_set.
+    use_eval_set = bool(has_val and early_stopping_rounds and not binary_postfit_select)
     val_pool = Pool(X_val, y_val) if use_eval_set else None
 
     iter_re = re.compile(r"^(\d+)\s*:")
+
+    def _map_train_progress(it: int, *, message: str, best: float | None = None) -> None:
+        it = max(0, int(it))
+        if train_progress_end >= 100:
+            emitter.update(
+                it,
+                num_boost_round,
+                message=message,
+                current_iteration=it,
+                best_metric=best,
+            )
+            return
+        frac = min(1.0, it / max(float(num_boost_round), 1.0))
+        step = max(1, min(train_progress_end, int(frac * train_progress_end)))
+        if it >= num_boost_round:
+            step = train_progress_end
+        emitter.emit(
+            step,
+            message=message,
+            force=True,
+            current_iteration=it,
+            best_metric=best,
+        )
 
     class _CB:
         def after_iteration(self, info):  # noqa: ANN001
@@ -369,13 +490,7 @@ def train_catboost_head(
                         if vals:
                             best = vals[-1]
                             msg += f" {name}={best:.6g}"
-            emitter.update(
-                it,
-                num_boost_round,
-                message=msg,
-                current_iteration=it,
-                best_metric=best,
-            )
+            _map_train_progress(it, message=msg, best=best)
             return True
 
     class _StdoutIterTee:
@@ -388,6 +503,9 @@ def train_catboost_head(
 
         def write(self, data: str) -> int:
             with self._lock:
+                # Drop CatBoost continuity noise; keep sparse metric lines.
+                if "Logs may not be continuous" in data:
+                    return len(data)
                 self._wrapped.write(data)
                 self._buf += data
                 while "\n" in self._buf:
@@ -395,11 +513,9 @@ def train_catboost_head(
                     m = iter_re.match(line.strip())
                     if m:
                         it = int(m.group(1)) + 1  # CatBoost prints 0-based iter index
-                        emitter.update(
+                        _map_train_progress(
                             it,
-                            num_boost_round,
-                            message=f"gpu iter={it}/{num_boost_round} {line.strip()[:120]}",
-                            current_iteration=it,
+                            message=f"gpu trees={it}/{num_boost_round}",
                         )
             return len(data)
 
@@ -413,12 +529,8 @@ def train_catboost_head(
         params = dict(common)
         if kind == "binary":
             params["loss_function"] = "Logloss"
-            if use_eval_set:
-                n_pos = float(np.sum(np.asarray(y_val) >= 0.5))
-                n_neg = float(len(y_val) - n_pos)
-                params["eval_metric"] = "PRAUC" if n_pos > 0 and n_neg > 0 else "Logloss"
-            else:
-                params["eval_metric"] = "Logloss"
+            # Never PRAUC as live GPU eval_metric (CPU fallback every iteration).
+            params["eval_metric"] = binary_catboost_live_eval_metric()
             if class_weights is not None:
                 params["class_weights"] = class_weights
         else:
@@ -427,24 +539,29 @@ def train_catboost_head(
         model = CatBoostClassifier(**params)
     else:
         params = dict(common)
+        params["loss_function"] = "MAE"
+        params["eval_metric"] = "MAE"
         model = CatBoostRegressor(loss_function="MAE", eval_metric="MAE", **common)
 
     fit_kwargs: dict[str, Any] = {}
     if use_eval_set and val_pool is not None:
         fit_kwargs["eval_set"] = val_pool
 
-    def _predict_raw(mdl: Any) -> np.ndarray:
+    def _predict_raw(mdl: Any, *, ntree_end: int | None = None) -> np.ndarray:
         if not has_val:
             return np.array([], dtype=np.float64)
+        predict_kw: dict[str, Any] = {}
+        if ntree_end is not None and ntree_end > 0:
+            predict_kw["ntree_end"] = int(ntree_end)
         if kind in ("binary", "multiclass"):
-            raw = mdl.predict_proba(X_val)
+            raw = mdl.predict_proba(X_val, **predict_kw)
             if kind == "binary":
                 return np.asarray(raw[:, 1], dtype=np.float64)
             return np.asarray(raw, dtype=np.float64)
-        return np.asarray(mdl.predict(X_val), dtype=np.float64)
+        return np.asarray(mdl.predict(X_val, **predict_kw), dtype=np.float64)
 
     if use_gpu:
-        emitter.emit(5, message="gpu fit with stdout iteration progress", force=True)
+        emitter.emit(5, message="gpu fit (Logloss; tree progress)", force=True)
         old_out, old_err = sys.stdout, sys.stderr
         tee = _StdoutIterTee(old_out)
         try:
@@ -463,7 +580,7 @@ def train_catboost_head(
                     **{k: v for k, v in common.items() if k != "logging_level"},
                     "task_type": "CPU",
                     "verbose": False,
-                    "use_best_model": (not fixed_iters),
+                    "use_best_model": bool(common.get("use_best_model")),
                 }
                 if kind in ("binary", "multiclass"):
                     model = CatBoostClassifier(
@@ -479,7 +596,7 @@ def train_catboost_head(
         finally:
             sys.stdout, sys.stderr = old_out, old_err
         trees = int(model.tree_count_ or num_boost_round)
-        emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
+        _map_train_progress(trees, message=f"gpu trees={trees}/{num_boost_round}")
     else:
         # CPU: progress via callbacks; only verbose=False (never logging_level).
         if hasattr(model, "set_params"):
@@ -488,13 +605,42 @@ def train_catboost_head(
         cb_kwargs["callbacks"] = [_CB()]
         model.fit(train_pool, **cb_kwargs)
 
-    raw = _predict_raw(model)
     actual = int(model.tree_count_ or num_boost_round)
-    # Fixed-iter final fit: best_iteration is the planned count (no OD selection).
+    prauc_grid: list[dict[str, Any]] = []
+    iteration_selection: str
+    # Fixed-iter final fit: best_iteration is the planned count (no OD / PR-AUC select).
     if fixed_iters:
         best_it = int(num_boost_round)
+        iteration_selection = "fixed"
+    elif binary_postfit_select:
+        best_it, prauc_grid = select_iteration_by_postfit_prauc(
+            model,
+            X_val,
+            y_val,
+            tree_step=max(int(prauc_tree_step), 1),
+            emitter=emitter,
+            train_progress_end=train_progress_end,
+        )
+        iteration_selection = "postfit_pr_auc"
+        write_json(
+            out_dir / "prauc_tree_grid.json",
+            {
+                "selection_metric": "pr_auc",
+                "live_eval_metric": binary_catboost_live_eval_metric(),
+                "tree_step": int(prauc_tree_step),
+                "n_trees_trained": actual,
+                "best_iteration": best_it,
+                "grid": prauc_grid,
+            },
+        )
     else:
         best_it = int(model.get_best_iteration() or actual or 0)
+        iteration_selection = "catboost_od"
+
+    raw = _predict_raw(
+        model,
+        ntree_end=(best_it if kind == "binary" and best_it > 0 else None),
+    )
 
     emitter.complete(
         message="COMPLETE",
@@ -502,9 +648,12 @@ def train_catboost_head(
         actual_iterations=actual,
         fixed_iterations=fixed_iters,
         use_best_model=bool(common.get("use_best_model")),
+        iteration_selection=iteration_selection,
+        live_eval_metric=str(params.get("eval_metric")),
     )
     model_path = out_dir / "model.cbm"
     model.save_model(str(model_path))
+    fit_params = {k: v for k, v in params.items() if k != "logging_level"}
     return {
         "family": "catboost",
         "model_path": str(model_path),
@@ -514,10 +663,13 @@ def train_catboost_head(
         "planned_iterations": num_boost_round,
         "raw_val_pred": np.asarray(raw, dtype=np.float64),
         "runtime_sec": time.time() - t0,
-        "params": {k: v for k, v in common.items() if k != "logging_level"},
+        "params": fit_params,
         "early_stopping_rounds": early_stopping_rounds,
         "use_best_model": bool(common.get("use_best_model")),
         "eval_set_used": use_eval_set,
+        "iteration_selection": iteration_selection,
+        "live_eval_metric": str(params.get("eval_metric")),
+        "prauc_tree_grid": prauc_grid,
     }
 
 
@@ -675,6 +827,8 @@ def run_family_core_suite(
                     "best_iteration": bi,
                     "runtime_sec": art["runtime_sec"],
                     "dev_val_window": fold["rule"],
+                    "iteration_selection": art.get("iteration_selection"),
+                    "live_eval_metric": art.get("live_eval_metric"),
                 }
             )
             done_runs += 1

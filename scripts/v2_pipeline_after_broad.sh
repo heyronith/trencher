@@ -15,25 +15,42 @@ LOG=logs/v2_pipeline_after_broad.log
 BROAD_APP_ID="ap-jdn18q2koPc353fAVW1S4i"
 echo "watching broad feature job ${BROAD_APP_ID}…" | tee -a "$LOG"
 
+_match() {
+  # Prefer rg when on PATH; fall back to grep (nohup/CI often lack rg).
+  if command -v rg >/dev/null 2>&1; then
+    echo "$1" | rg -q -- "$2"
+  else
+    echo "$1" | grep -E -q -- "$2"
+  fi
+}
+
+_filter_line() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -- "$1" || true
+  else
+    grep -E -- "$1" || true
+  fi
+}
+
 _has_explicit_complete() {
   # Match the terminal ProgressEmitter message only — never bare progress=100.
-  echo "$1" | rg -q 'feature cache complete'
+  _match "$1" 'feature cache complete'
 }
 
 _app_stopped() {
   local row
-  row=$(uv run modal app list 2>/dev/null | rg "${BROAD_APP_ID}" || true)
+  row=$(uv run modal app list 2>/dev/null | _filter_line "${BROAD_APP_ID}")
   if [[ -z "${row}" ]]; then
     # App no longer listed → treat as finished/committed.
     return 0
   fi
-  echo "${row}" | rg -q 'stopped'
+  _match "${row}" 'stopped'
 }
 
 _app_actively_running() {
   local row
-  row=$(uv run modal app list 2>/dev/null | rg "${BROAD_APP_ID}" || true)
-  [[ -n "${row}" ]] && echo "${row}" | rg -q 'ephemeral|running'
+  row=$(uv run modal app list 2>/dev/null | _filter_line "${BROAD_APP_ID}")
+  [[ -n "${row}" ]] && _match "${row}" 'ephemeral|running'
 }
 
 seen_complete=0

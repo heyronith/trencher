@@ -236,8 +236,9 @@ def run_rich_ablation(smoke: bool = False) -> dict:
     volumes={"/data/world_model": world_vol, "/artifacts/baselines": art_vol},
     timeout=60 * 30,
 )
-def publish_results_v2() -> dict:
+def publish_results_v2(git_sha: str | None = None) -> dict:
     import json
+    import os
 
     from trencher.baselines.audit_v2 import publish_baseline_artifacts_v2
 
@@ -258,6 +259,8 @@ def publish_results_v2() -> dict:
             "volume": VOL_NAME,
             "artifacts_volume": ARTIFACTS_VOL,
             "label": "final_full_population_validation_control",
+            "git_sha": git_sha or os.environ.get("TRENCHER_GIT_SHA"),
+            "v1_preserved_as": "provisional_32_partition_development_run",
         },
     )
     art_vol.commit()
@@ -265,6 +268,7 @@ def publish_results_v2() -> dict:
         "audit": out["audit"]["audit_version"],
         "feature_n": out["audit"]["feature_n"],
         "feature_rows": out["audit"].get("feature_rows"),
+        "git_sha": git_sha or os.environ.get("TRENCHER_GIT_SHA"),
     }
 
 

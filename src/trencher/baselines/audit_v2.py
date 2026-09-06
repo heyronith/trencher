@@ -55,6 +55,12 @@ def build_baseline_contract_v2() -> dict[str, Any]:
             "wf_fold_3": "not_used_for_tuning",
             "calibration": "chronological_train_holdout_only",
             "final_fit": "fixed_iterations_from_wf1_wf2_median",
+            "catboost_binary_iteration_selection": {
+                "live_eval_metric": "Logloss",
+                "never_live_prauc_on_gpu": True,
+                "best_iteration": "postfit_pr_auc_on_wf1_wf2_val_sparse_tree_grid",
+                "permanent_val": "evaluation_only_no_selection",
+            },
         },
         "trading_metrics": {
             "gross_return": True,
