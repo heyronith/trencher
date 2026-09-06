@@ -1,4 +1,4 @@
-"""Multi-task prediction heads for the on-chain world model."""
+"""Multi-task prediction heads for the on-chain world model (frozen V4)."""
 
 from __future__ import annotations
 
@@ -24,18 +24,27 @@ def _mlp(d_in: int, d_out: int, dropout: float) -> nn.Sequential:
 @dataclass
 class HeadsOutput:
     explosion_logits: torch.Tensor
-    survival_hazard: torch.Tensor
+    explosion_tte_hazard: torch.Tensor
+    explosion_phase_logits: torch.Tensor
+    graduation_tte_hazard: torch.Tensor
+    survival_horizon_logits: torch.Tensor
+    survival_tte_hazard: torch.Tensor
     barrier_logits: torch.Tensor
-    quantile_returns: torch.Tensor
-    mfe: torch.Tensor
-    mae: torch.Tensor
-    persistence_logits: torch.Tensor
+    return_quantiles: torch.Tensor
+    mfe_quantiles: torch.Tensor
+    mae_quantiles: torch.Tensor
+    time_to_mfe: torch.Tensor
+    time_to_mae: torch.Tensor
+    persistence_pred: torch.Tensor
     path_pred: torch.Tensor
+    path_mean: torch.Tensor
+    path_log_scale: torch.Tensor
+    path_df: torch.Tensor
     execution: torch.Tensor
 
 
 class ExplosionHead(nn.Module):
-    """Multi-horizon explosion imminence logits."""
+    """Multi-horizon explosion imminence logits [B, n_horizons]."""
 
     def __init__(self, d_model: int, n_horizons: int, dropout: float = 0.1) -> None:
         super().__init__()
@@ -45,8 +54,41 @@ class ExplosionHead(nn.Module):
         return self.net(z)
 
 
-class SurvivalHead(nn.Module):
-    """Discrete-time hazard rates per horizon (sigmoid applied in loss/metrics)."""
+class ExplosionTTEHead(nn.Module):
+    """Discrete-time explosion TTE hazard logits [B, bins]."""
+
+    def __init__(self, d_model: int, n_bins: int, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.net = _mlp(d_model, n_bins, dropout)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        return self.net(z)
+
+
+class ExplosionPhaseHead(nn.Module):
+    """Small MLP for imminence / phase auxiliary logits [B, phase_dim]."""
+
+    def __init__(self, d_model: int, phase_dim: int = 4, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.net = _mlp(d_model, phase_dim, dropout)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        return self.net(z)
+
+
+class GraduationTTEHead(nn.Module):
+    """Discrete-time graduation TTE hazard logits [B, bins]."""
+
+    def __init__(self, d_model: int, n_bins: int, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.net = _mlp(d_model, n_bins, dropout)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        return self.net(z)
+
+
+class SurvivalHorizonHead(nn.Module):
+    """Binary active@H logits per survival horizon [B, n_horizons]."""
 
     def __init__(self, d_model: int, n_horizons: int, dropout: float = 0.1) -> None:
         super().__init__()
@@ -56,49 +98,89 @@ class SurvivalHead(nn.Module):
         return self.net(z)
 
 
-class BarrierHead(nn.Module):
-    """Probability of hitting return barriers."""
+class SurvivalTTEHead(nn.Module):
+    """Discrete-time survival / inactivity TTE hazard logits [B, bins]."""
 
-    def __init__(self, d_model: int, n_levels: int, dropout: float = 0.1) -> None:
+    def __init__(self, d_model: int, n_bins: int, dropout: float = 0.1) -> None:
         super().__init__()
-        self.net = _mlp(d_model, n_levels, dropout)
+        self.net = _mlp(d_model, n_bins, dropout)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         return self.net(z)
+
+
+class BarrierCompetingHead(nn.Module):
+    """Competing barrier outcomes [B, n_pairs, n_horizons, n_classes]."""
+
+    def __init__(
+        self,
+        d_model: int,
+        n_pairs: int,
+        n_horizons: int,
+        n_classes: int = 3,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__()
+        self.n_pairs = n_pairs
+        self.n_horizons = n_horizons
+        self.n_classes = n_classes
+        self.net = _mlp(d_model, n_pairs * n_horizons * n_classes, dropout)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        b = z.size(0)
+        return self.net(z).view(b, self.n_pairs, self.n_horizons, self.n_classes)
 
 
 class QuantileReturnHead(nn.Module):
-    """Pinball quantile predictions for forward returns."""
+    """Pinball quantile predictions for forward returns [B, H, Q]."""
 
-    def __init__(self, d_model: int, n_quantiles: int, dropout: float = 0.1) -> None:
+    def __init__(
+        self, d_model: int, n_horizons: int, n_quantiles: int, dropout: float = 0.1
+    ) -> None:
         super().__init__()
-        self.net = _mlp(d_model, n_quantiles, dropout)
+        self.n_horizons = n_horizons
+        self.n_quantiles = n_quantiles
+        self.net = _mlp(d_model, n_horizons * n_quantiles, dropout)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        return self.net(z)
+        b = z.size(0)
+        return self.net(z).view(b, self.n_horizons, self.n_quantiles)
 
 
-class MFEMAEHead(nn.Module):
-    """Max favorable / adverse excursion regression."""
+class QuantileMFEMAEHead(nn.Module):
+    """Quantile MFE/MAE [B, H, Q] plus time-to-extreme [B, H]."""
 
-    def __init__(self, d_model: int, dropout: float = 0.1) -> None:
+    def __init__(
+        self, d_model: int, n_horizons: int, n_quantiles: int, dropout: float = 0.1
+    ) -> None:
         super().__init__()
-        self.mfe = _mlp(d_model, 1, dropout)
-        self.mae = _mlp(d_model, 1, dropout)
+        self.n_horizons = n_horizons
+        self.n_quantiles = n_quantiles
+        self.mfe = _mlp(d_model, n_horizons * n_quantiles, dropout)
+        self.mae = _mlp(d_model, n_horizons * n_quantiles, dropout)
+        self.time_to_mfe = _mlp(d_model, n_horizons, dropout)
+        self.time_to_mae = _mlp(d_model, n_horizons, dropout)
 
-    def forward(self, z: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.mfe(z).squeeze(-1), self.mae(z).squeeze(-1)
+    def forward(
+        self, z: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        b = z.size(0)
+        mfe = self.mfe(z).view(b, self.n_horizons, self.n_quantiles)
+        mae = self.mae(z).view(b, self.n_horizons, self.n_quantiles)
+        return mfe, mae, self.time_to_mfe(z), self.time_to_mae(z)
 
 
 class PersistenceHead(nn.Module):
-    """Regime / persistence class logits."""
+    """Regress trade_count / activity_rate / accel per horizon [B, H, 3]."""
 
-    def __init__(self, d_model: int, n_classes: int, dropout: float = 0.1) -> None:
+    def __init__(self, d_model: int, n_horizons: int, dropout: float = 0.1) -> None:
         super().__init__()
-        self.net = _mlp(d_model, n_classes, dropout)
+        self.n_horizons = n_horizons
+        self.net = _mlp(d_model, n_horizons * 3, dropout)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        return self.net(z)
+        b = z.size(0)
+        return self.net(z).view(b, self.n_horizons, 3)
 
 
 class PathHead(nn.Module):
@@ -155,7 +237,6 @@ class PathHead(nn.Module):
         """Draw coherent paths [n_samples, B, steps, dim]."""
         means, log_scales, dfs = self.forward_dist(z)
         scale = log_scales.exp()
-        # Student-t via Normal / chi2 approximation for sampling.
         outs = []
         for _ in range(n_samples):
             eps = torch.randn_like(means)
@@ -165,14 +246,19 @@ class PathHead(nn.Module):
 
 
 class ExecutionHead(nn.Module):
-    """Execution / slippage / fillability scores."""
+    """Size × kind execution scores [B, n_sizes, n_kinds]."""
 
-    def __init__(self, d_model: int, exec_dim: int, dropout: float = 0.1) -> None:
+    def __init__(
+        self, d_model: int, n_sizes: int, n_kinds: int = 3, dropout: float = 0.1
+    ) -> None:
         super().__init__()
-        self.net = _mlp(d_model, exec_dim, dropout)
+        self.n_sizes = n_sizes
+        self.n_kinds = n_kinds
+        self.net = _mlp(d_model, n_sizes * n_kinds, dropout)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        return self.net(z)
+        b = z.size(0)
+        return self.net(z).view(b, self.n_sizes, self.n_kinds)
 
 
 class WorldModelHeads(nn.Module):
@@ -182,25 +268,52 @@ class WorldModelHeads(nn.Module):
         super().__init__()
         self.cfg = cfg or HeadsConfig()
         c = self.cfg
+        n_ret = len(c.return_horizons)
+        n_q = len(c.quantile_taus)
+        n_pairs = len(c.barrier_pairs)
         self.explosion = ExplosionHead(c.d_model, len(c.explosion_horizons), c.dropout)
-        self.survival = SurvivalHead(c.d_model, len(c.survival_horizons), c.dropout)
-        self.barrier = BarrierHead(c.d_model, len(c.barrier_levels), c.dropout)
-        self.quantile = QuantileReturnHead(c.d_model, len(c.quantile_taus), c.dropout)
-        self.mfe_mae = MFEMAEHead(c.d_model, c.dropout)
-        self.persistence = PersistenceHead(c.d_model, c.persistence_classes, c.dropout)
+        self.explosion_tte = ExplosionTTEHead(c.d_model, c.explosion_tte_bins, c.dropout)
+        self.explosion_phase = ExplosionPhaseHead(
+            c.d_model, c.explosion_phase_dim, c.dropout
+        )
+        self.graduation_tte = GraduationTTEHead(
+            c.d_model, c.graduation_tte_bins, c.dropout
+        )
+        self.survival_horizon = SurvivalHorizonHead(
+            c.d_model, len(c.survival_horizons), c.dropout
+        )
+        self.survival_tte = SurvivalTTEHead(c.d_model, c.survival_tte_bins, c.dropout)
+        self.barrier = BarrierCompetingHead(
+            c.d_model, n_pairs, n_ret, c.barrier_classes, c.dropout
+        )
+        self.quantile = QuantileReturnHead(c.d_model, n_ret, n_q, c.dropout)
+        self.mfe_mae = QuantileMFEMAEHead(c.d_model, n_ret, n_q, c.dropout)
+        self.persistence = PersistenceHead(c.d_model, n_ret, c.dropout)
         self.path = PathHead(c.d_model, c.path_steps, c.path_dim, c.dropout)
-        self.execution = ExecutionHead(c.d_model, c.execution_dim, c.dropout)
+        self.execution = ExecutionHead(
+            c.d_model, len(c.execution_sizes), c.execution_kinds, c.dropout
+        )
 
     def forward(self, z: torch.Tensor) -> HeadsOutput:
-        mfe, mae = self.mfe_mae(z)
+        mfe, mae, ttmfe, ttmae = self.mfe_mae(z)
+        path_mean, path_log_scale, path_df = self.path.forward_dist(z)
         return HeadsOutput(
             explosion_logits=self.explosion(z),
-            survival_hazard=self.survival(z),
+            explosion_tte_hazard=self.explosion_tte(z),
+            explosion_phase_logits=self.explosion_phase(z),
+            graduation_tte_hazard=self.graduation_tte(z),
+            survival_horizon_logits=self.survival_horizon(z),
+            survival_tte_hazard=self.survival_tte(z),
             barrier_logits=self.barrier(z),
-            quantile_returns=self.quantile(z),
-            mfe=mfe,
-            mae=mae,
-            persistence_logits=self.persistence(z),
-            path_pred=self.path(z),
+            return_quantiles=self.quantile(z),
+            mfe_quantiles=mfe,
+            mae_quantiles=mae,
+            time_to_mfe=ttmfe,
+            time_to_mae=ttmae,
+            persistence_pred=self.persistence(z),
+            path_pred=path_mean,
+            path_mean=path_mean,
+            path_log_scale=path_log_scale,
+            path_df=path_df,
             execution=self.execution(z),
         )

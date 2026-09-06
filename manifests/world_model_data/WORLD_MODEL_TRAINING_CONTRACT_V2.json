@@ -1,0 +1,52 @@
+{
+  "contract_version": "WORLD_MODEL_TRAINING_CONTRACT_V2",
+  "generated_at": "2026-09-06T22:00:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "depends_on": [
+    "TRAINING_LOADER_CONTRACT_V4",
+    "training_cache_v1",
+    "split_v1",
+    "sequence_dataset_v2",
+    "broad_targets_v3",
+    "target_dataset_v3",
+    "BASELINE_CONTRACT_V2"
+  ],
+  "constraints": {
+    "pure_on_chain": true,
+    "no_social_text_image": true,
+    "no_learned_mint_wallet_creator_id_tables": true,
+    "no_permanent_test_access": true,
+    "no_post_T_features": true,
+    "baseline_compute_closed": true
+  },
+  "dataset_modes": ["wf_fold_1", "wf_fold_2", "final_train", "permanent_val_eval"],
+  "phases": {
+    "ssl": {
+      "objective": "next-side / next-log-dt / next-size / intensity / reserve-delta / masked recon",
+      "population": "broad",
+      "planned_steps": 50000
+    },
+    "broad": {
+      "objective": "multi-task frozen V4 heads",
+      "population": "broad",
+      "planned_steps": 100000
+    },
+    "rich": {
+      "objective": "multimodal fine-tune",
+      "population": "rich",
+      "planned_steps": 25000
+    }
+  },
+  "implementation": {
+    "loader": "FrozenV4IterableDataset + ProductionExampleBuilder",
+    "batch_adapter": "trencher.world_model.batch_adapter",
+    "launch": "python -m trencher.world_model.launch",
+    "graph": "CausalTemporalNeighborhoodEncoder (stateless TGN/DyGFormer-inspired)"
+  },
+  "first_approved_run": {
+    "phase": "ssl",
+    "mode": "final_train",
+    "population": "broad",
+    "auto_continue_to_broad_rich": false
+  }
+}

@@ -1,4 +1,10 @@
-"""TGN-style temporal neighborhood aggregation (feature edges, no ID tables)."""
+"""Causal temporal-neighborhood graph encoder (TGN/DyGFormer-inspired, stateless).
+
+Reconstructs token-local interaction state from past neighborhood histories and
+optional wallet-prior sequence features visible at T only. No global streaming
+TGN memory (avoids order leakage under shuffled DataLoaders). No learned
+wallet/mint ID embedding tables.
+"""
 
 from __future__ import annotations
 
@@ -13,18 +19,18 @@ from trencher.world_model.encoders._common import ContinuousTimeEncoding
 
 
 @dataclass
-class TemporalGraphEncoderOutput:
+class CausalTemporalNeighborhoodOutput:
     pooled: torch.Tensor
     neighbor_states: torch.Tensor
     available: torch.Tensor
 
 
-class TemporalGraphEncoder(nn.Module):
-    """Neighborhood aggregator over time-stamped edge features.
+class CausalTemporalNeighborhoodEncoder(nn.Module):
+    """Stateless causal temporal-neighborhood network.
 
-    Uses continuous-time encoding + attention over neighbors (TGN-style message
-    passing readout). Does **not** learn mint/wallet/creator ID embedding tables;
-    messages are built only from edge attribute channels.
+    Messages combine edge attributes, relative event time, and (optional)
+    wallet-prior pooled state. Only edges already truncated to ``event_time <= T``
+    should be supplied by the Dataset.
     """
 
     def __init__(self, cfg: GraphEncoderConfig | None = None) -> None:
@@ -32,9 +38,10 @@ class TemporalGraphEncoder(nn.Module):
         self.cfg = cfg or GraphEncoderConfig()
         c = self.cfg
         self.edge_proj = nn.Linear(c.n_edge_channels, c.d_model)
+        self.wallet_proj = nn.Linear(c.d_model, c.d_model)
         self.time_enc = ContinuousTimeEncoding(c.d_model, n_freqs=c.n_time_freqs)
         self.msg_mlp = nn.Sequential(
-            nn.Linear(c.d_model * 2, c.d_model),
+            nn.Linear(c.d_model * 3, c.d_model),
             nn.GELU(),
             nn.Dropout(c.dropout),
             nn.Linear(c.d_model, c.d_model),
@@ -52,17 +59,25 @@ class TemporalGraphEncoder(nn.Module):
         times: torch.Tensor,
         mask: torch.Tensor | None = None,
         available: torch.Tensor | None = None,
-    ) -> TemporalGraphEncoderOutput:
+        wallet_prior_state: torch.Tensor | None = None,
+    ) -> CausalTemporalNeighborhoodOutput:
         """
         Args:
-            edge_feat: [B, E, C] neighbor edge attributes (sorted causally)
-            times: [B, E] edge times relative to observation T
-            mask: [B, E] valid neighbors
+            edge_feat: [B, E, C] causal neighborhood edge attrs
+            times: [B, E] relative times
+            mask: [B, E]
             available: [B]
+            wallet_prior_state: [B, D] pooled wallet-prior encoding (optional)
         """
         h = self.edge_proj(edge_feat) + self.time_enc(times)
-        # Message from edge features alone
-        msg = self.msg_mlp(torch.cat([h, h], dim=-1))
+        if wallet_prior_state is None:
+            w = torch.zeros(
+                edge_feat.size(0), self.cfg.d_model, device=edge_feat.device, dtype=h.dtype
+            )
+        else:
+            w = self.wallet_proj(wallet_prior_state)
+        w_exp = w.unsqueeze(1).expand(-1, h.size(1), -1)
+        msg = self.msg_mlp(torch.cat([h, h, w_exp], dim=-1))
         for layer in self.layers:
             msg = layer(msg, mask=mask)
         msg = self.norm(msg)
@@ -76,9 +91,14 @@ class TemporalGraphEncoder(nn.Module):
         else:
             avail = available.to(dtype=pooled.dtype).view(-1)
         pooled = pooled * avail.unsqueeze(-1) + self.null_vec * (1.0 - avail).unsqueeze(-1)
-        return TemporalGraphEncoderOutput(
+        return CausalTemporalNeighborhoodOutput(
             pooled=pooled, neighbor_states=msg, available=avail
         )
+
+
+# Back-compat alias (accurate name preferred in new code)
+TemporalGraphEncoder = CausalTemporalNeighborhoodEncoder
+TemporalGraphEncoderOutput = CausalTemporalNeighborhoodOutput
 
 
 class _NeighborAttention(nn.Module):
@@ -105,7 +125,6 @@ class _NeighborAttention(nn.Module):
             pad = ~mask
             attn_mask = pad[:, None, None, :].to(dtype=q.dtype) * torch.finfo(q.dtype).min
         drop = self.dropout if self.training else 0.0
-        # Non-causal over neighbors (already causally truncated upstream)
         y = F.scaled_dot_product_attention(
             q, k, v, attn_mask=attn_mask, dropout_p=drop, is_causal=False
         )

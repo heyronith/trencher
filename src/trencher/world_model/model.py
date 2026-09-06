@@ -95,6 +95,10 @@ class WorldModel(nn.Module):
                 ssl["ssl_next_size"] = out.ssl["next_size"]
                 if "intensity_log" in out.ssl:
                     ssl["ssl_intensity_log"] = out.ssl["intensity_log"]
+                if "reserve_delta" in out.ssl:
+                    ssl["ssl_reserve_delta"] = out.ssl["reserve_delta"]
+                if "recon" in out.ssl:
+                    ssl["ssl_recon"] = out.ssl["recon"]
 
         if "curve" in active and "curve_x" in batch:
             out = self.curve_encoder(
@@ -153,6 +157,7 @@ class WorldModel(nn.Module):
             vecs["ownership"] = out.pooled
             avail["ownership"] = out.available
 
+        wallet_state = None
         if "wallet_prior" in active and "wallet_x" in batch:
             out = self.wallet_prior_encoder(
                 batch["wallet_x"],
@@ -162,6 +167,7 @@ class WorldModel(nn.Module):
             )
             vecs["wallet_prior"] = out.pooled
             avail["wallet_prior"] = out.available
+            wallet_state = out.pooled
 
         if "graph" in active and "graph_edge_feat" in batch:
             out = self.graph_encoder(
@@ -169,6 +175,7 @@ class WorldModel(nn.Module):
                 batch["graph_times"],
                 batch.get("graph_mask"),
                 available=batch.get("graph_available"),
+                wallet_prior_state=wallet_state,
             )
             vecs["graph"] = out.pooled
             avail["graph"] = out.available
@@ -209,13 +216,22 @@ class WorldModel(nn.Module):
         outputs.update(
             {
                 "explosion_logits": heads.explosion_logits,
-                "survival_hazard": heads.survival_hazard,
+                "explosion_tte_hazard": heads.explosion_tte_hazard,
+                "explosion_phase_logits": heads.explosion_phase_logits,
+                "graduation_tte_hazard": heads.graduation_tte_hazard,
+                "survival_horizon_logits": heads.survival_horizon_logits,
+                "survival_tte_hazard": heads.survival_tte_hazard,
                 "barrier_logits": heads.barrier_logits,
-                "quantile_returns": heads.quantile_returns,
-                "mfe": heads.mfe,
-                "mae": heads.mae,
-                "persistence_logits": heads.persistence_logits,
+                "return_quantiles": heads.return_quantiles,
+                "mfe_quantiles": heads.mfe_quantiles,
+                "mae_quantiles": heads.mae_quantiles,
+                "time_to_mfe": heads.time_to_mfe,
+                "time_to_mae": heads.time_to_mae,
+                "persistence_pred": heads.persistence_pred,
                 "path_pred": heads.path_pred,
+                "path_mean": heads.path_mean,
+                "path_log_scale": heads.path_log_scale,
+                "path_df": heads.path_df,
                 "execution": heads.execution,
             }
         )

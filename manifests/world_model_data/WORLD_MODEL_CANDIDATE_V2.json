@@ -1,0 +1,43 @@
+{
+  "candidate_version": "WORLD_MODEL_CANDIDATE_V2",
+  "generated_at": "2026-09-06T22:07:40.577805+00:00",
+  "config_path": "configs/world_model/world_model_candidate_v2.yaml",
+  "parameters": {
+    "total_trainable": 15679133,
+    "by_component": {
+      "event_encoder": 4764436,
+      "curve_encoder": 1590528,
+      "global_encoder": 1659648,
+      "micro_encoder": 1591808,
+      "ownership_encoder": 1591808,
+      "wallet_prior_encoder": 1590784,
+      "graph_encoder": 867072,
+      "fusion": 530695,
+      "heads": 1425282,
+      "creator_proj": 67072
+    }
+  },
+  "architecture": {
+    "d_model": 256,
+    "event_layers": 6,
+    "graph": "causal_temporal_neighborhood_stateless",
+    "path_head": "conditional_autoregressive_student_t_nll"
+  },
+  "head_shapes": {
+    "explosion_logits": "[B,5]",
+    "explosion_tte_hazard": "[B,8]",
+    "survival_horizon_logits": "[B,9]",
+    "barrier_logits": "[B,4,10,3]",
+    "return_quantiles": "[B,10,5]",
+    "mfe_quantiles": "[B,10,5]",
+    "execution": "[B,5,3]",
+    "path_mean/log_scale/df": "[B,8,4] / df [B,8]"
+  },
+  "forbidden": [
+    "social",
+    "text",
+    "image",
+    "id_embedding_tables",
+    "full_gpu_train_in_this_task"
+  ]
+}

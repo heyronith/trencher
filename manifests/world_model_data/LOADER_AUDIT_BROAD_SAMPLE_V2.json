@@ -1,0 +1,39 @@
+{
+  "mode": "final_train",
+  "population": "broad",
+  "observations_loaded": 16,
+  "q85_test_rows": 0,
+  "causal_violations": 0,
+  "examples_per_sec": 13.918031341921276,
+  "event_length": {
+    "mean": 115.125,
+    "p50": 57.5,
+    "p90": 256.0,
+    "max": 256
+  },
+  "modality_availability_count": {
+    "events": 15,
+    "curve": 15,
+    "global": 16,
+    "microstructure": 0,
+    "ownership": 0,
+    "wallet_prior": 0,
+    "graph": 0
+  },
+  "target_availability_count": {
+    "explosion": 16,
+    "survival": 16,
+    "barrier": 9,
+    "return": 9,
+    "execution": 0
+  },
+  "elapsed_sec": 1.149587869644165,
+  "contracts": {
+    "freeze_id": "world_model_freeze_v1",
+    "loader_contract": "TRAINING_LOADER_CONTRACT_V4",
+    "split_id": "split_v1",
+    "sequence_dataset": "sequence_dataset_v2",
+    "target_dataset": "target_dataset_v3",
+    "broad_targets": "broad_targets_v3"
+  }
+}

@@ -1,58 +1,48 @@
 #!/usr/bin/env bash
-# Launch three-phase world-model training from a staged directory.
-# Does NOT embed credentials. Review before running on a paid GPU.
+# Launch Stage-A (or other phase) world-model training from staged frozen artifacts.
+# Does NOT embed credentials. Does NOT auto-run Stage B/C.
 set -euo pipefail
 
 STAGE="${TRENCHER_LOCAL_STAGE:-/content/trencher_stage}"
-CONFIG="${TRENCHER_WM_CONFIG:-${STAGE}/configs/world_model/world_model_candidate_v1.yaml}"
-PHASE="${TRENCHER_WM_PHASE:-all}"
+WORLD_ROOT="${TRENCHER_WORLD_ROOT:-${STAGE}/world_model}"
+SPLIT_ROOT="${TRENCHER_SPLIT_ROOT:-${WORLD_ROOT}/splits/split_v1}"
+CONFIG="${TRENCHER_WM_CONFIG:-${STAGE}/configs/world_model/world_model_candidate_v2.yaml}"
+PHASE="${TRENCHER_WM_PHASE:-ssl}"
 DEVICE="${TRENCHER_WM_DEVICE:-cuda}"
 CKPT_DIR="${TRENCHER_WM_CKPT_DIR:-${STAGE}/checkpoints}"
+MODE="${TRENCHER_WM_MODE:-final_train}"
+POPULATION="${TRENCHER_WM_POPULATION:-broad}"
+RESUME="${TRENCHER_WM_RESUME:-}"
+MAX_STEPS="${TRENCHER_WM_MAX_STEPS:-}"
+GIT_SHA="${TRENCHER_GIT_SHA:-}"
 
 echo "[launch_training] STAGE=${STAGE}"
+echo "[launch_training] WORLD_ROOT=${WORLD_ROOT}"
 echo "[launch_training] CONFIG=${CONFIG}"
-echo "[launch_training] PHASE=${PHASE}"
+echo "[launch_training] PHASE=${PHASE} MODE=${MODE} POPULATION=${POPULATION}"
 echo "[launch_training] DEVICE=${DEVICE}"
 
 if [[ ! -f "${CONFIG}" ]]; then
   echo "Missing config: ${CONFIG}" >&2
-  echo "Run scripts/colab/stage_from_gcs.py first." >&2
+  exit 1
+fi
+if [[ ! -d "${WORLD_ROOT}" ]]; then
+  echo "Missing world root: ${WORLD_ROOT} — run stage_from_gcs.py first" >&2
   exit 1
 fi
 
 mkdir -p "${CKPT_DIR}"
 
-# Entry point is intentionally explicit — production runners should wrap this
-# with their scheduler. This script never downloads credentials.
-python - <<'PY'
-import os
-from pathlib import Path
+export TRENCHER_WM_CONFIG CONFIG
+export TRENCHER_WORLD_ROOT="${WORLD_ROOT}"
+export TRENCHER_SPLIT_ROOT="${SPLIT_ROOT}"
+export TRENCHER_WM_PHASE="${PHASE}"
+export TRENCHER_WM_DEVICE="${DEVICE}"
+export TRENCHER_WM_CKPT_DIR="${CKPT_DIR}"
+export TRENCHER_WM_MODE="${MODE}"
+export TRENCHER_WM_POPULATION="${POPULATION}"
+export TRENCHER_WM_RESUME="${RESUME}"
+export TRENCHER_WM_MAX_STEPS="${MAX_STEPS}"
+export TRENCHER_GIT_SHA="${GIT_SHA}"
 
-import torch
-
-from trencher.world_model.checkpoint import save_checkpoint
-from trencher.world_model.config import load_world_model_config
-from trencher.world_model.model import WorldModel, count_parameters
-from trencher.world_model.progress import ProgressEmitter
-from trencher.world_model.trainer import ThreePhaseTrainer
-
-config_path = os.environ.get("TRENCHER_WM_CONFIG") or (
-    Path(os.environ.get("TRENCHER_LOCAL_STAGE", "/content/trencher_stage"))
-    / "configs/world_model/world_model_candidate_v1.yaml"
-)
-device = os.environ.get("TRENCHER_WM_DEVICE", "cuda")
-if device == "cuda" and not torch.cuda.is_available():
-    print("CUDA requested but unavailable; refusing silent CPU fallback for production launch.")
-    raise SystemExit(2)
-
-cfg = load_world_model_config(config_path)
-model = WorldModel(cfg)
-print(f"parameters={count_parameters(model):,}")
-print(f"config_hash={cfg.config_hash()}")
-print("Launch scaffold ready. Wire real DataLoaders before full A100 runs.")
-# Intentionally do not start multi-day training from this stub without loaders.
-ckpt_dir = Path(os.environ.get("TRENCHER_WM_CKPT_DIR", "checkpoints"))
-ckpt_dir.mkdir(parents=True, exist_ok=True)
-save_checkpoint(ckpt_dir / "init.pt", model=model, step=0, phase="ssl", config=cfg)
-print(f"wrote init checkpoint to {ckpt_dir / 'init.pt'}")
-PY
+python -m trencher.world_model.launch

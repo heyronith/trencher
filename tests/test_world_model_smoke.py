@@ -35,9 +35,13 @@ from trencher.world_model.trainer import ThreePhaseTrainer  # noqa: E402
 def _synth_batch(cfg, *, rich: bool = True, missing: set[str] | None = None, b: int = 2) -> dict:
     missing = missing or set()
     t_e, t_c, t_g = 8, 4, 4
-    h_exp = len(cfg.heads.explosion_horizons)
-    h_surv = len(cfg.heads.survival_horizons)
-    n_bar = len(cfg.heads.barrier_levels)
+    h = cfg.heads
+    h_exp = len(h.explosion_horizons)
+    h_surv = len(h.survival_horizons)
+    h_ret = len(h.return_horizons)
+    n_pairs = len(h.barrier_pairs)
+    n_sizes = len(h.execution_sizes)
+    n_kinds = h.execution_kinds
 
     batch: dict = {}
     if "events" not in missing:
@@ -47,6 +51,9 @@ def _synth_batch(cfg, *, rich: bool = True, missing: set[str] | None = None, b: 
         batch["ssl_next_side"] = torch.randint(0, cfg.event.n_sides, (b, t_e - 1))
         batch["ssl_next_log_dt"] = torch.randn(b, t_e - 1)
         batch["ssl_next_size"] = torch.randn(b, t_e - 1)
+        batch["ssl_intensity_target"] = torch.rand(b, t_e - 1).abs() + 0.1
+        batch["ssl_reserve_delta"] = torch.randn(b, t_e - 1)
+        batch["ssl_recon_target"] = torch.randn(b, t_e - 1, cfg.event.n_channels)
         batch["ssl_mask"] = torch.ones(b, t_e - 1, dtype=torch.bool)
 
     if "curve" not in missing:
@@ -86,19 +93,39 @@ def _synth_batch(cfg, *, rich: bool = True, missing: set[str] | None = None, b: 
             batch["graph_mask"] = torch.ones(b, 4, dtype=torch.bool)
             batch["graph_available"] = torch.ones(b)
 
-    # Targets
+    # Targets (frozen V4 shapes)
     batch["explosion_target"] = torch.randint(0, 2, (b, h_exp)).float()
     batch["explosion_mask"] = torch.ones(b, h_exp)
-    batch["survival_event"] = torch.randint(0, 2, (b,)).float()
-    batch["survival_time_idx"] = torch.randint(0, h_surv, (b,))
-    batch["survival_mask"] = torch.ones(b)
-    batch["barrier_target"] = torch.randint(0, 2, (b, n_bar)).float()
-    batch["return_target"] = torch.randn(b)
-    batch["mfe_target"] = torch.randn(b).abs()
-    batch["mae_target"] = torch.randn(b).abs()
-    batch["persistence_target"] = torch.randint(0, cfg.heads.persistence_classes, (b,))
-    batch["path_target"] = torch.randn(b, cfg.heads.path_steps, cfg.heads.path_dim)
-    batch["execution_target"] = torch.randn(b, cfg.heads.execution_dim)
+    batch["explosion_tte_event"] = torch.randint(0, 2, (b,)).float()
+    batch["explosion_tte_time_idx"] = torch.randint(0, h.explosion_tte_bins, (b,))
+    batch["explosion_tte_mask"] = torch.ones(b)
+    batch["explosion_phase_target"] = torch.randint(0, h.explosion_phase_dim, (b,))
+    batch["graduation_tte_event"] = torch.randint(0, 2, (b,)).float()
+    batch["graduation_tte_time_idx"] = torch.randint(0, h.graduation_tte_bins, (b,))
+    batch["graduation_tte_mask"] = torch.ones(b)
+    batch["survival_horizon_target"] = torch.randint(0, 2, (b, h_surv)).float()
+    batch["survival_horizon_mask"] = torch.ones(b, h_surv)
+    batch["survival_tte_event"] = torch.randint(0, 2, (b,)).float()
+    batch["survival_tte_time_idx"] = torch.randint(0, h.survival_tte_bins, (b,))
+    batch["survival_tte_mask"] = torch.ones(b)
+    batch["barrier_target"] = torch.randint(0, h.barrier_classes, (b, n_pairs, h_ret))
+    batch["barrier_mask"] = torch.ones(b, n_pairs, h_ret)
+    batch["return_target"] = torch.randn(b, h_ret)
+    batch["return_mask"] = torch.ones(b, h_ret)
+    batch["mfe_target"] = torch.randn(b, h_ret).abs()
+    batch["mfe_mask"] = torch.ones(b, h_ret)
+    batch["mae_target"] = torch.randn(b, h_ret).abs()
+    batch["mae_mask"] = torch.ones(b, h_ret)
+    batch["time_to_mfe_target"] = torch.rand(b, h_ret).abs()
+    batch["time_to_mfe_mask"] = torch.ones(b, h_ret)
+    batch["time_to_mae_target"] = torch.rand(b, h_ret).abs()
+    batch["time_to_mae_mask"] = torch.ones(b, h_ret)
+    batch["persistence_target"] = torch.randn(b, h_ret, 3)
+    batch["persistence_mask"] = torch.ones(b, h_ret, 3)
+    batch["path_target"] = torch.randn(b, h.path_steps, h.path_dim)
+    batch["path_mask"] = torch.ones(b, h.path_steps)
+    batch["execution_target"] = torch.randn(b, n_sizes, n_kinds)
+    batch["execution_mask"] = torch.ones(b, n_sizes, n_kinds)
     batch["sample_mask"] = torch.ones(b)
     return batch
 
@@ -119,14 +146,34 @@ def test_forward_broad_rich_and_missing_modality():
     broad = _synth_batch(cfg, rich=False)
     with torch.no_grad():
         out_b = model(broad, phase="broad")
-    assert "explosion_logits" in out_b
-    assert out_b["explosion_logits"].shape[0] == 2
+    h = cfg.heads
+    assert out_b["explosion_logits"].shape == (2, len(h.explosion_horizons))
+    assert out_b["explosion_tte_hazard"].shape == (2, h.explosion_tte_bins)
+    assert out_b["explosion_phase_logits"].shape == (2, h.explosion_phase_dim)
+    assert out_b["graduation_tte_hazard"].shape == (2, h.graduation_tte_bins)
+    assert out_b["survival_horizon_logits"].shape == (2, len(h.survival_horizons))
+    assert out_b["survival_tte_hazard"].shape == (2, h.survival_tte_bins)
+    assert out_b["barrier_logits"].shape == (
+        2,
+        len(h.barrier_pairs),
+        len(h.return_horizons),
+        h.barrier_classes,
+    )
+    assert out_b["return_quantiles"].shape == (2, len(h.return_horizons), len(h.quantile_taus))
+    assert out_b["mfe_quantiles"].shape == out_b["return_quantiles"].shape
+    assert out_b["mae_quantiles"].shape == out_b["return_quantiles"].shape
+    assert out_b["time_to_mfe"].shape == (2, len(h.return_horizons))
+    assert out_b["persistence_pred"].shape == (2, len(h.return_horizons), 3)
+    assert out_b["execution"].shape == (2, len(h.execution_sizes), h.execution_kinds)
     assert "fused" in out_b
 
     rich = _synth_batch(cfg, rich=True)
     with torch.no_grad():
         out_r = model(rich, phase="rich")
     assert out_r["path_pred"].shape == (2, cfg.heads.path_steps, cfg.heads.path_dim)
+    assert out_r["path_mean"].shape == out_r["path_pred"].shape
+    assert out_r["path_log_scale"].shape == out_r["path_pred"].shape
+    assert out_r["path_df"].shape == (2, cfg.heads.path_steps)
 
     missing = _synth_batch(cfg, rich=True, missing={"microstructure", "graph"})
     # Explicitly mark unavailable
@@ -198,11 +245,22 @@ def test_test_split_guard_fails():
 
 def test_yaml_config_loads():
     root = Path(__file__).resolve().parents[1]
-    path = root / "configs/world_model/world_model_candidate_v1.yaml"
+    path = root / "configs/world_model/world_model_candidate_v2.yaml"
     cfg = load_world_model_config(path)
     assert cfg.d_model == 256
     assert cfg.event.n_layers == 6
     assert cfg.forbid_id_embedding_tables
+    assert cfg.heads.explosion_horizons == (10, 30, 60, 120, 300)
+    assert 10 not in cfg.heads.survival_horizons
+    assert cfg.heads.return_horizons[0] == 10
+    assert cfg.heads.barrier_classes == 3
+    assert len(cfg.heads.barrier_pairs) == 4
+    assert cfg.heads.execution_sizes == (0.1, 0.5, 1.0, 2.0, 5.0)
+    assert cfg.train.compile is False
+    assert cfg.train.profile_steps == 200
+    # v1 kept for compat
+    v1 = load_world_model_config(root / "configs/world_model/world_model_candidate_v1.yaml")
+    assert v1.name == "world_model_candidate_v1"
 
 
 def test_staging_manifest_roundtrip(tmp_path: Path):

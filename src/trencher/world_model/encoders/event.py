@@ -21,7 +21,8 @@ class EventEncoderOutput:
 class EventTransformerEncoder(nn.Module):
     """Token-event sequence encoder (pure on-chain; no ID embedding tables).
 
-    SSL heads predict next-side, next log-Δt, and next size from causal states.
+    SSL heads predict next-side, next log-Δt, next size, intensity, reserve
+    delta, and optional masked reconstruction from causal states.
     """
 
     def __init__(self, cfg: EventEncoderConfig | None = None) -> None:
@@ -43,6 +44,8 @@ class EventTransformerEncoder(nn.Module):
         self.ssl_size = nn.Linear(c.d_model, 1)
         # Hawkes-inspired intensity auxiliary (log-intensity; not a literal classical Hawkes).
         self.ssl_intensity = nn.Linear(c.d_model, 1)
+        self.ssl_reserve_delta = nn.Linear(c.d_model, 1)
+        self.ssl_recon = nn.Linear(c.d_model, c.n_channels)
 
     def forward(
         self,
@@ -69,5 +72,7 @@ class EventTransformerEncoder(nn.Module):
                 "next_log_dt": self.ssl_log_dt(ssl_h).squeeze(-1),
                 "next_size": self.ssl_size(ssl_h).squeeze(-1),
                 "intensity_log": self.ssl_intensity(ssl_h).squeeze(-1),
+                "reserve_delta": self.ssl_reserve_delta(ssl_h).squeeze(-1),
+                "recon": self.ssl_recon(ssl_h),
             }
         return EventEncoderOutput(hidden=h, pooled=pooled, ssl=ssl)

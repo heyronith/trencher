@@ -1,15 +1,17 @@
-"""Three-phase trainer: SSL → broad multi-task → rich fine-tune."""
+"""Production three-phase trainer with real telemetry, health gates, and resume."""
 
 from __future__ import annotations
 
+import math
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import torch
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
 
 from trencher.world_model.checkpoint import save_checkpoint
 from trencher.world_model.config import WorldModelConfig
@@ -28,16 +30,29 @@ class StepTelemetry:
     lr: float = 0.0
     grad_norm: float = 0.0
     samples_per_sec: float = 0.0
+    event_tokens_per_sec: float = 0.0
+    graph_edges_per_sec: float = 0.0
+    data_wait_sec: float = 0.0
+    h2d_sec: float = 0.0
+    forward_sec: float = 0.0
+    backward_sec: float = 0.0
+    optimizer_sec: float = 0.0
     peak_mem_mb: float = 0.0
+    allocated_mem_mb: float = 0.0
+    reserved_mem_mb: float = 0.0
     amp_dtype: str = "fp32"
+    batch_event_len_mean: float = 0.0
+    healthy: bool = True
+    health_message: str = ""
+
+
+def _cuda_sync_if(device: torch.device, enabled: bool) -> None:
+    if enabled and device.type == "cuda":
+        torch.cuda.synchronize(device)
 
 
 class ThreePhaseTrainer:
-    """CPU/GPU trainer with BF16 autocast hooks, clip, set_to_none zero_grad.
-
-    Designed to run tiny CPU smoke steps in unit tests; production uses the
-    YAML A100-sized config without changing the control flow.
-    """
+    """Production trainer for ssl → broad → rich with BF16, accum, health gates."""
 
     def __init__(
         self,
@@ -47,6 +62,9 @@ class ThreePhaseTrainer:
         device: str | torch.device | None = None,
         progress: ProgressEmitter | None = None,
         ckpt_dir: Path | None = None,
+        freeze_ids: dict[str, str] | None = None,
+        git_sha: str | None = None,
+        class_weights: dict[str, torch.Tensor] | None = None,
     ) -> None:
         self.model = model
         self.cfg = cfg or model.cfg
@@ -58,31 +76,96 @@ class ThreePhaseTrainer:
             lr=self.cfg.train.lr,
             weight_decay=self.cfg.train.weight_decay,
         )
-        self.progress = progress or ProgressEmitter("world_model_train")
+        planned = (
+            int(self.cfg.train.ssl_steps)
+            + int(self.cfg.train.broad_steps)
+            + int(self.cfg.train.rich_steps)
+        )
+        self.planned_total_steps = max(planned, 1)
+        # Phase weights derived from planned optimizer steps
+        self.phase_weights = {
+            "ssl": self.cfg.train.ssl_steps / self.planned_total_steps,
+            "broad": self.cfg.train.broad_steps / self.planned_total_steps,
+            "rich": self.cfg.train.rich_steps / self.planned_total_steps,
+        }
+        self.progress = progress or ProgressEmitter(
+            "world_model_train", phase_weights=self.phase_weights
+        )
         self.ckpt_dir = Path(ckpt_dir) if ckpt_dir else None
         self.global_step = 0
+        self.phase_step = 0
+        self.epoch = 0
+        self.microstep = 0
         self.telemetry: list[StepTelemetry] = []
-        self._scaler: torch.cuda.amp.GradScaler | None = None
-        # BF16 autocast is a no-op on CPU; kept as a hook for CUDA A100 runs.
+        self.freeze_ids = freeze_ids or {
+            "freeze_id": self.cfg.freeze_id,
+            "loader_contract": self.cfg.contract,
+        }
+        self.git_sha = git_sha
+        self.class_weights = class_weights or {}
         self.use_bf16 = bool(self.cfg.train.bf16) and self.device.type == "cuda"
-        if self.use_bf16 and hasattr(torch.cuda.amp, "GradScaler"):
-            # BF16 typically does not need GradScaler; keep None.
-            self._scaler = None
+        self._scheduler: LambdaLR | None = None
+        self._build_scheduler()
+        if bool(getattr(self.cfg.train, "compile", False)) and hasattr(torch, "compile"):
+            self.model = torch.compile(self.model)  # type: ignore[assignment]
+
+    def _build_scheduler(self) -> None:
+        warm = max(int(self.cfg.train.warmup_steps), 0)
+        total = self.planned_total_steps
+
+        def lr_lambda(step: int) -> float:
+            if warm > 0 and step < warm:
+                return float(step + 1) / float(warm)
+            # Cosine decay after warmup
+            progress = (step - warm) / max(total - warm, 1)
+            return 0.1 + 0.9 * 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0)))
+
+        self._scheduler = LambdaLR(self.optimizer, lr_lambda=lr_lambda)
 
     def _autocast(self):
         if self.use_bf16:
             return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-        # Null context
         from contextlib import nullcontext
 
         return nullcontext()
 
-    def _clip_grads(self) -> float:
-        return float(
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.cfg.train.max_grad_norm
-            )
-        )
+    def _mem_stats(self) -> tuple[float, float, float]:
+        if self.device.type != "cuda":
+            return 0.0, 0.0, 0.0
+        alloc = torch.cuda.memory_allocated(self.device) / (1024**2)
+        reserved = torch.cuda.memory_reserved(self.device) / (1024**2)
+        peak = torch.cuda.max_memory_allocated(self.device) / (1024**2)
+        return alloc, reserved, peak
+
+    def set_encoder_trainable(self, name: str, trainable: bool) -> None:
+        mod = getattr(self.model, name, None)
+        if mod is None:
+            raise KeyError(name)
+        for p in mod.parameters():
+            p.requires_grad = bool(trainable)
+
+    def _move_batch(
+        self, batch: dict[str, Any], *, profile: bool
+    ) -> tuple[dict[str, Any], float]:
+        t0 = time.perf_counter()
+        non_blocking = self.device.type == "cuda"
+        out = {
+            k: (v.to(self.device, non_blocking=non_blocking) if torch.is_tensor(v) else v)
+            for k, v in batch.items()
+        }
+        _cuda_sync_if(self.device, profile)
+        return out, time.perf_counter() - t0
+
+    def _health_check(
+        self, loss: torch.Tensor, grad_norm: float, data_wait: float
+    ) -> tuple[bool, str]:
+        if not torch.isfinite(loss):
+            return False, "nonfinite_loss"
+        if not math.isfinite(grad_norm) or grad_norm == 0.0:
+            return False, "invalid_or_zero_grad_norm"
+        if data_wait > 30.0:
+            return False, "data_starvation"
+        return True, "ok"
 
     def train_phase(
         self,
@@ -90,6 +173,7 @@ class ThreePhaseTrainer:
         batches: Iterable[dict[str, Any]],
         *,
         max_steps: int | None = None,
+        resume_step: int = 0,
     ) -> list[StepTelemetry]:
         phase = assert_allowed_phase(phase)
         if phase == "ssl":
@@ -99,89 +183,158 @@ class ThreePhaseTrainer:
         else:
             planned = max_steps if max_steps is not None else self.cfg.train.rich_steps
         planned = max(int(planned), 1)
+        profile_steps = int(getattr(self.cfg.train, "profile_steps", 200) or 0)
 
         self.model.train()
         logs: list[StepTelemetry] = []
-        for step_local, batch in enumerate(batches, start=1):
-            if step_local > planned:
+        it: Iterator[dict[str, Any]] = iter(batches)
+        accum = max(int(self.cfg.train.accum_steps), 1)
+        self.phase_step = int(resume_step)
+        exhausted = False
+
+        while self.phase_step < planned:
+            profile = self.phase_step < profile_steps
+            t_wait0 = time.perf_counter()
+            try:
+                batch = next(it)
+            except StopIteration:
+                exhausted = True
                 break
-            t0 = time.time()
-            batch = {
-                k: (v.to(self.device) if torch.is_tensor(v) else v) for k, v in batch.items()
-            }
-            self.optimizer.zero_grad(set_to_none=self.cfg.train.set_to_none)
+            data_wait = time.perf_counter() - t_wait0
+
+            batch, h2d = self._move_batch(batch, profile=profile)
+            # Attach train-only class weights if provided
+            for k, w in self.class_weights.items():
+                batch[k] = w.to(self.device)
+
+            if self.microstep == 0:
+                self.optimizer.zero_grad(set_to_none=self.cfg.train.set_to_none)
+
+            _cuda_sync_if(self.device, profile)
+            t_fwd = time.perf_counter()
             with self._autocast():
                 outputs = self.model(batch, phase=phase)
                 breakdown = self.loss_fn(outputs, batch, phase=phase)
-                loss = breakdown.total
-            loss.backward()
-            grad_norm = self._clip_grads()
-            self.optimizer.step()
+                loss = breakdown.total / accum
+            _cuda_sync_if(self.device, profile)
+            fwd = time.perf_counter() - t_fwd
 
+            t_bwd = time.perf_counter()
+            loss.backward()
+            _cuda_sync_if(self.device, profile)
+            bwd = time.perf_counter() - t_bwd
+
+            self.microstep += 1
+            if self.microstep < accum:
+                continue
+            self.microstep = 0
+
+            grad_norm = float(
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.cfg.train.max_grad_norm
+                )
+            )
+            t_opt = time.perf_counter()
+            self.optimizer.step()
+            if self._scheduler is not None:
+                self._scheduler.step()
+            _cuda_sync_if(self.device, profile)
+            opt = time.perf_counter() - t_opt
+
+            self.phase_step += 1
             self.global_step += 1
-            dt = max(time.time() - t0, 1e-9)
-            n = int(next(iter(batch.values())).shape[0]) if batch else 0
+            bsz = int(batch.get("sample_mask", torch.ones(1)).shape[0]) if batch else 1
+            event_tokens = (
+                int(batch["event_mask"].sum().item()) if "event_mask" in batch else 0
+            )
+            graph_edges = (
+                int(batch["graph_mask"].sum().item()) if "graph_mask" in batch else 0
+            )
+            step_time = max(fwd + bwd + opt + h2d, 1e-9)
+            alloc, reserved, peak = self._mem_stats()
+            healthy, health_msg = self._health_check(
+                breakdown.total, grad_norm, data_wait
+            )
             tel = StepTelemetry(
                 step=self.global_step,
                 phase=phase,
-                loss=float(loss.detach().cpu()),
+                loss=float(breakdown.total.detach().cpu()),
                 terms={k: float(v.detach().cpu()) for k, v in breakdown.terms.items()},
                 lr=float(self.optimizer.param_groups[0]["lr"]),
                 grad_norm=grad_norm,
-                samples_per_sec=n / dt,
-                peak_mem_mb=_peak_mem_mb(self.device),
+                samples_per_sec=bsz / step_time,
+                event_tokens_per_sec=event_tokens / step_time,
+                graph_edges_per_sec=graph_edges / step_time,
+                data_wait_sec=data_wait,
+                h2d_sec=h2d,
+                forward_sec=fwd,
+                backward_sec=bwd,
+                optimizer_sec=opt,
+                peak_mem_mb=peak,
+                allocated_mem_mb=alloc,
+                reserved_mem_mb=reserved,
                 amp_dtype="bf16" if self.use_bf16 else "fp32",
+                batch_event_len_mean=(
+                    float(batch["event_mask"].float().sum(dim=-1).mean().item())
+                    if "event_mask" in batch
+                    else 0.0
+                ),
+                healthy=healthy,
+                health_message=health_msg,
             )
             logs.append(tel)
             self.telemetry.append(tel)
-            if step_local % max(self.cfg.train.log_every, 1) == 0:
-                self.progress.phase_progress(
-                    phase,
-                    step_local,
-                    planned,
-                    message=f"loss={tel.loss:.4f}",
-                    global_step=tel.step,
-                    grad_norm=tel.grad_norm,
-                    samples_per_sec=tel.samples_per_sec,
-                )
-            if (
-                self.ckpt_dir is not None
-                and self.cfg.train.ckpt_every > 0
-                and self.global_step % self.cfg.train.ckpt_every == 0
-            ):
-                save_checkpoint(
-                    self.ckpt_dir / f"ckpt_step{self.global_step}.pt",
-                    model=self.model,
-                    optimizer=self.optimizer,
-                    step=self.global_step,
-                    phase=phase,
-                    config=self.cfg,
-                    telemetry={"last_loss": tel.loss},
-                )
-        self.progress.phase_progress(
-            phase, planned, planned, message=f"{phase}_done", force=True
-        )
+            self.progress.phase_progress(
+                phase,
+                self.phase_step,
+                planned,
+                message=f"loss={tel.loss:.4f} ex/s={tel.samples_per_sec:.1f}",
+                global_step=self.global_step,
+                planned_total=self.planned_total_steps,
+                lr=tel.lr,
+                grad_norm=tel.grad_norm,
+                force=True,
+            )
+
+            if self.ckpt_dir and self.global_step % max(self.cfg.train.ckpt_every, 1) == 0:
+                self._save("periodic")
+
+            if not healthy and self.phase_step >= max(profile_steps // 4, 1):
+                raise RuntimeError(f"health gate failed: {health_msg}")
+
+        if exhausted and self.phase_step < planned:
+            raise RuntimeError(
+                f"training data exhausted at phase_step={self.phase_step}/{planned} "
+                f"for phase={phase}; refuse silent 100% completion"
+            )
+
+        if self.ckpt_dir:
+            self._save("latest")
         return logs
 
-    def run_all_phases(
-        self,
-        *,
-        ssl_batches: Iterable[dict[str, Any]],
-        broad_batches: Iterable[dict[str, Any]],
-        rich_batches: Iterable[dict[str, Any]],
-        ssl_steps: int | None = None,
-        broad_steps: int | None = None,
-        rich_steps: int | None = None,
-    ) -> list[StepTelemetry]:
-        out: list[StepTelemetry] = []
-        out.extend(self.train_phase("ssl", ssl_batches, max_steps=ssl_steps))
-        out.extend(self.train_phase("broad", broad_batches, max_steps=broad_steps))
-        out.extend(self.train_phase("rich", rich_batches, max_steps=rich_steps))
-        self.progress.complete(message="three_phase_complete")
-        return out
-
-
-def _peak_mem_mb(device: torch.device) -> float:
-    if device.type == "cuda" and torch.cuda.is_available():
-        return float(torch.cuda.max_memory_allocated(device) / (1024 * 1024))
-    return 0.0
+    def _save(self, tag: str) -> Path | None:
+        if self.ckpt_dir is None:
+            return None
+        path = self.ckpt_dir / f"{tag}.pt"
+        save_checkpoint(
+            path,
+            model=self.model,
+            optimizer=self.optimizer,
+            scheduler=self._scheduler,
+            step=self.global_step,
+            phase=self.telemetry[-1].phase if self.telemetry else "ssl",
+            config=self.cfg,
+            telemetry={
+                "phase_step": self.phase_step,
+                "epoch": self.epoch,
+                "microstep": self.microstep,
+                "planned_total_steps": self.planned_total_steps,
+            },
+            extra={
+                "git_sha": self.git_sha,
+                "freeze_ids": self.freeze_ids,
+                "class_weights_keys": list(self.class_weights),
+                "checkpoint_format_version": 2,
+            },
+        )
+        return path

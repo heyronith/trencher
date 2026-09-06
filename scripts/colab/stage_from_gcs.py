@@ -1,71 +1,104 @@
 #!/usr/bin/env python3
-"""Stage world-model artifacts from GCS or a local mirror (no credentials in code)."""
+"""Stage required training artifacts from GCS (or local mirror) to Colab SSD and verify."""
 
 from __future__ import annotations
 
+import argparse
+import json
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
-REQUIRED_RELATIVE = (
-    "configs/world_model/world_model_candidate_v1.yaml",
-    "manifests/world_model_data/WORLD_MODEL_TRAINING_CONTRACT_V1.json",
-    "manifests/world_model_data/WORLD_MODEL_CANDIDATE_V1.json",
-)
+from trencher.world_model.staging import verify_staging_manifest
 
 
-def _is_gcs(uri: str) -> bool:
-    return uri.startswith("gs://")
-
-
-def _copy_one(src_root: str, rel: str, dest_root: Path) -> None:
-    dest = dest_root / rel
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if _is_gcs(src_root):
-        src = f"{src_root.rstrip('/')}/{rel}"
-        # Prefer gsutil when available; fall back to gcloud storage.
-        cmds = [
-            ["gsutil", "-q", "cp", src, str(dest)],
-            ["gcloud", "storage", "cp", src, str(dest)],
-        ]
-        last_err: Exception | None = None
-        for cmd in cmds:
-            try:
-                subprocess.run(cmd, check=True)
-                return
-            except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-                last_err = exc
-        raise RuntimeError(f"failed to copy {src}: {last_err}")
-    src_path = Path(src_root) / rel
-    if not src_path.exists():
-        # Also allow staging from the git checkout itself
-        repo = Path(__file__).resolve().parents[2]
-        alt = repo / rel
-        if alt.exists():
-            src_path = alt
+def _stage_from_local(src: Path, dest: Path, manifest: dict) -> dict:
+    copied = skipped = verified = 0
+    for art in manifest.get("artifacts") or []:
+        rel = art["path"]
+        s = src / rel
+        d = dest / rel
+        if not s.exists():
+            if art.get("required"):
+                raise FileNotFoundError(f"required missing in source: {rel}")
+            continue
+        d.parent.mkdir(parents=True, exist_ok=True)
+        if d.exists() and d.stat().st_size == s.stat().st_size:
+            skipped += 1
         else:
-            raise FileNotFoundError(src_path)
-    shutil.copy2(src_path, dest)
+            shutil.copy2(s, d)
+            copied += 1
+        verified += 1
+    return {"copied": copied, "skipped": skipped, "verified": verified}
 
 
-def main() -> int:
-    src = os.environ.get("TRENCHER_GCS_URI", "").strip()
-    stage = Path(os.environ.get("TRENCHER_LOCAL_STAGE", "/content/trencher_stage"))
-    stage.mkdir(parents=True, exist_ok=True)
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--manifest",
+        default=os.environ.get(
+            "TRENCHER_STAGING_MANIFEST",
+            "manifests/world_model_data/WORLD_MODEL_STAGING_MANIFEST_V2.json",
+        ),
+    )
+    ap.add_argument(
+        "--dest",
+        default=os.environ.get("TRENCHER_LOCAL_STAGE", "/content/trencher_stage/world_model"),
+    )
+    ap.add_argument("--gcs-uri", default=os.environ.get("TRENCHER_GCS_URI", ""))
+    ap.add_argument("--local-source", default=os.environ.get("TRENCHER_LOCAL_MIRROR", ""))
+    args = ap.parse_args()
 
-    if not src:
-        # Default: stage from the repository checkout (offline / Colab-mounted drive)
-        src = str(Path(__file__).resolve().parents[2])
-        print(f"TRENCHER_GCS_URI unset; staging from repo root {src}")
+    man_path = Path(args.manifest)
+    manifest = json.loads(man_path.read_text(encoding="utf-8"))
+    dest = Path(args.dest)
+    dest.mkdir(parents=True, exist_ok=True)
 
-    for rel in REQUIRED_RELATIVE:
-        print(f"staging {rel}")
-        _copy_one(src, rel, stage)
+    print(
+        f"staging files={manifest.get('total_files')} bytes={manifest.get('total_bytes')} -> {dest}"
+    )
 
-    print(f"staged into {stage}")
-    return 0
+    if args.local_source:
+        stats = _stage_from_local(Path(args.local_source), dest, manifest)
+        print(json.dumps({"backend": "local", **stats}))
+    elif args.gcs_uri:
+        try:
+            from google.cloud import storage  # type: ignore
+        except ImportError as exc:
+            raise SystemExit("google-cloud-storage required for GCS staging") from exc
+        uri = args.gcs_uri.replace("gs://", "")
+        bucket_name, _, prefix = uri.partition("/")
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        copied = skipped = 0
+        for art in manifest.get("artifacts") or []:
+            rel = art["path"]
+            blob_path = f"{prefix.rstrip('/')}/{rel}" if prefix else rel
+            blob = bucket.blob(blob_path)
+            d = dest / rel
+            d.parent.mkdir(parents=True, exist_ok=True)
+            if d.exists() and blob.exists() and blob.size == d.stat().st_size:
+                skipped += 1
+                continue
+            if not blob.exists():
+                if art.get("required"):
+                    raise FileNotFoundError(blob_path)
+                continue
+            blob.download_to_filename(str(d))
+            copied += 1
+        print(json.dumps({"backend": "gcs", "copied": copied, "skipped": skipped}))
+    else:
+        raise SystemExit("Provide --local-source or --gcs-uri / TRENCHER_GCS_URI")
+
+    # Rewrite manifest root to dest for verification
+    manifest["root"] = str(dest)
+    staged_man = dest / "WORLD_MODEL_STAGING_MANIFEST_V2.json"
+    staged_man.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    result = verify_staging_manifest(staged_man, fail_closed=True)
+    print(json.dumps({"verify": result}))
+    if not result.get("ok"):
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

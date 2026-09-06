@@ -70,6 +70,8 @@ def _horizon_cols() -> list[str]:
                 f"h{h}_mae",
                 f"h{h}_log_mfe",
                 f"h{h}_log_mae",
+                f"h{h}_time_to_mfe_sec",
+                f"h{h}_time_to_mae_sec",
                 f"grad_h{h}_status",
                 f"grad_h{h}_graduated",
                 f"act_h{h}_status",
@@ -105,6 +107,8 @@ def _horizon_cols() -> list[str]:
                 f"exec_{tag}sol_gross_return",
                 f"exec_{tag}sol_net_return",
                 f"exec_{tag}sol_execution_target_available",
+                f"exec_{tag}sol_entry_impact_adjusted_return",
+                f"exec_{tag}sol_curve_impact_adjusted_return",
                 f"exec_{tag}sol_slippage",
                 f"exec_{tag}sol_price_impact",
             ]
@@ -306,6 +310,18 @@ def build_target_payload(
             eligible=mfe_elig,
             effective_status=st if mfe_elig else "split_boundary_purged",
         )
+        out[f"time_to_mfe_h{h}"] = _pack_head(
+            value=target_row.get(f"h{h}_time_to_mfe_sec"),
+            frozen_status=st,
+            eligible=mfe_elig,
+            effective_status=st if mfe_elig else "split_boundary_purged",
+        )
+        out[f"time_to_mae_h{h}"] = _pack_head(
+            value=target_row.get(f"h{h}_time_to_mae_sec"),
+            frozen_status=st,
+            eligible=mfe_elig,
+            effective_status=st if mfe_elig else "split_boundary_purged",
+        )
 
         # Competing barriers
         bar_elig = bool(assignment.get(f"eligible_barriers_h{h}", elig))
@@ -455,10 +471,21 @@ def build_target_payload(
             frozen_status=st,
             eligible=elig,
         )
+        out[f"execution_entry_impact_{tag}sol"] = _pack_head(
+            value=target_row.get(f"exec_{tag}sol_entry_impact_adjusted_return"),
+            frozen_status=st,
+            eligible=elig,
+        )
+        out[f"execution_curve_impact_{tag}sol"] = _pack_head(
+            value=target_row.get(f"exec_{tag}sol_curve_impact_adjusted_return"),
+            frozen_status=st,
+            eligible=elig,
+        )
+        # Net return may exist in columns but is not a training target without fees.
         out[f"execution_net_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_net_return"),
             frozen_status=st,
-            eligible=elig,
+            eligible=False,  # deliberately untrained — fee schedule unavailable
         )
         out[f"execution_slippage_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_slippage"),

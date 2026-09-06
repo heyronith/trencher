@@ -1,0 +1,35 @@
+{
+  "audit_version": "WORLD_MODEL_READINESS_AUDIT_V2",
+  "generated_at": "2026-09-06T22:05:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "package": "trencher.world_model",
+  "status": "ready_for_first_stage_a_gpu_run",
+  "checks": {
+    "real_broad_dataloader": true,
+    "real_rich_dataloader": true,
+    "target_tensor_contract_frozen_v4": true,
+    "production_heads_and_losses": true,
+    "staging_manifest_includes_data": true,
+    "gcs_local_staging_code": true,
+    "launch_calls_real_trainer": true,
+    "checkpoint_resume_implemented": true,
+    "real_data_causal_tests": true,
+    "permanent_test_refused": true,
+    "full_gpu_training_not_launched": true,
+    "baseline_compute_not_rerun": true
+  },
+  "loader_audits": {
+    "broad_sample": "manifests/world_model_data/LOADER_AUDIT_BROAD_SAMPLE_V2.json",
+    "rich_sample": "manifests/world_model_data/LOADER_AUDIT_RICH_SAMPLE_V2.json"
+  },
+  "baseline_v2_path": "manifests/world_model_data/baseline_v2/",
+  "parameter_count_trainable": 15679133,
+  "staging_manifest": "manifests/world_model_data/WORLD_MODEL_STAGING_MANIFEST_V2.json",
+  "known_limitations": [
+    "Staging deferred SHA for files >64MB until sync-time hashing",
+    "Resume sampler cursor is epoch/step based; full shuffle-state serialization is best-effort via seed+step",
+    "Future-path knot supervision currently uses horizon marks where available (not full path store decode)",
+    "Net-return execution slots exist in frozen tables but are deliberately masked off (no fee schedule)"
+  ],
+  "first_stage_a_command_after_approval": "TRENCHER_WM_PHASE=ssl TRENCHER_WM_MODE=final_train TRENCHER_WM_POPULATION=broad bash scripts/colab/launch_training.sh"
+}

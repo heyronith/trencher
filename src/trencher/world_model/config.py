@@ -10,6 +10,40 @@ from typing import Any
 
 import yaml
 
+# Frozen V4 horizon / barrier / size contracts (mirrors targets.status).
+_HORIZONS_SEC: tuple[int, ...] = (
+    10,
+    30,
+    60,
+    120,
+    300,
+    600,
+    1800,
+    3600,
+    21600,
+    86400,
+)
+_SURVIVAL_HORIZONS_SEC: tuple[int, ...] = (
+    30,
+    60,
+    120,
+    300,
+    600,
+    1800,
+    3600,
+    21600,
+    86400,
+)
+_EXPLOSION_HORIZONS_SEC: tuple[int, ...] = (10, 30, 60, 120, 300)
+_BARRIER_PAIRS: tuple[tuple[float, float], ...] = (
+    (10.0, 10.0),
+    (25.0, 15.0),
+    (50.0, 20.0),
+    (100.0, 30.0),
+)
+_EXECUTION_SIZES: tuple[float, ...] = (0.1, 0.5, 1.0, 2.0, 5.0)
+_QUANTILE_TAUS: tuple[float, ...] = (0.1, 0.25, 0.5, 0.75, 0.9)
+
 
 @dataclass
 class EventEncoderConfig:
@@ -71,14 +105,20 @@ class FusionConfig:
 @dataclass
 class HeadsConfig:
     d_model: int = 256
-    explosion_horizons: tuple[int, ...] = (10, 30, 60, 120, 300)
-    survival_horizons: tuple[int, ...] = (10, 30, 60, 120, 300)
-    barrier_levels: tuple[float, ...] = (10.0, 25.0, 50.0, 100.0)
-    quantile_taus: tuple[float, ...] = (0.1, 0.25, 0.5, 0.75, 0.9)
+    explosion_horizons: tuple[int, ...] = _EXPLOSION_HORIZONS_SEC
+    survival_horizons: tuple[int, ...] = _SURVIVAL_HORIZONS_SEC
+    return_horizons: tuple[int, ...] = _HORIZONS_SEC
+    barrier_pairs: tuple[tuple[float, float], ...] = _BARRIER_PAIRS
+    barrier_classes: int = 3  # upper_first, lower_first, neither
+    quantile_taus: tuple[float, ...] = _QUANTILE_TAUS
     path_steps: int = 8
     path_dim: int = 4
-    persistence_classes: int = 4
-    execution_dim: int = 15
+    explosion_tte_bins: int = 8
+    graduation_tte_bins: int = 8
+    survival_tte_bins: int = 8
+    explosion_phase_dim: int = 4
+    execution_sizes: tuple[float, ...] = _EXECUTION_SIZES
+    execution_kinds: int = 3  # gross, entry_impact, curve_impact
     dropout: float = 0.1
 
 
@@ -87,11 +127,21 @@ class LossConfig:
     ssl_side_weight: float = 1.0
     ssl_log_dt_weight: float = 1.0
     ssl_size_weight: float = 1.0
+    ssl_intensity_weight: float = 0.5
+    ssl_reserve_weight: float = 0.5
+    ssl_recon_weight: float = 0.25
     explosion_weight: float = 1.0
+    explosion_focal_gamma: float = 2.0
+    explosion_pos_weight: float | None = None
+    explosion_tte_weight: float = 1.0
+    explosion_phase_weight: float = 0.25
+    graduation_tte_weight: float = 1.0
     survival_weight: float = 1.0
+    survival_tte_weight: float = 1.0
     barrier_weight: float = 1.0
     quantile_weight: float = 1.0
     mfe_mae_weight: float = 1.0
+    time_to_extreme_weight: float = 0.5
     persistence_weight: float = 0.5
     path_weight: float = 0.5
     execution_weight: float = 0.5
@@ -110,6 +160,11 @@ class TrainConfig:
     batch_size: int = 64
     accum_steps: int = 1
     bf16: bool = True
+    compile: bool = False
+    profile_steps: int = 200
+    health_gates_enabled: bool = True
+    refuse_nan_loss: bool = True
+    refuse_empty_support: bool = True
     seed: int = 42
     log_every: int = 50
     ckpt_every: int = 2000
@@ -120,19 +175,23 @@ _TUPLE_FIELDS = frozenset(
     {
         "explosion_horizons",
         "survival_horizons",
-        "barrier_levels",
+        "return_horizons",
+        "barrier_pairs",
         "quantile_taus",
+        "execution_sizes",
         "modalities_broad",
         "modalities_rich",
     }
 )
+
+_NESTED_TUPLE_FIELDS = frozenset({"barrier_pairs"})
 
 
 @dataclass
 class WorldModelConfig:
     """Full production world-model config (A100-oriented defaults)."""
 
-    name: str = "world_model_candidate_v1"
+    name: str = "world_model_candidate_v2"
     d_model: int = 256
     dropout: float = 0.1
     event: EventEncoderConfig = field(default_factory=EventEncoderConfig)
@@ -183,6 +242,16 @@ class WorldModelConfig:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _as_tuple_field(name: str, val: Any) -> Any:
+    if not isinstance(val, list):
+        return val
+    if name in _NESTED_TUPLE_FIELDS:
+        return tuple(tuple(x) for x in val)
+    if name in _TUPLE_FIELDS:
+        return tuple(val)
+    return val
+
+
 def _build_nested(cls: type, data: dict[str, Any] | None) -> Any:
     """Construct a dataclass tree from a (possibly partial) dict."""
     if data is None:
@@ -197,10 +266,7 @@ def _build_nested(cls: type, data: dict[str, Any] | None) -> Any:
             if is_dataclass(sample):
                 kwargs[f.name] = _build_nested(type(sample), val)
                 continue
-        if isinstance(val, list) and f.name in _TUPLE_FIELDS:
-            kwargs[f.name] = tuple(val)
-        else:
-            kwargs[f.name] = val
+        kwargs[f.name] = _as_tuple_field(f.name, val)
     return cls(**kwargs)
 
 
@@ -269,12 +335,18 @@ def tiny_smoke_config(**overrides: Any) -> WorldModelConfig:
             d_model=32,
             explosion_horizons=(30, 60),
             survival_horizons=(30, 60),
-            barrier_levels=(2.0, 3.0),
+            return_horizons=(30, 60),
+            barrier_pairs=((10.0, 10.0), (25.0, 15.0)),
+            barrier_classes=3,
             quantile_taus=(0.25, 0.5, 0.75),
             path_steps=4,
             path_dim=2,
-            persistence_classes=3,
-            execution_dim=2,
+            explosion_tte_bins=4,
+            graduation_tte_bins=4,
+            survival_tte_bins=4,
+            explosion_phase_dim=2,
+            execution_sizes=(0.1, 1.0),
+            execution_kinds=3,
             dropout=0.0,
         ),
         train=TrainConfig(
@@ -287,6 +359,9 @@ def tiny_smoke_config(**overrides: Any) -> WorldModelConfig:
             rich_steps=5,
             batch_size=4,
             bf16=False,
+            compile=False,
+            profile_steps=2,
+            health_gates_enabled=False,
             seed=0,
             log_every=1,
             ckpt_every=100,
