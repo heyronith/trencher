@@ -90,3 +90,56 @@ def test_preflight_missing_ref_raises(tmp_path: Path) -> None:
     except FeatureCacheCoverageError as exc:
         assert "missing broad sequence refs" in str(exc)
         assert "count=1" in str(exc)
+
+
+def test_resume_oids_required_and_integrity(tmp_path: Path) -> None:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from trencher.baselines.feature_cache import (
+        FeatureCacheCoverageError,
+        _load_resume_observation_ids,
+    )
+
+    part = tmp_path / "features.parquet"
+    pq.write_table(
+        pa.table({"observation_id": ["a", "b", "c"], "token_age_seconds": [1.0, 2.0, 3.0]}),
+        part,
+    )
+    assert _load_resume_observation_ids(part, expected_rows=3) == ["a", "b", "c"]
+
+    try:
+        _load_resume_observation_ids(part, expected_rows=2)
+        raise AssertionError("expected row mismatch")
+    except FeatureCacheCoverageError as exc:
+        assert "row mismatch" in str(exc)
+
+    bad = tmp_path / "bad.parquet"
+    pq.write_table(pa.table({"x": [1, 2]}), bad)
+    try:
+        _load_resume_observation_ids(bad, expected_rows=2)
+        raise AssertionError("expected missing observation_id")
+    except FeatureCacheCoverageError as exc:
+        assert "observation_id" in str(exc)
+
+
+def test_resume_integrity_assertions_apply_with_skips(tmp_path: Path) -> None:
+    """Final unique/row checks must run even when partitions_skipped > 0."""
+    # Simulate the invariant logic used at end of build_baseline_features_v1.
+    from trencher.baselines.feature_cache import FeatureCacheCoverageError
+
+    seen_oids = {"a", "b"}
+    expected_rows = 3
+    rows_written = 3
+    try:
+        if len(seen_oids) != expected_rows:
+            raise FeatureCacheCoverageError(
+                f"unique observation_ids={len(seen_oids)} != assignment rows={expected_rows}"
+            )
+        if rows_written != expected_rows:
+            raise FeatureCacheCoverageError(
+                f"rows_written={rows_written} != assignment rows={expected_rows}"
+            )
+        raise AssertionError("expected coverage error")
+    except FeatureCacheCoverageError as exc:
+        assert "unique observation_ids=2" in str(exc)

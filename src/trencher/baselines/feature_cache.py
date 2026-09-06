@@ -312,6 +312,27 @@ def _preflight_ref_coverage(
         )
 
 
+def _load_resume_observation_ids(out_path: Path, *, expected_rows: int) -> list[str]:
+    """Load observation_ids from a resume-eligible parquet; fail closed on read issues."""
+    try:
+        table = pq.read_table(out_path, columns=["observation_id"])
+    except Exception as exc:  # noqa: BLE001
+        raise FeatureCacheCoverageError(
+            f"resume partition missing readable observation_id column: {out_path} ({exc})"
+        ) from exc
+    oids = [str(x) for x in table.column(0).to_pylist()]
+    if len(oids) != expected_rows:
+        raise FeatureCacheCoverageError(
+            f"resume partition row mismatch at {out_path}: "
+            f"oids={len(oids)} parquet_rows={expected_rows}"
+        )
+    if any(not oid for oid in oids):
+        raise FeatureCacheCoverageError(
+            f"resume partition has empty observation_id values: {out_path}"
+        )
+    return oids
+
+
 def build_baseline_features_v1(
     *,
     world_root: Path,
@@ -407,26 +428,34 @@ def build_baseline_features_v1(
             )
             if schema_ok:
                 try:
-                    oids = (
-                        pq.read_table(out_path, columns=["observation_id"])
-                        .column(0)
-                        .to_pylist()
-                    )
+                    oids = _load_resume_observation_ids(out_path, expected_rows=int(n_exist))
+                except FeatureCacheCoverageError:
+                    # Unreadable / inconsistent oid column → rebuild this partition.
+                    schema_ok = False
+                if schema_ok:
+                    dup = [oid for oid in oids if oid in seen_oids]
+                    if dup:
+                        raise FeatureCacheCoverageError(
+                            f"duplicate observation_ids across partitions "
+                            f"(mp={mp} sample={dup[:10]})"
+                        )
+                    if len(set(oids)) != len(oids):
+                        raise FeatureCacheCoverageError(
+                            f"duplicate observation_ids within partition mp={mp}"
+                        )
                     for oid in oids:
-                        seen_oids.add(str(oid))
-                except Exception:  # noqa: BLE001
-                    pass
-                rows_written += int(n_exist)
-                rows_resumed += int(n_exist)
-                partitions_skipped += 1
-                progress.update(
-                    pi + 1,
-                    total,
-                    message=f"skip existing {pi + 1}/{total} mp={mp} rows={rows_written}",
-                    rows_written=rows_written,
-                    partitions_skipped=partitions_skipped,
-                )
-                continue
+                        seen_oids.add(oid)
+                    rows_written += int(n_exist)
+                    rows_resumed += int(n_exist)
+                    partitions_skipped += 1
+                    progress.update(
+                        pi + 1,
+                        total,
+                        message=f"skip existing {pi + 1}/{total} mp={mp} rows={rows_written}",
+                        rows_written=rows_written,
+                        partitions_skipped=partitions_skipped,
+                    )
+                    continue
 
         refs_by_oid: dict[str, dict[str, Any]] = {}
         ref_path = refs_root / mp / "part.parquet"
@@ -492,15 +521,14 @@ def build_baseline_features_v1(
             partitions_skipped=partitions_skipped,
         )
 
-    if partitions_skipped == 0:
-        if len(seen_oids) != expected_rows:
-            raise FeatureCacheCoverageError(
-                f"unique observation_ids={len(seen_oids)} != assignment rows={expected_rows}"
-            )
-        if rows_written != expected_rows:
-            raise FeatureCacheCoverageError(
-                f"rows_written={rows_written} != assignment rows={expected_rows}"
-            )
+    if len(seen_oids) != expected_rows:
+        raise FeatureCacheCoverageError(
+            f"unique observation_ids={len(seen_oids)} != assignment rows={expected_rows}"
+        )
+    if rows_written != expected_rows:
+        raise FeatureCacheCoverageError(
+            f"rows_written={rows_written} != assignment rows={expected_rows}"
+        )
     if len(feature_names) != (146 if include_rich else 124):
         raise FeatureCacheCoverageError(
             f"feature_n={len(feature_names)} expected "
