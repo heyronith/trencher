@@ -305,14 +305,24 @@ def rich_features_from_arrays(
         out["micro_account_key_mean"] = float(np.nanmean(ak))
     if ownership and len(ownership.get("value", [])) > 0:
         val = np.asarray(ownership["value"], dtype=np.float64)
-        pre = np.asarray(ownership.get("pre_ui_amount", np.zeros_like(val)), dtype=np.float64)
-        post = np.asarray(ownership.get("post_ui_amount", np.zeros_like(val)), dtype=np.float64)
-        delta = post - pre
+        # Prefer explicit delta_ui from frozen sequence; never invent pre=0.
+        if "delta_ui" in ownership:
+            delta = np.asarray(ownership["delta_ui"], dtype=np.float64)
+        else:
+            pre = np.asarray(ownership.get("pre_ui_amount", []), dtype=np.float64)
+            post = np.asarray(ownership.get("post_ui_amount", []), dtype=np.float64)
+            delta = np.full(val.shape, np.nan, dtype=np.float64)
+            if pre.size == val.size and post.size == val.size:
+                both = np.isfinite(pre) & np.isfinite(post)
+                delta[both] = post[both] - pre[both]
         out["mask_ownership"] = 1.0
         out["own_n"] = float(val.size)
         out["own_value_sum"] = float(np.nansum(val))
-        out["own_delta_sum"] = float(np.nansum(delta))
-        out["own_delta_abs_mean"] = float(np.nanmean(np.abs(delta)))
+        finite_delta = delta[np.isfinite(delta)]
+        out["own_delta_sum"] = float(np.nansum(finite_delta)) if finite_delta.size else 0.0
+        out["own_delta_abs_mean"] = (
+            float(np.nanmean(np.abs(finite_delta))) if finite_delta.size else 0.0
+        )
     if graph and len(graph.get("sol_amount", [])) > 0:
         sol = np.asarray(graph["sol_amount"], dtype=np.float64)
         tok = np.asarray(graph.get("token_amount", np.zeros_like(sol)), dtype=np.float64)
@@ -330,7 +340,11 @@ def rich_features_from_arrays(
         out["mask_wallet_prior"] = 1.0
         out["wallet_prior_n"] = float(sol.size)
         out["wallet_prior_sol_sum"] = float(np.nansum(sol))
-        out["wallet_prior_unique_approx"] = float(min(sol.size, 10000))
+        wallets = wallet_prior.get("wallet")
+        if wallets:
+            out["wallet_prior_unique_approx"] = float(len({str(w) for w in wallets if w}))
+        else:
+            out["wallet_prior_unique_approx"] = float(min(sol.size, 10000))
     return out
 
 

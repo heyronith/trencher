@@ -124,6 +124,19 @@ def feature_contract_manifest() -> dict[str, Any]:
         "broad_features": broad_feature_names(),
         "rich_additive_features": rich_additive_feature_names(),
         "missing_modality_policy": "explicit_mask_never_semantic_zero",
+        "populations": {
+            "broad": {
+                "feature_n": 124,
+                "assignments": "observation_assignments_broad",
+                "path": "baseline_features_v1/broad/by_mint_partition",
+            },
+            "rich": {
+                "feature_n": 124 + len(rich_additive_feature_names()),
+                "assignments": "observation_assignments_rich",
+                "path": "baseline_features_v1/rich/by_mint_partition",
+                "rich_source": "sequences/sequence_dataset_v2",
+            },
+        },
         "forbidden_predictive": [
             "mint",
             "wallet",
@@ -131,6 +144,9 @@ def feature_contract_manifest() -> dict[str, Any]:
             "observation_id",
             "base_split",
             "source_identity",
+        ],
+        "forbidden_rich_sources": [
+            "graph/edges_wallet_token.parquet lifetime aggregates at first_t",
         ],
         "pit_global": "TRAINING_LOADER_CONTRACT_V4 last_completed_second + completed UTC day",
         "no_post_T": True,

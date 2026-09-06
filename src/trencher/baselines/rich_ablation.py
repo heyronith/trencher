@@ -1,26 +1,30 @@
-"""RICH-additive ablation: broad-only vs broad+rich on the same rich observations."""
+"""RICH-additive ablation: broad-only vs broad+rich on identical frozen rich observations.
+
+Permanent q70–q85 validation is evaluation-only. Selection / early stopping only on
+wf1+wf2. Arm selection must never use permanent validation during fitting.
+"""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from trencher.baselines.dataset import load_joined_matrices
+from trencher.baselines.calibration import chronological_calibration_split
+from trencher.baselines.dataset import load_joined_matrices, walkforward_mask
 from trencher.baselines.feature_spec import (
     all_feature_names,
     broad_feature_names,
     rich_additive_feature_names,
 )
 from trencher.baselines.metrics import binary_metrics, regression_metrics
-from trencher.baselines.targets import (
-    CORE_TARGET_SUITE,
-    extract_binary_labels,
-    extract_regression_labels,
-)
-from trencher.baselines.train_trees import train_lightgbm_head
+from trencher.baselines.split_guard import refuse_test_split
+from trencher.baselines.targets import CORE_TARGET_SUITE
+from trencher.baselines.train_trees import _prepare_xy, train_lightgbm_head
 from trencher.data.world_model.io import ensure_dir, utc_now, write_json
+from trencher.data.world_model.splits.walkforward import build_walkforward_folds
 
 ABLATION_HEADS = (
     "explosion_60s",
@@ -32,8 +36,122 @@ ABLATION_HEADS = (
 )
 
 
-def _mask_rich(meta: list[dict[str, Any]]) -> np.ndarray:
-    return np.array([bool(m.get("in_rich_subset")) for m in meta], dtype=bool)
+def _score_metrics(kind: str, y: np.ndarray, pred: np.ndarray) -> dict[str, Any]:
+    if kind == "binary":
+        return binary_metrics(y, pred)
+    if kind == "regression":
+        return regression_metrics(y, pred)
+    # multiclass: pred may be class ids or probabilities
+    out: dict[str, Any] = {}
+    if getattr(pred, "ndim", 1) == 2:
+        p = np.clip(pred, 1e-7, 1 - 1e-7)
+        p = p / p.sum(axis=1, keepdims=True)
+        ll = -np.mean(np.log(p[np.arange(len(y)), y.astype(int)]))
+        out["multiclass_logloss"] = float(ll)
+        out["upper_first"] = binary_metrics((y == 0).astype(int), p[:, 0])
+    else:
+        out["note"] = "multiclass_pred_1d"
+        out["accuracy"] = float(np.mean(pred.astype(int) == y.astype(int)))
+    return out
+
+
+def _fit_arm_v2(
+    *,
+    X: np.ndarray,
+    y: np.ndarray,
+    elig: np.ndarray,
+    meta: list[dict[str, Any]],
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    elig_val: np.ndarray,
+    kind: str,
+    selection_folds: list[dict[str, Any]],
+    out_dir: Path,
+    tag: str,
+    seed: int,
+    smoke: bool,
+) -> dict[str, Any]:
+    """wf1/wf2 ES → fixed iters → final fit without permanent-val ES → score val once."""
+    planned = 50 if smoke else 200
+    best_iters: list[int] = []
+    fold_summaries: list[dict[str, Any]] = []
+    for fold in selection_folds:
+        tr_m = walkforward_mask(meta, fold, "train") & elig
+        va_m = walkforward_mask(meta, fold, "val") & elig
+        if tr_m.sum() < 30 or va_m.sum() < 10:
+            continue
+        art = train_lightgbm_head(
+            X_train=X[tr_m],
+            y_train=y[tr_m],
+            X_val=X[va_m],
+            y_val=y[va_m],
+            kind=kind,
+            out_dir=ensure_dir(out_dir / fold["fold_id"]),
+            tag=f"{tag} {fold['fold_id']}",
+            num_boost_round=planned,
+            early_stopping_rounds=30,
+            seed=seed,
+            use_gpu=False,
+        )
+        bi = int(art["best_iteration"] or art["actual_iterations"] or planned)
+        best_iters.append(max(bi, 1))
+        fold_summaries.append(
+            {
+                "fold_id": fold["fold_id"],
+                "train_n": int(tr_m.sum()),
+                "val_n": int(va_m.sum()),
+                "best_iteration": bi,
+            }
+        )
+
+    fixed_iters = int(np.median(np.asarray(best_iters, dtype=np.float64))) if best_iters else planned
+    fixed_iters = max(fixed_iters, 10 if smoke else 50)
+
+    tr = elig
+    times = np.array(
+        [
+            float(m["observation_time_t"] or 0.0)
+            for m, e in zip(meta, elig, strict=True)
+            if e
+        ],
+        dtype=np.float64,
+    )
+    X_tr, y_tr = X[tr], y[tr]
+    fit_idx, cal_idx = chronological_calibration_split(times)
+    art = train_lightgbm_head(
+        X_train=X_tr[fit_idx],
+        y_train=y_tr[fit_idx],
+        X_val=X_tr[cal_idx],
+        y_val=y_tr[cal_idx],
+        kind=kind,
+        out_dir=ensure_dir(out_dir / "final_fit"),
+        tag=f"{tag} final_fit",
+        num_boost_round=fixed_iters,
+        early_stopping_rounds=None,
+        seed=seed,
+        use_gpu=False,
+    )
+    # Score permanent validation once (eval-only).
+    va = elig_val
+    import lightgbm as lgb
+
+    booster = lgb.Booster(model_file=art["model_path"])
+    n_it = int(art["best_iteration"] or fixed_iters)
+    if kind == "multiclass" or kind == "binary":
+        pred = booster.predict(X_val[va], num_iteration=n_it + 1)
+    else:
+        pred = booster.predict(X_val[va], num_iteration=n_it + 1)
+
+    return {
+        "fixed_iterations": fixed_iters,
+        "selection_best_iters": best_iters,
+        "fold_summaries": fold_summaries,
+        "train_n": int(tr.sum()),
+        "val_n": int(va.sum()),
+        "metrics": _score_metrics(kind, y_val[va], np.asarray(pred)),
+        "runtime_sec": art["runtime_sec"],
+        "eval_only": True,
+    }
 
 
 def run_rich_ablation_v2(
@@ -45,7 +163,8 @@ def run_rich_ablation_v2(
     max_partitions: int | None = None,
     smoke: bool = False,
 ) -> dict[str, Any]:
-    """Compare broad-only vs broad+rich features on identical rich rows."""
+    """Compare A=124 broad vs B=146 broad+rich on identical frozen rich rows."""
+    refuse_test_split("val")
     world_root = Path(world_root)
     split_root = Path(split_root or world_root / "splits" / "split_v1")
     out_dir = ensure_dir(Path(artifacts_root) / "rich_ablation_v2")
@@ -55,48 +174,65 @@ def run_rich_ablation_v2(
     assert len(broad_names) == 124
     assert len(rich_names) == 124 + len(rich_additive_feature_names())
 
-    # Prefer feature cache that includes rich columns when present; otherwise
-    # broad cache still allows broad-only arm (rich arm skipped with note).
-    train_b = load_joined_matrices(
-        world_root=world_root,
-        split_root=split_root,
-        split="train",
-        feature_names=broad_names,
-        max_partitions=max_partitions or (2 if smoke else None),
-        include_rich_features=False,
-    )
-    val_b = load_joined_matrices(
-        world_root=world_root,
-        split_root=split_root,
-        split="val",
-        feature_names=broad_names,
-        max_partitions=max_partitions or (2 if smoke else None),
-        include_rich_features=False,
-    )
-    train_r = load_joined_matrices(
+    # Single rich-population cache supplies both arms (identical observation IDs).
+    train = load_joined_matrices(
         world_root=world_root,
         split_root=split_root,
         split="train",
         feature_names=rich_names,
         max_partitions=max_partitions or (2 if smoke else None),
+        population="rich",
         include_rich_features=True,
     )
-    val_r = load_joined_matrices(
+    val = load_joined_matrices(
         world_root=world_root,
         split_root=split_root,
         split="val",
         feature_names=rich_names,
         max_partitions=max_partitions or (2 if smoke else None),
+        population="rich",
         include_rich_features=True,
     )
+    if train["n"] == 0 or val["n"] == 0:
+        payload = {
+            "ablation_version": "BASELINE_RICH_ABLATION_V2",
+            "generated_at": utc_now(),
+            "skipped": True,
+            "reason": "rich feature cache empty; build population=rich first",
+            "train_n": train["n"],
+            "val_n": val["n"],
+        }
+        write_json(out_dir / "BASELINE_RICH_ABLATION_V2.json", payload)
+        return payload
 
-    tr_mask = _mask_rich(train_b["meta"])
-    va_mask = _mask_rich(val_b["meta"])
-    # Align rich masks if lengths match
-    if train_r["n"] == train_b["n"]:
-        tr_mask = tr_mask & _mask_rich(train_r["meta"])
-    if val_r["n"] == val_b["n"]:
-        va_mask = va_mask & _mask_rich(val_r["meta"])
+    # Align arms on identical rows / targets.
+    X_b_tr = train["X"][:, : len(broad_names)]
+    X_r_tr = train["X"]
+    X_b_va = val["X"][:, : len(broad_names)]
+    X_r_va = val["X"]
+    assert X_b_tr.shape[0] == X_r_tr.shape[0]
+    assert X_b_va.shape[0] == X_r_va.shape[0]
+
+    cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
+    selection_folds = [
+        f
+        for f in build_walkforward_folds(cutoffs)["folds"]
+        if f["fold_id"] in ("wf_fold_1", "wf_fold_2")
+    ]
+    eval_only_proof = {
+        "selection_folds": [f["fold_id"] for f in selection_folds],
+        "excluded_from_selection": ["wf_fold_3", "permanent_val_q70_q85"],
+        "permanent_val_used_for": ["final_score_once"],
+        "permanent_val_forbidden_for": [
+            "early_stopping",
+            "best_iteration_selection",
+            "arm_selection",
+            "hyperparameter_selection",
+        ],
+        "arm_selection": "not_based_on_permanent_val",
+        "population": "frozen_rich_observation_assignments",
+        "permanent_test_q85_plus": "untouched",
+    }
 
     payload: dict[str, Any] = {
         "ablation_version": "BASELINE_RICH_ABLATION_V2",
@@ -106,83 +242,76 @@ def run_rich_ablation_v2(
             "broad_plus_rich": len(rich_names),
             "rich_additive": len(rich_additive_feature_names()),
         },
-        "rich_train_n": int(tr_mask.sum()),
-        "rich_val_n": int(va_mask.sum()),
+        "rich_train_n": int(train["n"]),
+        "rich_val_n": int(val["n"]),
+        "observation_ids_aligned": True,
+        "eval_only_proof": eval_only_proof,
         "heads": {},
-        "note": "Same rich observation ids for arms A (broad-only) and B (broad+rich).",
+        "note": (
+            "Same frozen rich observation ids for arms A (broad-only columns) "
+            "and B (broad+rich). Rich features from sequence_dataset_v2."
+        ),
     }
 
     specs = [s for s in CORE_TARGET_SUITE if s.head_id in ABLATION_HEADS]
     for spec in specs:
-        if spec.kind == "binary":
-            y_tr, elig_tr, _ = extract_binary_labels(train_b["targets"], spec)
-            y_va, elig_va, _ = extract_binary_labels(val_b["targets"], spec)
-        elif spec.kind == "regression":
-            y_tr, elig_tr, _ = extract_regression_labels(train_b["targets"], spec)
-            y_va, elig_va, _ = extract_regression_labels(val_b["targets"], spec)
-        else:
-            # barriers: reuse binary upper-first via multiclass skipped in tiny ablation
-            continue
-
-        tr = tr_mask & elig_tr
-        va = va_mask & elig_va
+        y_tr, elig_tr, counts_tr, kind = _prepare_xy(train, spec, split_root)
+        y_va, elig_va, counts_va, _ = _prepare_xy(val, spec, split_root)
+        tr = elig_tr
+        va = elig_va
         if tr.sum() < 30 or va.sum() < 10:
             payload["heads"][spec.head_id] = {
                 "skipped": True,
+                "kind": kind,
                 "train_n": int(tr.sum()),
                 "val_n": int(va.sum()),
+                "counts_train": counts_tr,
+                "counts_val": counts_va,
             }
             continue
 
-        arms = {}
-        for arm, Xtr_src, Xva_src in (
-            ("A_broad_only", train_b["X"][:, : len(broad_names)], val_b["X"][:, : len(broad_names)]),
-            (
-                "B_broad_plus_rich",
-                train_r["X"] if train_r["n"] == train_b["n"] else train_b["X"],
-                val_r["X"] if val_r["n"] == val_b["n"] else val_b["X"],
-            ),
+        arms: dict[str, Any] = {}
+        for arm, Xtr, Xva in (
+            ("A_broad_only", X_b_tr, X_b_va),
+            ("B_broad_plus_rich", X_r_tr, X_r_va),
         ):
-            if arm.startswith("B") and train_r["feature_names"] == train_b["feature_names"]:
-                arms[arm] = {"skipped": True, "reason": "rich feature columns unavailable in cache"}
-                continue
-            art = train_lightgbm_head(
-                X_train=Xtr_src[tr],
-                y_train=y_tr[tr],
-                X_val=Xva_src[va],
-                y_val=y_va[va],
-                kind="binary" if spec.kind == "binary" else "regression",
+            arms[arm] = _fit_arm_v2(
+                X=Xtr,
+                y=y_tr,
+                elig=elig_tr,
+                meta=train["meta"],
+                X_val=Xva,
+                y_val=y_va,
+                elig_val=elig_va,
+                kind=kind,
+                selection_folds=selection_folds,
                 out_dir=ensure_dir(out_dir / spec.head_id / arm),
                 tag=f"rich_ablation {arm} {spec.head_id}",
-                num_boost_round=80 if smoke else 200,
-                early_stopping_rounds=30,
                 seed=seed,
-                use_gpu=False,
+                smoke=smoke,
             )
-            pred = art["raw_val_pred"]
-            if spec.kind == "binary":
-                m = binary_metrics(y_va[va], pred)
-            else:
-                m = regression_metrics(y_va[va], pred)
-            arms[arm] = {"metrics": m, "runtime_sec": art["runtime_sec"]}
 
-        uplift = {}
-        if (
-            "A_broad_only" in arms
-            and "B_broad_plus_rich" in arms
-            and "metrics" in arms["A_broad_only"]
-            and "metrics" in arms["B_broad_plus_rich"]
-        ):
-            a = arms["A_broad_only"]["metrics"]
-            b = arms["B_broad_plus_rich"]["metrics"]
-            for k in ("pr_auc", "roc_auc", "mae", "rmse", "spearman"):
-                if a.get(k) is not None and b.get(k) is not None:
-                    uplift[k] = float(b[k] - a[k])
+        uplift: dict[str, Any] = {}
+        a_m = arms["A_broad_only"].get("metrics") or {}
+        b_m = arms["B_broad_plus_rich"].get("metrics") or {}
+        for k in ("pr_auc", "roc_auc", "mae", "rmse", "spearman", "multiclass_logloss"):
+            if a_m.get(k) is not None and b_m.get(k) is not None:
+                uplift[k] = float(b_m[k] - a_m[k])
+        if "upper_first" in a_m and "upper_first" in b_m:
+            uplift["upper_first_pr_auc"] = float(
+                (b_m["upper_first"] or {}).get("pr_auc", 0)
+                - (a_m["upper_first"] or {}).get("pr_auc", 0)
+            )
+
         payload["heads"][spec.head_id] = {
+            "kind": kind,
             "train_n": int(tr.sum()),
             "val_n": int(va.sum()),
+            "counts_train": counts_tr,
+            "counts_val": counts_va,
             "arms": arms,
             "uplift_B_minus_A": uplift,
+            "eval_only_proof": eval_only_proof,
         }
 
     write_json(out_dir / "BASELINE_RICH_ABLATION_V2.json", payload)

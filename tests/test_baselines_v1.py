@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from pathlib import Path
 
 import numpy as np
@@ -168,6 +169,19 @@ def test_v2_contract_eval_only() -> None:
     assert c["v1_label"] == "provisional_32_partition_development_run"
     assert c["split_discipline"]["wf_fold_3"] == "not_used_for_tuning"
     assert c["split_discipline"]["permanent_test"] == "FORBIDDEN"
+
+
+def test_wallet_prior_timestamp_coercion() -> None:
+    from datetime import datetime
+
+    from trencher.baselines.rich_index import _as_unix_seconds
+
+    assert _as_unix_seconds(None) is None
+    assert _as_unix_seconds(12.5) == 12.5
+    assert (
+        abs(_as_unix_seconds(datetime(2020, 1, 1, tzinfo=UTC)) - 1577836800.0)
+        < 1.0
+    )
 
 
 def test_progress_emitter(tmp_path: Path) -> None:

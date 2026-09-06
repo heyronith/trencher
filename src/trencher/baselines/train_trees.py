@@ -314,6 +314,10 @@ def train_catboost_head(
     class_weights: list[float] | None = None,
     use_gpu: bool = True,
 ) -> dict[str, Any]:
+    import re
+    import sys
+    import threading
+
     from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 
     emitter = ProgressEmitter(tag, status_path=out_dir / "progress.json")
@@ -326,17 +330,18 @@ def train_catboost_head(
         "random_seed": seed,
         "allow_writing_files": False,
         "task_type": "GPU" if use_gpu else "CPU",
-        "metric_period": max(1, num_boost_round // 20),
-        "logging_level": "Verbose" if use_gpu else "Silent",
+        "metric_period": 1,
+        "logging_level": "Verbose",
+        "verbose": True,
     }
     if early_stopping_rounds:
         common["od_type"] = "Iter"
         common["od_wait"] = int(early_stopping_rounds)
-    else:
-        common["verbose"] = bool(use_gpu)
     train_pool = Pool(X_train, y_train)
     has_val = X_val is not None and len(X_val) > 0 and y_val is not None and len(y_val) > 0
     val_pool = Pool(X_val, y_val) if has_val else None
+
+    iter_re = re.compile(r"^(\d+)\s*:")
 
     class _CB:
         def after_iteration(self, info):  # noqa: ANN001
@@ -358,6 +363,37 @@ def train_catboost_head(
                 best_metric=best,
             )
             return True
+
+    class _StdoutIterTee:
+        """Parse CatBoost Verbose stdout lines into ProgressEmitter updates (GPU path)."""
+
+        def __init__(self, wrapped):  # noqa: ANN001
+            self._wrapped = wrapped
+            self._buf = ""
+            self._lock = threading.Lock()
+
+        def write(self, data: str) -> int:
+            with self._lock:
+                self._wrapped.write(data)
+                self._buf += data
+                while "\n" in self._buf:
+                    line, self._buf = self._buf.split("\n", 1)
+                    m = iter_re.match(line.strip())
+                    if m:
+                        it = int(m.group(1)) + 1  # CatBoost prints 0-based iter index
+                        emitter.update(
+                            it,
+                            num_boost_round,
+                            message=f"gpu iter={it}/{num_boost_round} {line.strip()[:120]}",
+                            current_iteration=it,
+                        )
+            return len(data)
+
+        def flush(self) -> None:
+            self._wrapped.flush()
+
+        def fileno(self):  # noqa: ANN001
+            return self._wrapped.fileno()
 
     if kind in ("binary", "multiclass"):
         params = dict(common)
@@ -384,39 +420,47 @@ def train_catboost_head(
         fit_kwargs["eval_set"] = val_pool
 
     if use_gpu:
-        emitter.emit(
-            10,
-            message="gpu fit (native CatBoost logging; no user callbacks)",
-            force=True,
-        )
+        emitter.emit(5, message="gpu fit with stdout iteration progress", force=True)
+        old_out, old_err = sys.stdout, sys.stderr
+        tee = _StdoutIterTee(old_out)
         try:
-            model.fit(train_pool, **fit_kwargs)
-            trees = int(model.tree_count_ or num_boost_round)
-            emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
-        except Exception as exc:  # noqa: BLE001
-            emitter.emit(
-                15,
-                message=f"gpu failed ({type(exc).__name__}); CPU+callbacks",
-                force=True,
-            )
-            cpu_common = {
-                **common,
-                "task_type": "CPU",
-                "logging_level": "Silent",
-                "verbose": False,
-            }
-            if kind in ("binary", "multiclass"):
-                model = CatBoostClassifier(**{**params, **cpu_common, "task_type": "CPU"})
-            else:
-                model = CatBoostRegressor(
-                    loss_function="MAE", eval_metric="MAE", **cpu_common
+            sys.stdout = tee  # type: ignore[assignment]
+            sys.stderr = tee  # type: ignore[assignment]
+            try:
+                model.fit(train_pool, **fit_kwargs)
+            except Exception as exc:  # noqa: BLE001
+                emitter.emit(
+                    15,
+                    message=f"gpu failed ({type(exc).__name__}); CPU+callbacks",
+                    force=True,
                 )
-            cb_kwargs = dict(fit_kwargs)
-            cb_kwargs["callbacks"] = [_CB()]
-            model.fit(train_pool, **cb_kwargs)
+                cpu_common = {
+                    **common,
+                    "task_type": "CPU",
+                    "logging_level": "Silent",
+                    "verbose": False,
+                }
+                if kind in ("binary", "multiclass"):
+                    model = CatBoostClassifier(
+                        **{**params, **cpu_common, "task_type": "CPU"}
+                    )
+                else:
+                    model = CatBoostRegressor(
+                        loss_function="MAE", eval_metric="MAE", **cpu_common
+                    )
+                cb_kwargs = dict(fit_kwargs)
+                cb_kwargs["callbacks"] = [_CB()]
+                model.fit(train_pool, **cb_kwargs)
+        finally:
+            sys.stdout, sys.stderr = old_out, old_err
+        trees = int(model.tree_count_ or num_boost_round)
+        emitter.update(trees, num_boost_round, message=f"gpu trees={trees}")
     else:
         cb_kwargs = dict(fit_kwargs)
         cb_kwargs["callbacks"] = [_CB()]
+        # Quiet native logging when callbacks drive progress.
+        if hasattr(model, "set_params"):
+            model.set_params(logging_level="Silent", verbose=False)
         model.fit(train_pool, **cb_kwargs)
 
     if kind in ("binary", "multiclass"):
@@ -484,12 +528,14 @@ def run_family_core_suite(
         split_root=split_root,
         split="train",
         max_partitions=max_partitions,
+        population="broad",
     )
     val_bundle = load_joined_matrices(
         world_root=world_root,
         split_root=split_root,
         split="val",
         max_partitions=max_partitions,
+        population="broad",
     )
     # Side-load impact-adjusted exec fields for trading tables (eval only).
     merge_impact_into_targets(val_bundle["targets"], val_bundle["meta"], world_root)

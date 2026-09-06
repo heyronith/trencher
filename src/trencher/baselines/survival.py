@@ -158,10 +158,18 @@ def run_survival_suite(
         max_partitions = max_partitions or 2
 
     train_bundle = load_joined_matrices(
-        world_root=world_root, split_root=split_root, split="train", max_partitions=max_partitions
+        world_root=world_root,
+        split_root=split_root,
+        split="train",
+        max_partitions=max_partitions,
+        population="broad",
     )
     val_bundle = load_joined_matrices(
-        world_root=world_root, split_root=split_root, split="val", max_partitions=max_partitions
+        world_root=world_root,
+        split_root=split_root,
+        split="val",
+        max_partitions=max_partitions,
+        population="broad",
     )
 
     heads = [h for h in CORE_TARGET_SUITE if h.kind == "tte"]
