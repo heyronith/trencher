@@ -147,24 +147,69 @@ def pinball_loss(y_true: np.ndarray, pred: np.ndarray, quantile: float) -> float
 def concordance_index(
     durations: np.ndarray, events: np.ndarray, scores: np.ndarray
 ) -> float | None:
-    """Harrell C-index; higher score = higher risk (shorter expected time)."""
+    """Harrell C-index; higher score = higher risk (shorter expected time).
+
+    O(n log n) Fenwick-tree implementation. Comparable pairs require strictly
+    longer duration for the non-event/later subject (equal times excluded).
+    """
     d = np.asarray(durations, dtype=np.float64)
-    e = np.asarray(events).astype(int)
+    e = np.asarray(events).astype(np.int8)
     s = np.asarray(scores, dtype=np.float64)
-    n = d.size
+    n = int(d.size)
+    if n == 0 or int(e.sum()) == 0:
+        return None
+
+    order = np.argsort(d, kind="mergesort")
+    d = d[order]
+    e = e[order]
+    s = s[order]
+
+    _uniq, codes = np.unique(s, return_inverse=True)
+    codes = codes.astype(np.int64)
+    u = int(_uniq.size)
+    bit = np.zeros(u + 1, dtype=np.float64)
+
+    def _bit_add(i: int, v: float = 1.0) -> None:
+        i += 1
+        while i <= u:
+            bit[i] += v
+            i += i & -i
+
+    def _bit_prefix(i: int) -> float:
+        if i < 0:
+            return 0.0
+        i += 1
+        sm = 0.0
+        while i > 0:
+            sm += bit[i]
+            i -= i & -i
+        return sm
+
     num = den = 0.0
-    for i in range(n):
-        if e[i] != 1:
-            continue
-        for j in range(n):
-            if d[i] >= d[j]:
+    i = n - 1
+    while i >= 0:
+        # Group equal durations so equal-time pairs are never compared.
+        j = i
+        while j >= 0 and d[j] == d[i]:
+            j -= 1
+        # Evaluate events in the group against subjects with strictly longer time.
+        for k in range(j + 1, i + 1):
+            if e[k] != 1:
                 continue
-            # i fails before j's time
-            den += 1.0
-            if s[i] > s[j]:
-                num += 1.0
-            elif s[i] == s[j]:
-                num += 0.5
+            total = _bit_prefix(u - 1)
+            if total <= 0:
+                continue
+            less = _bit_prefix(int(codes[k]) - 1)
+            through = _bit_prefix(int(codes[k]))
+            eq = through - less
+            den += total
+            # Concordant if earlier failure has higher risk than longer survivor.
+            num += less + 0.5 * eq
+        # Then insert the whole group into the tree.
+        for k in range(j + 1, i + 1):
+            _bit_add(int(codes[k]), 1.0)
+        i = j
+
     if den == 0:
         return None
     return float(num / den)
