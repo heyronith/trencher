@@ -33,6 +33,7 @@
     "execution": "[B,5,3]",
     "path_mean/log_scale/df": "[B,8,4] / df [B,8]"
   },
+  "contract": "WORLD_MODEL_TRAINING_CONTRACT_V2",
   "forbidden": [
     "social",
     "text",

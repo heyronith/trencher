@@ -22,9 +22,14 @@
   "dataset_modes": ["wf_fold_1", "wf_fold_2", "final_train", "permanent_val_eval"],
   "phases": {
     "ssl": {
-      "objective": "next-side / next-log-dt / next-size / intensity / reserve-delta / masked recon",
+      "objective": "next-side / next-log-dt / next-size / exponential-intensity(Δt) / reserve-delta / masked recon",
       "population": "broad",
-      "planned_steps": 50000
+      "planned_steps": 50000,
+      "ssl_notes": {
+        "masked_recon": "deterministic train-time event-channel masking; loss only on deliberately masked valid cells",
+        "intensity": "conditional exponential waiting-time NLL: λΔt − log λ with λ=exp(log λ) and positive Δt",
+        "future_latent_ssl": "intentionally deferred; not claimed as implemented"
+      }
     },
     "broad": {
       "objective": "multi-task frozen V4 heads",

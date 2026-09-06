@@ -80,10 +80,37 @@ def _row_in_wf_role(row: dict[str, Any], fold: dict[str, Any], role: str) -> boo
     return fold_split_for_launch(float(det), fold) == role
 
 
+def shard_assignment_paths(
+    paths: list[Path],
+    *,
+    worker_id: int,
+    num_workers: int,
+    seed: int,
+    shuffle: bool,
+) -> list[Path]:
+    """Deterministically partition assignment parquet paths across workers.
+
+    Every path is owned by exactly one worker; order is fixed for (seed, shuffle,
+    num_workers). When ``num_workers <= 1`` the full ordered list is returned.
+    """
+    ordered = list(paths)
+    if shuffle:
+        rng = np.random.default_rng(int(seed))
+        ordered = [ordered[i] for i in rng.permutation(len(ordered))]
+    if num_workers <= 1:
+        return ordered
+    if worker_id < 0 or worker_id >= num_workers:
+        raise ValueError(f"invalid worker_id={worker_id} for num_workers={num_workers}")
+    return [p for i, p in enumerate(ordered) if i % num_workers == worker_id]
+
+
 class FrozenV4IterableDataset(IterableDataset):
     """Stream frozen assignments → production examples → model tensors.
 
     Permanent TEST (q85+) cannot be selected via DatasetMode.
+
+    Multi-worker: assignment parquet paths are sharded by
+    ``shard_assignment_paths`` so each path is processed by exactly one worker.
     """
 
     def __init__(
@@ -111,25 +138,30 @@ class FrozenV4IterableDataset(IterableDataset):
         self.base_split = _mode_to_base_split(self.mode)
         refuse_test_split(self.base_split)
 
-        paths = resolve_assignment_paths(self.split_root, population)
-        self._ds = StreamingSplitDataset(
-            assignment_paths=paths,
-            split=self.base_split,
-            seed=seed,
-            shuffle=shuffle,
-            population=population,
-        )
+        self.assignment_paths = resolve_assignment_paths(self.split_root, population)
         self._fold: dict[str, Any] | None = None
         self._wf_role: str | None = None
         if self.mode in {"wf_fold_1", "wf_fold_2"}:
             self._fold = _load_wf_fold(self.split_root, self.mode)
-            # Internal development: train role within fold for fitting batches
             self._wf_role = "train"
-        self._builder = ProductionExampleBuilder(
-            world_root=self.world_root,
-            split_root=self.split_root,
-            population=population,
-            use_cache=use_cache,
+        self.use_cache = bool(use_cache)
+
+    def _worker_paths(self) -> list[Path]:
+        info = torch.utils.data.get_worker_info()
+        if info is None:
+            return shard_assignment_paths(
+                self.assignment_paths,
+                worker_id=0,
+                num_workers=1,
+                seed=self.seed,
+                shuffle=self.shuffle,
+            )
+        return shard_assignment_paths(
+            self.assignment_paths,
+            worker_id=int(info.id),
+            num_workers=int(info.num_workers),
+            seed=self.seed,
+            shuffle=self.shuffle,
         )
 
     def _accept(self, row: dict[str, Any]) -> bool:
@@ -141,30 +173,58 @@ class FrozenV4IterableDataset(IterableDataset):
         return True
 
     def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
+        paths = self._worker_paths()
+        # Paths are already globally ordered/sharded — do not re-permute them.
+        ds = StreamingSplitDataset(
+            assignment_paths=paths,
+            split=self.base_split,
+            seed=self.seed,
+            shuffle=self.shuffle,
+            shuffle_paths=False,
+            population=self.population,
+        )
+        builder = ProductionExampleBuilder(
+            world_root=self.world_root,
+            split_root=self.split_root,
+            population=self.population,
+            use_cache=self.use_cache,
+        )
+
         n = 0
         pending: list[dict[str, Any]] = []
-        for row in self._ds.iter_rows(max_examples=None):
+        for row in ds.iter_rows(max_examples=None):
             if not self._accept(row):
                 continue
             pending.append(row)
-            if len(pending) >= 32:
-                self._builder.prefetch(pending)
-                for r in pending:
-                    ex = self._builder.build(r)
-                    if not ex.get("causal_ok", True):
-                        continue
-                    yield example_to_tensors(ex, path_steps=self.path_steps)
-                    n += 1
-                    if self.max_examples is not None and n >= self.max_examples:
-                        return
-                pending = []
-        if pending:
-            self._builder.prefetch(pending)
+            if len(pending) < 32:
+                continue
+            builder.prefetch(pending)
             for r in pending:
-                ex = self._builder.build(r)
+                ex = builder.build(r)
                 if not ex.get("causal_ok", True):
                     continue
-                yield example_to_tensors(ex, path_steps=self.path_steps)
+                item = example_to_tensors(ex, path_steps=self.path_steps)
+                info = torch.utils.data.get_worker_info()
+                item["loader_worker_id"] = torch.tensor(
+                    0 if info is None else int(info.id), dtype=torch.long
+                )
+                yield item
+                n += 1
+                if self.max_examples is not None and n >= self.max_examples:
+                    return
+            pending = []
+        if pending:
+            builder.prefetch(pending)
+            for r in pending:
+                ex = builder.build(r)
+                if not ex.get("causal_ok", True):
+                    continue
+                item = example_to_tensors(ex, path_steps=self.path_steps)
+                info = torch.utils.data.get_worker_info()
+                item["loader_worker_id"] = torch.tensor(
+                    0 if info is None else int(info.id), dtype=torch.long
+                )
+                yield item
                 n += 1
                 if self.max_examples is not None and n >= self.max_examples:
                     return

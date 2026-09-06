@@ -199,6 +199,18 @@ class WorldModel(nn.Module):
         else:
             active = set(self.cfg.modalities_rich)
 
+        if phase == "ssl" and "event_x" in batch:
+            from trencher.world_model.ssl_masking import apply_ssl_event_masking
+
+            ratio = float(getattr(self.cfg.loss, "ssl_recon_mask_ratio", 0.15))
+            masked = apply_ssl_event_masking(
+                batch, seed=int(self.cfg.train.seed), mask_ratio=ratio
+            )
+            # Mutate caller batch so MultiTaskLoss sees recon target/mask.
+            batch["event_x"] = masked["event_x"]
+            batch["ssl_recon_target"] = masked["ssl_recon_target"]
+            batch["ssl_recon_mask"] = masked["ssl_recon_mask"]
+
         vecs, avail, ssl = self.encode_modalities(batch, active=active)
         outputs: dict[str, torch.Tensor] = dict(ssl)
 

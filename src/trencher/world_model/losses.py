@@ -12,14 +12,19 @@ from trencher.world_model.config import LossConfig, WorldModelConfig
 
 
 def masked_mean(x: torch.Tensor, mask: torch.Tensor | None) -> torch.Tensor:
+    # Always preserve autograd connectivity when ``x`` requires grad.
+    if x.numel() == 0:
+        return x.sum() * 0.0
     if mask is None:
         return x.mean()
     m = mask.to(dtype=x.dtype)
     while m.ndim < x.ndim:
         m = m.unsqueeze(-1)
     m = m.expand_as(x)
-    denom = m.sum().clamp_min(1.0)
-    return (x * m).sum() / denom
+    denom = m.sum()
+    if float(denom.detach().item()) <= 0.0:
+        return (x * 0.0).sum()
+    return (x * m).sum() / denom.clamp_min(1.0)
 
 
 def support_count(mask: torch.Tensor | None, ref: torch.Tensor) -> int:
@@ -211,6 +216,17 @@ class MultiTaskLoss(nn.Module):
         weight: float,
         n_support: int,
     ) -> torch.Tensor:
+        if n_support <= 0:
+            # Keep a graph-connected zero so empty-support batches still backward.
+            zero = (loss * 0.0).sum() if torch.is_tensor(loss) else loss
+            terms[name] = zero
+            support[name] = 0
+            return total + zero
+        if not torch.isfinite(loss).all():
+            zero = (loss * 0.0).sum() if torch.is_tensor(loss) else loss
+            terms[name] = zero.detach()
+            support[name] = 0
+            return total
         terms[name] = loss
         support[name] = n_support
         return total + weight * loss
@@ -263,21 +279,17 @@ class MultiTaskLoss(nn.Module):
                     support_count(m, tgt),
                 )
 
-            if "ssl_intensity_log" in outputs and "ssl_intensity_target" in batch:
-                pred = outputs["ssl_intensity_log"]
-                tgt = batch["ssl_intensity_target"]
+            if "ssl_intensity_log" in outputs and "ssl_intensity_delta_t" in batch:
+                log_lam = outputs["ssl_intensity_log"].clamp(-20.0, 20.0)
+                delta = batch["ssl_intensity_delta_t"].clamp_min(1e-6)
                 m = batch.get("ssl_mask")
-                # Intensity NLL under exp(log λ); also accept MSE on log target.
-                if (tgt > 0).any():
-                    # Poisson-style: −log λ · y + λ  (with y = rate target)
-                    lam = pred.exp().clamp_min(1e-6)
-                    nll = lam - tgt * pred
-                    loss = masked_mean(nll, m)
-                else:
-                    loss = masked_mean(F.mse_loss(pred, tgt, reduction="none"), m)
+                # Conditional exponential waiting-time NLL: λΔt − log λ
+                # with λ = exp(log λ).
+                nll = log_lam.exp() * delta - log_lam
+                loss = masked_mean(nll, m)
                 total = self._add(
                     terms, support, total, "ssl_intensity", loss, c.ssl_intensity_weight,
-                    support_count(m, tgt),
+                    support_count(m, delta),
                 )
 
             if "ssl_reserve_delta" in outputs and "ssl_reserve_delta" in batch:

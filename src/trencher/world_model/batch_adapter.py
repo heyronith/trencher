@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 import numpy as np
@@ -315,11 +316,23 @@ def example_to_tensors(
             events[1:, 7] - events[:-1, 7], dtype=torch.float32
         )
         ssl["ssl_mask"] = torch.ones(events.shape[0] - 1, dtype=torch.bool)
-        # intensity target: inverse interarrival
-        inter = np.maximum(events[1:, 1], 1e-3)
-        ssl["ssl_intensity_target"] = torch.tensor(1.0 / inter, dtype=torch.float32)
+        # Positive next-event interarrival Δt (seconds) for exponential intensity NLL.
+        inter = np.asarray(events[1:, 1], dtype=np.float64)
+        dt = np.diff(np.asarray(events[:, 0], dtype=np.float64))
+        delta = np.where(inter > 1e-9, inter, dt)
+        delta = np.maximum(delta, 1e-6)
+        ssl["ssl_intensity_delta_t"] = torch.tensor(delta, dtype=torch.float32)
+
+    oid = str(meta.get("observation_id") or "")
+    oid_hash = (
+        int(hashlib.sha256(oid.encode("utf-8")).hexdigest()[:16], 16) % (2**63)
+        if oid
+        else 0
+    )
 
     out: dict[str, torch.Tensor] = {
+        "observation_id_hash": torch.tensor(oid_hash, dtype=torch.long),
+        "loader_worker_id": torch.tensor(0, dtype=torch.long),
         "event_x": torch.from_numpy(events),
         "event_times": torch.from_numpy(_rel_times_from_feat(events)),
         "event_mask": torch.from_numpy(em),
@@ -464,13 +477,13 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
             side[i, :n] = r["ssl_next_side"]
             log_dt[i, :n] = r["ssl_next_log_dt"]
             size[i, :n] = r["ssl_next_size"]
-            intens[i, :n] = r.get("ssl_intensity_target", torch.zeros(n))
+            intens[i, :n] = r.get("ssl_intensity_delta_t", torch.zeros(n))
             rdel[i, :n] = r.get("ssl_reserve_delta", torch.zeros(n))
             sm[i, :n] = r.get("ssl_mask", torch.ones(n, dtype=torch.bool))
         out["ssl_next_side"] = side
         out["ssl_next_log_dt"] = log_dt
         out["ssl_next_size"] = size
-        out["ssl_intensity_target"] = intens
+        out["ssl_intensity_delta_t"] = intens
         out["ssl_reserve_delta"] = rdel
         out["ssl_mask"] = sm
 
@@ -479,9 +492,11 @@ def collate_tensor_examples(rows: list[dict[str, torch.Tensor]]) -> dict[str, to
         "ssl_next_side",
         "ssl_next_log_dt",
         "ssl_next_size",
-        "ssl_intensity_target",
+        "ssl_intensity_delta_t",
         "ssl_reserve_delta",
         "ssl_mask",
+        "ssl_recon_target",
+        "ssl_recon_mask",
     }
     keys = sorted({k for r in rows for k in r if k not in skip})
     for k in keys:

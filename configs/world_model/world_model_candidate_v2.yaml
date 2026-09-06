@@ -10,7 +10,7 @@ dropout: 0.1
 pure_on_chain: true
 forbid_id_embedding_tables: true
 freeze_id: world_model_freeze_v1
-contract: WORLD_MODEL_TRAINING_CONTRACT_V1
+contract: WORLD_MODEL_TRAINING_CONTRACT_V2
 
 modalities_broad:
   - events
@@ -135,6 +135,7 @@ loss:
   ssl_intensity_weight: 0.5
   ssl_reserve_weight: 0.5
   ssl_recon_weight: 0.25
+  ssl_recon_mask_ratio: 0.15
   explosion_weight: 1.0
   explosion_focal_gamma: 2.0
   explosion_tte_weight: 1.0

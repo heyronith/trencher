@@ -1,0 +1,22 @@
+{
+  "terms": {
+    "ssl_side": 0.7113175392150879,
+    "ssl_log_dt": 0.3767256438732147,
+    "ssl_size": 0.4445418119430542,
+    "ssl_intensity": 1.3916711807250977,
+    "ssl_reserve": 0.3864051401615143,
+    "ssl_recon": 0.2777709662914276
+  },
+  "support": {
+    "ssl_side": 4,
+    "ssl_log_dt": 4,
+    "ssl_size": 4,
+    "ssl_intensity": 4,
+    "ssl_reserve": 4,
+    "ssl_recon": 10
+  },
+  "total": 2.4910659790039062,
+  "has_ssl_recon_target": true,
+  "recon_masked_cells": 10,
+  "contract": "WORLD_MODEL_TRAINING_CONTRACT_V2"
+}

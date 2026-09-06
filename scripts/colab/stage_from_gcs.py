@@ -32,6 +32,15 @@ def _stage_from_local(src: Path, dest: Path, manifest: dict) -> dict:
     return {"copied": copied, "skipped": skipped, "verified": verified}
 
 
+def _default_dest() -> str:
+    """Frozen world-model root: WORLD_ROOT or LOCAL_STAGE/world_model."""
+    world = os.environ.get("TRENCHER_WORLD_ROOT")
+    if world:
+        return world
+    stage = os.environ.get("TRENCHER_LOCAL_STAGE", "/content/trencher_stage")
+    return str(Path(stage) / "world_model")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -41,10 +50,7 @@ def main() -> None:
             "manifests/world_model_data/WORLD_MODEL_STAGING_MANIFEST_V2.json",
         ),
     )
-    ap.add_argument(
-        "--dest",
-        default=os.environ.get("TRENCHER_LOCAL_STAGE", "/content/trencher_stage/world_model"),
-    )
+    ap.add_argument("--dest", default=_default_dest())
     ap.add_argument("--gcs-uri", default=os.environ.get("TRENCHER_GCS_URI", ""))
     ap.add_argument("--local-source", default=os.environ.get("TRENCHER_LOCAL_MIRROR", ""))
     args = ap.parse_args()

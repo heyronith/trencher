@@ -26,6 +26,7 @@ class StreamingSplitDataset:
         shuffle: bool = False,
         require_in_interval: bool = True,
         population: str = "broad",
+        shuffle_paths: bool | None = None,
     ) -> None:
         self.assignment_paths = list(assignment_paths)
         self.split = split
@@ -33,6 +34,8 @@ class StreamingSplitDataset:
         self.shuffle = bool(shuffle)
         self.require_in_interval = require_in_interval
         self.population = population
+        # When False, keep caller-provided path order (used by worker-sharded loaders).
+        self.shuffle_paths = bool(shuffle) if shuffle_paths is None else bool(shuffle_paths)
 
     def _row_ok(self, row: dict[str, Any]) -> bool:
         if row.get("base_split") != self.split:
@@ -43,7 +46,7 @@ class StreamingSplitDataset:
 
     def iter_rows(self, *, max_examples: int | None = None) -> Iterator[dict[str, Any]]:
         paths = list(self.assignment_paths)
-        if self.shuffle:
+        if self.shuffle_paths:
             rng = np.random.default_rng(self.seed)
             order = rng.permutation(len(paths))
             paths = [paths[i] for i in order]

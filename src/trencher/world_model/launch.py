@@ -9,14 +9,20 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import torch
 
 from trencher.world_model.checkpoint import load_checkpoint
 from trencher.world_model.config import load_world_model_config
+from trencher.world_model.durable import (
+    DurableSyncError,
+    LocalMirrorStore,
+    build_durable_store_from_env,
+)
 from trencher.world_model.model import WorldModel, count_parameters
 from trencher.world_model.progress import ProgressEmitter
-from trencher.world_model.trainer import ThreePhaseTrainer
+from trencher.world_model.trainer import ResumeIncompatibilityError, ThreePhaseTrainer
 from trencher.world_model.v4_loader import assert_dataset_mode, make_frozen_dataloader
 
 
@@ -32,12 +38,81 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def main() -> None:
-    config_path = Path(
-        os.environ.get("TRENCHER_WM_CONFIG")
-        or "configs/world_model/world_model_candidate_v2.yaml"
+def _repo_root() -> Path:
+    import trencher
+
+    # src/trencher/__init__.py → parents[2] = repository root (editable install).
+    return Path(trencher.__file__).resolve().parents[2]
+
+
+def resolve_config_path() -> Path:
+    """Prefer explicit env; else checked-out repo SHA config (not staged copy)."""
+    env = os.environ.get("TRENCHER_WM_CONFIG")
+    if env:
+        return Path(env)
+    return _repo_root() / "configs" / "world_model" / "world_model_candidate_v2.yaml"
+
+
+def resolve_world_root() -> Path:
+    world = os.environ.get("TRENCHER_WORLD_ROOT")
+    if world:
+        return Path(world)
+    stage = os.environ.get("TRENCHER_LOCAL_STAGE")
+    if stage:
+        return Path(stage) / "world_model"
+    return Path("data/external/world_model")
+
+
+def _check_loader_identity(
+    ckpt_identity: dict[str, Any],
+    current: dict[str, Any],
+    *,
+    override: bool,
+) -> None:
+    keys = (
+        "seed",
+        "num_workers",
+        "batch_size",
+        "mode",
+        "population",
+        "phase",
+        "shuffle",
+        "accum_steps",
     )
-    world_root = Path(os.environ.get("TRENCHER_WORLD_ROOT", "data/external/world_model"))
+    mismatches = {
+        k: {"ckpt": ckpt_identity.get(k), "current": current.get(k)}
+        for k in keys
+        if ckpt_identity.get(k) != current.get(k)
+    }
+    if mismatches and not override:
+        raise ResumeIncompatibilityError(
+            f"refuse resume due to loader identity mismatch: {mismatches}. "
+            "Set TRENCHER_WM_RESUME_OVERRIDE=1 to force."
+        )
+
+
+def _maybe_fetch_durable_resume(resume: str, ckpt_dir: Path) -> str:
+    """If resume path missing, try durable mirror / GCS run prefix for latest.pt."""
+    if resume and Path(resume).is_file():
+        return resume
+    run_id = os.environ.get("TRENCHER_WM_RUN_ID", "default_run")
+    mirror = os.environ.get("TRENCHER_DURABLE_MIRROR") or os.environ.get(
+        "TRENCHER_WM_DURABLE_MIRROR"
+    )
+    if mirror:
+        store = LocalMirrorStore(Path(mirror) / run_id)
+        dest = ckpt_dir / "latest.pt"
+        try:
+            store.download_file("latest.pt", dest)
+            return str(dest)
+        except DurableSyncError:
+            pass
+    return resume
+
+
+def main() -> None:
+    config_path = resolve_config_path()
+    world_root = resolve_world_root()
     split_root = Path(
         os.environ.get("TRENCHER_SPLIT_ROOT", world_root / "splits" / "split_v1")
     )
@@ -45,17 +120,27 @@ def main() -> None:
     device = os.environ.get("TRENCHER_WM_DEVICE", "cuda")
     mode = assert_dataset_mode(os.environ.get("TRENCHER_WM_MODE", "final_train"))
     population = os.environ.get("TRENCHER_WM_POPULATION", "broad")
+    if phase == "ssl":
+        population = "broad"
     ckpt_dir = Path(os.environ.get("TRENCHER_WM_CKPT_DIR", "checkpoints"))
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
     resume = os.environ.get("TRENCHER_WM_RESUME") or ""
+    resume = _maybe_fetch_durable_resume(resume, ckpt_dir)
     max_steps_env = os.environ.get("TRENCHER_WM_MAX_STEPS") or ""
     max_steps = int(max_steps_env) if max_steps_env.strip() else None
+    num_workers = int(os.environ.get("TRENCHER_WM_NUM_WORKERS", "2"))
+    run_id = os.environ.get("TRENCHER_WM_RUN_ID", "default_run")
+    override = os.environ.get("TRENCHER_WM_RESUME_OVERRIDE", "") in {
+        "1",
+        "true",
+        "True",
+    }
 
     if device == "cuda" and not torch.cuda.is_available():
         raise SystemExit(
             "CUDA requested but unavailable; refusing silent CPU fallback for production launch."
         )
 
-    # Accelerator sanity
     if device == "cuda":
         props = torch.cuda.get_device_properties(0)
         print(f"accelerator={props.name} total_mem_gb={props.total_memory / 1e9:.1f}")
@@ -65,19 +150,36 @@ def main() -> None:
     print(f"parameters={count_parameters(model):,}")
     print(f"config_hash={cfg.config_hash()}")
     print(f"git_sha={_git_sha()}")
+    print(f"contract={cfg.contract}")
+    print(f"config_path={config_path}")
+    print(f"world_root={world_root}")
+
+    loader_identity = {
+        "seed": int(cfg.train.seed),
+        "num_workers": num_workers,
+        "batch_size": int(cfg.train.batch_size),
+        "mode": mode,
+        "population": population,
+        "phase": phase,
+        "shuffle": True,
+        "accum_steps": int(cfg.train.accum_steps),
+        "world_root": str(world_root),
+        "split_root": str(split_root),
+        "contract": cfg.contract,
+    }
 
     loader = make_frozen_dataloader(
         world_root=world_root,
         split_root=split_root,
         mode=mode,
-        population=population if phase != "ssl" else "broad",
+        population=population,
         batch_size=int(cfg.train.batch_size),
-        num_workers=int(os.environ.get("TRENCHER_WM_NUM_WORKERS", "2")),
+        num_workers=num_workers,
         seed=int(cfg.train.seed),
         shuffle=True,
         pin_memory=(device == "cuda"),
-        persistent_workers=True,
-        prefetch_factor=2,
+        persistent_workers=num_workers > 0,
+        prefetch_factor=2 if num_workers > 0 else None,
     )
 
     progress_path = ckpt_dir / "progress.json"
@@ -93,6 +195,14 @@ def main() -> None:
             / max(cfg.train.ssl_steps + cfg.train.broad_steps + cfg.train.rich_steps, 1),
         },
     )
+    durable = build_durable_store_from_env(run_id=run_id)
+    # Prefer explicit local mirror when set (tests / dry-run).
+    mirror = os.environ.get("TRENCHER_DURABLE_MIRROR") or os.environ.get(
+        "TRENCHER_WM_DURABLE_MIRROR"
+    )
+    if mirror:
+        durable = LocalMirrorStore(Path(mirror) / run_id)
+
     trainer = ThreePhaseTrainer(
         model,
         cfg,
@@ -100,6 +210,8 @@ def main() -> None:
         progress=progress,
         ckpt_dir=ckpt_dir,
         git_sha=_git_sha(),
+        durable_store=durable,
+        loader_identity=loader_identity,
         freeze_ids={
             "freeze_id": cfg.freeze_id,
             "contract": cfg.contract,
@@ -109,18 +221,34 @@ def main() -> None:
         },
     )
 
+    skip_microbatches = 0
     resume_step = 0
     if resume:
         payload = load_checkpoint(
-            resume, model=model, optimizer=trainer.optimizer, expected_config=cfg
+            resume,
+            model=model,
+            optimizer=trainer.optimizer,
+            scheduler=trainer._scheduler,
+            expected_config=cfg,
         )
-        resume_step = int((payload.get("telemetry") or {}).get("phase_step", 0))
-        trainer.global_step = int(payload.get("step", 0))
-        print(f"resumed from {resume} phase_step={resume_step} global={trainer.global_step}")
+        ckpt_identity = (payload.get("extra") or {}).get("loader_identity") or {}
+        if ckpt_identity:
+            _check_loader_identity(ckpt_identity, loader_identity, override=override)
+        trainer.restore_runtime_state(payload)
+        resume_step = trainer.phase_step
+        skip_microbatches = trainer.consumed_microbatches
+        print(
+            f"resumed from {resume} phase_step={resume_step} "
+            f"global={trainer.global_step} skip_microbatches={skip_microbatches}"
+        )
 
     print(f"starting phase={phase} mode={mode} population={population}")
     logs = trainer.train_phase(
-        phase, loader, max_steps=max_steps, resume_step=resume_step
+        phase,
+        loader,
+        max_steps=max_steps,
+        resume_step=resume_step,
+        skip_microbatches=skip_microbatches,
     )
     summary = {
         "phase": phase,
@@ -128,8 +256,18 @@ def main() -> None:
         "final_loss": logs[-1].loss if logs else None,
         "git_sha": _git_sha(),
         "config_hash": cfg.config_hash(),
+        "contract": cfg.contract,
+        "consumed_microbatches": trainer.consumed_microbatches,
+        "durable_uri": trainer.last_durable_uri,
+        "loader_identity": loader_identity,
     }
-    (ckpt_dir / "phase_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    summary_path = ckpt_dir / "phase_summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2) + "\n")
+    if durable is not None:
+        durable.upload_file(summary_path, "phase_summary.json")
+        latest = ckpt_dir / "latest.pt"
+        if latest.exists():
+            durable.upload_file(latest, "latest.pt")
     print(json.dumps(summary))
 
 

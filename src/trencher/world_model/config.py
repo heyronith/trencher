@@ -130,6 +130,7 @@ class LossConfig:
     ssl_intensity_weight: float = 0.5
     ssl_reserve_weight: float = 0.5
     ssl_recon_weight: float = 0.25
+    ssl_recon_mask_ratio: float = 0.15
     explosion_weight: float = 1.0
     explosion_focal_gamma: float = 2.0
     explosion_pos_weight: float | None = None
@@ -232,7 +233,7 @@ class WorldModelConfig:
     pure_on_chain: bool = True
     forbid_id_embedding_tables: bool = True
     freeze_id: str = "world_model_freeze_v1"
-    contract: str = "WORLD_MODEL_TRAINING_CONTRACT_V1"
+    contract: str = "WORLD_MODEL_TRAINING_CONTRACT_V2"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

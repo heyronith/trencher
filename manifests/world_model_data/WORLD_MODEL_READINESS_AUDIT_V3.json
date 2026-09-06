@@ -1,0 +1,33 @@
+{
+  "audit_version": "WORLD_MODEL_READINESS_AUDIT_V3",
+  "generated_at": "2026-09-06T22:40:00+00:00",
+  "freeze_id": "world_model_freeze_v1",
+  "package": "trencher.world_model",
+  "status": "ready_for_first_stage_a_gpu_run",
+  "parent_audit": "WORLD_MODEL_READINESS_AUDIT_V2",
+  "checks": {
+    "runbook_staging_paths": true,
+    "config_from_approved_sha": true,
+    "two_worker_zero_duplicate_coverage": true,
+    "production_resume_scheduler_and_cursor": true,
+    "durable_checkpoint_sync": true,
+    "masked_reconstruction_trained": true,
+    "proper_intensity_objective": true,
+    "candidate_v2_contract_v2": true,
+    "cpu_local_mirror_launch_resume": true,
+    "permanent_test_untouched": true,
+    "full_gpu_training_not_launched": true,
+    "baseline_compute_not_rerun": true
+  },
+  "ssl_loss_sample": "manifests/world_model_data/SSL_LOSS_SAMPLE_V2.json",
+  "staging_manifest": "manifests/world_model_data/WORLD_MODEL_STAGING_MANIFEST_V2.json",
+  "contract": "WORLD_MODEL_TRAINING_CONTRACT_V2",
+  "known_limitations": [
+    "Staging deferred SHA for files >64MB until sync-time hashing",
+    "Multi-worker coverage is path-sharded and duplicate-free; batch interleave order across workers is not bit-stable — exact param resume validated at num_workers=0",
+    "Future-latent SSL intentionally deferred",
+    "Future-path knot supervision uses horizon marks where available",
+    "Net-return execution slots deliberately masked off (no fee schedule)"
+  ],
+  "first_stage_a_command_after_approval": "See WORLD_MODEL_COLAB_RUNBOOK_V2.md"
+}
