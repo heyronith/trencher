@@ -18,7 +18,9 @@ REQUIRED_ARTIFACT_KEYS: tuple[str, ...] = (
     "loader_audit",
 )
 
-# Relative paths under world_root / split_root that Stage A/B/C may need.
+# Relative paths under world_root that Stage A/B/C may need.
+# BroadSequenceReader requires observation→sequence refs plus events/curve/creator
+# stores; omitting refs yields silent empty event windows (Stage-A shape [B,0,C]).
 FROZEN_STORE_GLOBS: tuple[tuple[str, str, bool], ...] = (
     # (semantic, relative_glob_from_world_or_split, required)
     ("cutoffs", "splits/split_v1/cutoffs.json", True),
@@ -39,6 +41,20 @@ FROZEN_STORE_GLOBS: tuple[tuple[str, str, bool], ...] = (
     ("broad_targets", "broad/broad_targets_v3/observation_targets/part-*.parquet", True),
     ("broad_seq_events", "broad/broad_sequence_events_v1/**/*.parquet", True),
     ("broad_seq_curve", "broad/broad_sequence_curve_v1/**/*.parquet", True),
+    # Causal observation→row offsets into shared broad sequence stores (Stage A critical).
+    ("broad_sequence_refs", "broad/broad_observation_sequence_refs_v1/**/*.parquet", True),
+    (
+        "broad_sequence_refs_manifest",
+        "broad/broad_observation_sequence_refs_v1/manifest.json",
+        True,
+    ),
+    # Creator store is always sliced by BroadSequenceReader alongside events/curve.
+    ("broad_seq_creator", "broad/broad_sequence_creator_v1/**/*.parquet", True),
+    (
+        "broad_seq_creator_manifest",
+        "broad/broad_sequence_creator_v1/manifest.json",
+        True,
+    ),
     ("loader_contract", "manifests_placeholder", False),
 )
 
@@ -186,6 +202,38 @@ def discover_frozen_training_manifest(
     )
 
 
+def missing_required_semantics(manifest: StagingManifest | dict[str, Any]) -> list[str]:
+    """Return required semantic names that are missing or unresolved."""
+    arts = (
+        manifest.artifacts
+        if isinstance(manifest, StagingManifest)
+        else (manifest.get("artifacts") or [])
+    )
+    missing: list[str] = []
+    for art in arts:
+        if isinstance(art, ArtifactEntry):
+            required = art.required
+            key = art.key
+            semantic = art.semantic_version or key.split(":", 1)[0]
+        else:
+            required = bool(art.get("required", True))
+            key = str(art.get("key") or "")
+            semantic = str(art.get("semantic_version") or key.split(":", 1)[0])
+        if required and key.endswith(":MISSING") and semantic and semantic not in missing:
+            missing.append(semantic)
+    return missing
+
+
+def assert_staging_manifest_complete(manifest: StagingManifest | dict[str, Any]) -> None:
+    """Refuse Stage-A-capable staging when required frozen stores are unresolved."""
+    missing = missing_required_semantics(manifest)
+    if missing:
+        raise FileNotFoundError(
+            "staging manifest incomplete for Stage-A; missing required semantics: "
+            + ", ".join(missing)
+        )
+
+
 def write_staging_manifest(manifest: StagingManifest, path: str | Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,11 +249,18 @@ def verify_staging_manifest(path: str | Path, *, fail_closed: bool = True) -> di
     errors: list[str] = []
     verified = 0
     for art in raw.get("artifacts") or []:
-        p = root / art["path"]
+        key = str(art.get("key") or "")
+        rel = str(art.get("path") or "")
+        required = bool(art.get("required", True))
+        if key.endswith(":MISSING") or ("*" in rel and required):
+            ok = False
+            errors.append(f"missing required {rel} ({key or art.get('semantic_version')})")
+            continue
+        p = root / rel
         if not p.exists():
-            if art.get("required", True):
+            if required:
                 ok = False
-                errors.append(f"missing required {art['path']}")
+                errors.append(f"missing required {rel}")
             continue
         if str(art.get("sha256") or "").startswith("size_deferred:"):
             verified += 1
@@ -214,9 +269,11 @@ def verify_staging_manifest(path: str | Path, *, fail_closed: bool = True) -> di
             got = sha256_file(p)
             if got != art["sha256"]:
                 ok = False
-                errors.append(f"hash mismatch {art['path']}")
+                errors.append(f"hash mismatch {rel}")
             else:
                 verified += 1
+        else:
+            verified += 1
     if fail_closed and not ok:
         return {"ok": False, "verified": verified, "errors": errors}
     return {"ok": ok, "verified": verified, "errors": errors}

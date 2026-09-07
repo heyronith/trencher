@@ -13,6 +13,7 @@ import shutil
 from pathlib import Path
 
 from trencher.world_model.staging import (
+    assert_staging_manifest_complete,
     discover_frozen_training_manifest,
     write_staging_manifest,
 )
@@ -53,6 +54,11 @@ def main() -> None:
 
     world = Path(args.world_root)
     man = discover_frozen_training_manifest(world)
+    try:
+        assert_staging_manifest_complete(man)
+    except FileNotFoundError as exc:
+        write_staging_manifest(man, args.out_manifest)
+        raise SystemExit(f"refusing incomplete Stage-A staging manifest: {exc}") from exc
     out = write_staging_manifest(man, args.out_manifest)
     print(f"manifest={out} files={man.total_files} bytes={man.total_bytes}")
 

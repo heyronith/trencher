@@ -27,6 +27,32 @@ owned; PyTorch multi-worker *batch interleave* is not bit-stable across preempt.
 Exact param-resume equivalence is validated at `num_workers=0`. This is acceptable
 for Stage-A SSL.
 
+## One-time GCS freeze repair (required before next Stage-A)
+
+Production Stage-A previously staged without `broad/broad_observation_sequence_refs_v1/`
+(and without `broad/broad_sequence_creator_v1/`). Without refs, `BroadSequenceReader`
+returns empty event windows → `event_x` shape `[B, 0, 13]`.
+
+From a machine that has the local freeze (exact existing refs preferred; do **not**
+regenerate unless the local store is gone):
+
+```bash
+# Regenerate staging manifest (must include broad_sequence_refs + broad_seq_creator)
+python scripts/colab/sync_manifest.py \
+  --world-root data/external/world_model \
+  --gcs-uri "$TRENCHER_GCS_URI"
+
+# Or upload only the missing trees if the rest of the prefix is already complete:
+#   gsutil -m rsync -r data/external/world_model/broad/broad_observation_sequence_refs_v1 \
+#     "$TRENCHER_GCS_URI/broad/broad_observation_sequence_refs_v1"
+#   gsutil -m rsync -r data/external/world_model/broad/broad_sequence_creator_v1 \
+#     "$TRENCHER_GCS_URI/broad/broad_sequence_creator_v1"
+# then re-run sync_manifest.py so WORLD_MODEL_STAGING_MANIFEST_V2.json is updated.
+```
+
+`sync_manifest.py` now **refuses** an incomplete Stage-A manifest if required refs
+are missing.
+
 ## Preconditions
 
 1. Approved Git SHA checked out on the runtime.
