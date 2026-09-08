@@ -25,6 +25,10 @@ FROZEN_STORE_GLOBS: tuple[tuple[str, str, bool], ...] = (
     # (semantic, relative_glob_from_world_or_split, required)
     ("cutoffs", "splits/split_v1/cutoffs.json", True),
     ("walkforward", "splits/split_v1/walkforward_folds.json", True),
+    ("global_trade_seconds", "pit/global/trade_second_buckets.parquet", True),
+    ("global_launches", "pit/global/launches_timeline.parquet", True),
+    ("global_migrations", "pit/global/migrations_timeline.parquet", True),
+    ("global_daily_context", "global_context/daily_pump_network_context.parquet", True),
     ("assignments_broad", "splits/split_v1/observation_assignments_broad/part-*.parquet", True),
     ("assignments_rich", "splits/split_v1/observation_assignments_rich.parquet", False),
     # Stage A requires the partition-aligned joined target/TTE cache and

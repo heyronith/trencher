@@ -1,8 +1,8 @@
 {
   "version": "WORLD_MODEL_STAGING_MANIFEST_V2",
   "root": "/Users/ronny/Desktop/trencher/data/external/world_model",
-  "total_bytes": 37787095015,
-  "total_files": 1573,
+  "total_bytes": 37880920997,
+  "total_files": 1577,
   "artifacts": [
     {
       "key": "cutoffs:cutoffs.json",
@@ -20,6 +20,42 @@
       "bytes": 1547,
       "required": true,
       "semantic_version": "walkforward",
+      "population": ""
+    },
+    {
+      "key": "global_trade_seconds:trade_second_buckets.parquet",
+      "path": "pit/global/trade_second_buckets.parquet",
+      "sha256": "a059d7c1536106a68faab1e97a794ec7dc493f95c79f3ed865fb762c487e670a",
+      "bytes": 53355505,
+      "required": true,
+      "semantic_version": "global_trade_seconds",
+      "population": ""
+    },
+    {
+      "key": "global_launches:launches_timeline.parquet",
+      "path": "pit/global/launches_timeline.parquet",
+      "sha256": "367b246b919c45f46df2ac2cee5622c2d16f38e4fde663d29db99646bb6dd2d5",
+      "bytes": 40155355,
+      "required": true,
+      "semantic_version": "global_launches",
+      "population": ""
+    },
+    {
+      "key": "global_migrations:migrations_timeline.parquet",
+      "path": "pit/global/migrations_timeline.parquet",
+      "sha256": "1738f6875c96e082366eb0a67412fcd8f798193d00f81a624044c638b15b63bb",
+      "bytes": 311184,
+      "required": true,
+      "semantic_version": "global_migrations",
+      "population": ""
+    },
+    {
+      "key": "global_daily_context:daily_pump_network_context.parquet",
+      "path": "global_context/daily_pump_network_context.parquet",
+      "sha256": "3d054046cfc6a727c8e309f29e29218981fac5407b504e1492a42fce17e1f7e0",
+      "bytes": 3938,
+      "required": true,
+      "semantic_version": "global_daily_context",
       "population": ""
     },
     {

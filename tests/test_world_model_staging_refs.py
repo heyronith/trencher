@@ -40,8 +40,46 @@ def test_discover_includes_broad_sequence_refs():
     semantics = {s for s, _, _ in FROZEN_STORE_GLOBS}
     assert "broad_sequence_refs" in semantics
     assert "broad_seq_creator" in semantics
+    assert "global_trade_seconds" in semantics
+    assert "global_launches" in semantics
+    assert "global_migrations" in semantics
+    assert "global_daily_context" in semantics
+
+    globs = {s: (g, required) for s, g, required in FROZEN_STORE_GLOBS}
+    assert globs["global_trade_seconds"] == (
+        "pit/global/trade_second_buckets.parquet",
+        True,
+    )
+    assert globs["global_launches"] == ("pit/global/launches_timeline.parquet", True)
+    assert globs["global_migrations"] == (
+        "pit/global/migrations_timeline.parquet",
+        True,
+    )
+    assert globs["global_daily_context"] == (
+        "global_context/daily_pump_network_context.parquet",
+        True,
+    )
     refs_globs = [g for s, g, _ in FROZEN_STORE_GLOBS if s == "broad_sequence_refs"]
     assert any("broad_observation_sequence_refs_v1" in g for g in refs_globs)
+
+
+
+def test_missing_global_context_fails_closed(tmp_path: Path):
+    """Missing required global context must make staging incomplete."""
+    man = discover_frozen_training_manifest(tmp_path / "world_model")
+    missing = {
+        a.semantic_version
+        for a in man.artifacts
+        if a.required and a.key.endswith(":MISSING")
+    }
+    assert {
+        "global_trade_seconds",
+        "global_launches",
+        "global_migrations",
+        "global_daily_context",
+    } <= missing
+    with pytest.raises(FileNotFoundError, match="global_trade_seconds"):
+        assert_staging_manifest_complete(man)
 
 
 def test_missing_broad_refs_fail_closed(tmp_path: Path):
