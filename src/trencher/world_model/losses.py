@@ -217,11 +217,13 @@ class MultiTaskLoss(nn.Module):
         n_support: int,
     ) -> torch.Tensor:
         if n_support <= 0:
-            # Keep a graph-connected zero so empty-support batches still backward.
-            zero = (loss * 0.0).sum() if torch.is_tensor(loss) else loss
+            # A zero-support term is mathematically absent from the objective.
+            # Detach it completely so undefined upstream derivatives cannot
+            # contaminate gradients through a nominal 0 * loss path.
+            zero = loss.detach().new_zeros(())
             terms[name] = zero
             support[name] = 0
-            return total + zero
+            return total
         if not torch.isfinite(loss).all():
             zero = (loss * 0.0).sum() if torch.is_tensor(loss) else loss
             terms[name] = zero.detach()
