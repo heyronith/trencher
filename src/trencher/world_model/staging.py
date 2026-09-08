@@ -27,7 +27,25 @@ FROZEN_STORE_GLOBS: tuple[tuple[str, str, bool], ...] = (
     ("walkforward", "splits/split_v1/walkforward_folds.json", True),
     ("assignments_broad", "splits/split_v1/observation_assignments_broad/part-*.parquet", True),
     ("assignments_rich", "splits/split_v1/observation_assignments_rich.parquet", False),
-    ("training_cache_manifest", "splits/split_v1/training_cache_v1/manifest.json", False),
+    # Stage A requires the partition-aligned joined target/TTE cache and
+    # train-only numeric transforms. Without these, ProductionExampleBuilder
+    # silently falls back to extremely slow target lookup and raw-scale inputs.
+    ("training_cache_manifest", "splits/split_v1/training_cache_v1/manifest.json", True),
+    (
+        "training_cache_broad",
+        "splits/split_v1/training_cache_v1/broad/by_mint_partition/*/joined.parquet",
+        True,
+    ),
+    (
+        "training_cache_transforms",
+        "splits/split_v1/training_cache_v1/transforms_train_v1/sequence_numeric_stats.json",
+        True,
+    ),
+    (
+        "split_train_transforms",
+        "splits/split_v1/transforms_train_v1/sequence_numeric_stats.json",
+        True,
+    ),
     ("training_cache_rich", "splits/split_v1/training_cache_v1/rich/joined.parquet", False),
     ("sequence_refs", "sequences/sequence_dataset_v2/observation_sequence_refs_v2.parquet", True),
     ("sequence_events", "sequences/sequence_dataset_v2/sequence_events_v2.parquet", True),
