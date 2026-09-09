@@ -55,4 +55,4 @@ export TRENCHER_GIT_SHA="${GIT_SHA}"
 export TRENCHER_WM_NUM_WORKERS="${NUM_WORKERS}"
 export TRENCHER_WM_RUN_ID="${RUN_ID}"
 
-python -m trencher.world_model.launch_hardened
+python -m trencher.world_model.launch

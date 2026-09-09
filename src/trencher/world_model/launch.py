@@ -23,8 +23,39 @@ from trencher.world_model.durable import (
 )
 from trencher.world_model.model import WorldModel, count_parameters
 from trencher.world_model.progress import ProgressEmitter
+from trencher.world_model.resumable_loader import (
+    LoaderCursorError,
+    assert_phase_global_consistent,
+    wrap_frozen_dataloader,
+)
 from trencher.world_model.trainer import ResumeIncompatibilityError, ThreePhaseTrainer
 from trencher.world_model.v4_loader import assert_dataset_mode, make_frozen_dataloader
+
+
+def _assert_bf16_accelerator(*, device: str, bf16: bool) -> None:
+    """Fail closed when BF16 training is configured on an incapable accelerator."""
+    if not bf16:
+        return
+    if device != "cuda":
+        raise SystemExit(
+            f"BF16 training requires CUDA; refusing device={device!r} fallback"
+        )
+    if not torch.cuda.is_available():
+        raise SystemExit(
+            "BF16 training requires CUDA; CUDA is unavailable"
+        )
+    props = torch.cuda.get_device_properties(0)
+    major, minor = int(props.major), int(props.minor)
+    bf16_ok = bool(torch.cuda.is_bf16_supported())
+    print(f"gpu_name={props.name}")
+    print(f"compute_capability={major}.{minor}")
+    print(f"cuda_available={torch.cuda.is_available()}")
+    print(f"bf16_supported={bf16_ok}")
+    if not bf16_ok:
+        raise SystemExit(
+            f"BF16 training configured but accelerator {props.name!r} "
+            f"(compute {major}.{minor}) does not support bfloat16; refusing fallback"
+        )
 
 
 def _git_sha() -> str:
@@ -168,11 +199,12 @@ def main() -> None:
             "CUDA requested but unavailable; refusing silent CPU fallback for production launch."
         )
 
+    cfg = load_world_model_config(config_path)
     if device == "cuda":
         props = torch.cuda.get_device_properties(0)
         print(f"accelerator={props.name} total_mem_gb={props.total_memory / 1e9:.1f}")
+    _assert_bf16_accelerator(device=device, bf16=bool(cfg.train.bf16))
 
-    cfg = load_world_model_config(config_path)
     torch.manual_seed(int(cfg.train.seed))
     np.random.seed(int(cfg.train.seed))
     model = WorldModel(cfg)
@@ -250,34 +282,57 @@ def main() -> None:
         },
     )
 
-    skip_microbatches = 0
     resume_step = 0
+    consumed_batches = 0
+    checkpoint_payload: dict[str, Any] | None = None
     if resume:
-        payload = load_checkpoint(
+        checkpoint_payload = load_checkpoint(
             resume,
             model=model,
             optimizer=trainer.optimizer,
             scheduler=trainer._scheduler,
             expected_config=cfg,
         )
-        ckpt_identity = (payload.get("extra") or {}).get("loader_identity") or {}
+        ckpt_identity = (checkpoint_payload.get("extra") or {}).get("loader_identity") or {}
         if ckpt_identity:
             _check_loader_identity(ckpt_identity, loader_identity, override=override)
-        trainer.restore_runtime_state(payload)
+        trainer.restore_runtime_state(checkpoint_payload)
         resume_step = trainer.phase_step
-        skip_microbatches = trainer.consumed_microbatches
+        consumed_batches = trainer.consumed_microbatches
+        try:
+            assert_phase_global_consistent(
+                phase=str(checkpoint_payload.get("phase") or phase),
+                global_step=trainer.global_step,
+                phase_step=trainer.phase_step,
+                ssl_steps=int(cfg.train.ssl_steps),
+                broad_steps=int(cfg.train.broad_steps),
+            )
+        except LoaderCursorError as exc:
+            raise ResumeIncompatibilityError(str(exc)) from exc
         print(
             f"resumed from {resume} phase_step={resume_step} "
-            f"global={trainer.global_step} skip_microbatches={skip_microbatches}"
+            f"global={trainer.global_step} consumed={consumed_batches}"
         )
 
+    try:
+        train_stream = wrap_frozen_dataloader(
+            loader,
+            consumed_batches=consumed_batches,
+            checkpoint_payload=checkpoint_payload,
+        )
+    except LoaderCursorError as exc:
+        raise SystemExit(f"resume stream refused: {exc}") from exc
+
+    trainer.loader_epoch_batches = int(train_stream.epoch_batches)
+
     print(f"starting phase={phase} mode={mode} population={population}")
+    # Cursor seek lives in train_stream; trainer must not replay batches.
     logs = trainer.train_phase(
         phase,
-        loader,
+        train_stream,
         max_steps=max_steps,
         resume_step=resume_step,
-        skip_microbatches=skip_microbatches,
+        skip_microbatches=0,
     )
     summary = {
         "phase": phase,
