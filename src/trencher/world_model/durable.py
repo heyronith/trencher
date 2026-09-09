@@ -18,6 +18,16 @@ class DurableSyncError(RuntimeError):
     """Raised when a durable upload/verification fails (never silent)."""
 
 
+def _resume_alias(relative: str) -> str | None:
+    """Return the durable resume alias advanced by a periodic artifact."""
+    normalized = relative.lstrip("/")
+    if normalized == "periodic.pt":
+        return "latest.pt"
+    if normalized == "periodic.pt.meta.json":
+        return "latest.pt.meta.json"
+    return None
+
+
 class DurableStore(ABC):
     """Abstraction over durable run artifact storage."""
 
@@ -44,10 +54,7 @@ class LocalMirrorStore(DurableStore):
     def uri_for(self, relative: str) -> str:
         return str((self.root / relative).resolve())
 
-    def upload_file(self, local_path: Path, relative: str) -> str:
-        local_path = Path(local_path)
-        if not local_path.is_file():
-            raise DurableSyncError(f"missing local checkpoint for durable sync: {local_path}")
+    def _publish_copy(self, local_path: Path, relative: str) -> Path:
         dest = self.root / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_suffix(dest.suffix + f".tmp.{os.getpid()}")
@@ -60,6 +67,16 @@ class LocalMirrorStore(DurableStore):
                     tmp.unlink()
         if not dest.is_file() or dest.stat().st_size != local_path.stat().st_size:
             raise DurableSyncError(f"durable verify failed for {dest}")
+        return dest
+
+    def upload_file(self, local_path: Path, relative: str) -> str:
+        local_path = Path(local_path)
+        if not local_path.is_file():
+            raise DurableSyncError(f"missing local checkpoint for durable sync: {local_path}")
+        self._publish_copy(local_path, relative)
+        alias = _resume_alias(relative)
+        if alias is not None:
+            self._publish_copy(local_path, alias)
         return self.uri_for(relative)
 
     def download_file(self, relative: str, dest: Path) -> Path:
@@ -93,10 +110,7 @@ class GCSStore(DurableStore):
     def uri_for(self, relative: str) -> str:
         return f"gs://{self.bucket_name}/{self.prefix}/{relative.lstrip('/')}"
 
-    def upload_file(self, local_path: Path, relative: str) -> str:
-        local_path = Path(local_path)
-        if not local_path.is_file():
-            raise DurableSyncError(f"missing local checkpoint for durable sync: {local_path}")
+    def _publish_blob(self, local_path: Path, relative: str) -> None:
         blob_path = f"{self.prefix}/{relative.lstrip('/')}"
         blob = self._bucket.blob(blob_path)
         try:
@@ -109,6 +123,15 @@ class GCSStore(DurableStore):
                 f"GCS size mismatch for {blob_path}: "
                 f"remote={blob.size} local={local_path.stat().st_size}"
             )
+
+    def upload_file(self, local_path: Path, relative: str) -> str:
+        local_path = Path(local_path)
+        if not local_path.is_file():
+            raise DurableSyncError(f"missing local checkpoint for durable sync: {local_path}")
+        self._publish_blob(local_path, relative)
+        alias = _resume_alias(relative)
+        if alias is not None:
+            self._publish_blob(local_path, alias)
         return self.uri_for(relative)
 
     def download_file(self, relative: str, dest: Path) -> Path:
