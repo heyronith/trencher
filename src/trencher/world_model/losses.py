@@ -122,17 +122,50 @@ def censor_aware_survival_loss(
         time_idx: [B] long — event/censor bin index in [0, H)
         mask: [B] sample / at-risk mask
     """
-    hazards = torch.sigmoid(hazard_logits).clamp(1e-6, 1.0 - 1e-6)
-    b, h = hazards.shape
+    # Survival math is numerically sensitive near hazard probabilities 0/1.
+    # Compute it in FP32 even when the surrounding model runs under BF16
+    # autocast. In BF16, 1 - 1e-6 rounds to exactly 1.0.
+    hazards = torch.sigmoid(hazard_logits.float()).clamp(
+        1e-6,
+        1.0 - 1e-6,
+    )
+
+    _, h = hazards.shape
     device = hazards.device
+
     arange = torch.arange(h, device=device).view(1, -1)
+
     t = time_idx.view(-1, 1).clamp(0, h - 1)
+
     surv_mask = arange < t
-    log_surv = torch.log1p(-hazards).masked_fill(~surv_mask, 0.0).sum(dim=-1)
+
+    # Do not evaluate log1p(-hazard) for bins that do not participate
+    # in the survival interval.
+    surv_hazards = torch.where(
+        surv_mask,
+        hazards,
+        torch.zeros_like(hazards),
+    )
+
+    log_surv = torch.log1p(-surv_hazards).sum(dim=-1)
+
     gather_h = hazards.gather(1, t).squeeze(1)
+
     log_event = torch.log(gather_h)
-    nll = -(log_surv + event.to(dtype=hazards.dtype) * log_event)
-    return masked_mean(nll, _broadcast_mask(nll, mask, sample_mask))
+
+    nll = -(
+        log_surv
+        + event.to(dtype=hazards.dtype) * log_event
+    )
+
+    return masked_mean(
+        nll,
+        _broadcast_mask(
+            nll,
+            mask,
+            sample_mask,
+        ),
+    )
 
 
 def student_t_nll(
