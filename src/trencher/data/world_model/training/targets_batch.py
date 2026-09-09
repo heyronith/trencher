@@ -458,28 +458,34 @@ def build_target_payload(
         eligible=own_avail,
     )
 
-    # Execution primitives
+    # Execution primitives.
+    #
+    # ``exec_*_execution_target_available`` means fee-complete / net-return
+    # supervision is available. The frozen corpus deliberately sets it to 0
+    # because fees are unavailable. That flag must NOT suppress fee-independent
+    # gross / entry-impact / curve-impact heads. Per-head missing values are
+    # still masked by ``_pack_head`` when the frozen value is absent/nonfinite.
     for sol in POSITION_SIZES_SOL:
         tag = str(sol).replace(".", "p")
-        avail = target_row.get(f"exec_{tag}sol_execution_target_available")
-        if avail is None:
-            avail = target_row.get(f"exec_{tag}sol_available")
-        elig = bool(avail) if avail is not None else False
+        size_avail = target_row.get(f"exec_{tag}sol_available")
+        if size_avail is None:
+            size_avail = str(target_row.get(f"exec_{tag}sol_status") or "") == "available"
+        size_elig = bool(size_avail)
         st = target_row.get(f"exec_{tag}sol_status")
         out[f"execution_gross_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_gross_return"),
             frozen_status=st,
-            eligible=elig,
+            eligible=size_elig,
         )
         out[f"execution_entry_impact_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_entry_impact_adjusted_return"),
             frozen_status=st,
-            eligible=elig,
+            eligible=size_elig,
         )
         out[f"execution_curve_impact_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_curve_impact_adjusted_return"),
             frozen_status=st,
-            eligible=elig,
+            eligible=size_elig,
         )
         # Net return may exist in columns but is not a training target without fees.
         out[f"execution_net_{tag}sol"] = _pack_head(
@@ -487,10 +493,11 @@ def build_target_payload(
             frozen_status=st,
             eligible=False,  # deliberately untrained — fee schedule unavailable
         )
+        # Slippage is not a fee-independent frozen training head in this schema.
         out[f"execution_slippage_{tag}sol"] = _pack_head(
             value=target_row.get(f"exec_{tag}sol_slippage"),
             frozen_status=st,
-            eligible=elig,
+            eligible=False,
         )
 
     out["families_present"] = sorted(
