@@ -339,15 +339,15 @@ class ThreePhaseTrainer:
                 force=True,
             )
 
-            if self.ckpt_dir and self.global_step % max(self.cfg.train.ckpt_every, 1) == 0:
-                self._save("periodic", phase=phase)
-
             if (
                 not healthy
                 and self.cfg.train.health_gates_enabled
                 and self.phase_step >= max(profile_steps // 4, 1)
             ):
                 raise RuntimeError(f"health gate failed: {health_msg}")
+
+            if self.ckpt_dir and self.global_step % max(self.cfg.train.ckpt_every, 1) == 0:
+                self._save("periodic", phase=phase)
 
         if exhausted and self.phase_step < planned:
             raise RuntimeError(
