@@ -104,6 +104,7 @@ class ThreePhaseTrainer:
         self.epoch = 0
         self.microstep = 0
         self.consumed_microbatches = 0
+        self.loader_epoch_batches: int | None = None
         self.telemetry: list[StepTelemetry] = []
         self.freeze_ids = freeze_ids or {
             "freeze_id": self.cfg.freeze_id,
@@ -375,6 +376,26 @@ class ThreePhaseTrainer:
         if self.telemetry:
             # Best-effort: last batch id not retained; cursor is consumed_microbatches.
             next_oid = None
+        extra: dict[str, Any] = {
+            "git_sha": self.git_sha,
+            "freeze_ids": self.freeze_ids,
+            "class_weights_keys": list(self.class_weights),
+            "checkpoint_format_version": 3,
+            "loader_identity": self.loader_identity,
+            "consumed_microbatches": self.consumed_microbatches,
+            "contract": self.cfg.contract,
+            "next_observation_id_hash": next_oid,
+        }
+        if self.loader_epoch_batches is not None and int(self.loader_epoch_batches) > 0:
+            epoch_batches = int(self.loader_epoch_batches)
+            consumed = int(self.consumed_microbatches)
+            extra["loader_cursor"] = {
+                "contract": "FROZEN_V4_CYCLIC_CURSOR_V1",
+                "epoch_batches": epoch_batches,
+                "consumed_batches": consumed,
+                "cycle_index": consumed // epoch_batches,
+                "epoch_offset": consumed % epoch_batches,
+            }
         save_checkpoint(
             path,
             model=self.model,
@@ -391,16 +412,7 @@ class ThreePhaseTrainer:
                 "consumed_microbatches": self.consumed_microbatches,
                 "contract": self.cfg.contract,
             },
-            extra={
-                "git_sha": self.git_sha,
-                "freeze_ids": self.freeze_ids,
-                "class_weights_keys": list(self.class_weights),
-                "checkpoint_format_version": 3,
-                "loader_identity": self.loader_identity,
-                "consumed_microbatches": self.consumed_microbatches,
-                "contract": self.cfg.contract,
-                "next_observation_id_hash": next_oid,
-            },
+            extra=extra,
         )
         progress_payload = {
             "global_step": self.global_step,
