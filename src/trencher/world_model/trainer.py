@@ -277,6 +277,17 @@ class ThreePhaseTrainer:
                     self.model.parameters(), self.cfg.train.max_grad_norm
                 )
             )
+            healthy, health_msg = self._health_check(
+                breakdown.total, grad_norm, data_wait
+            )
+            health_gate_step = self.phase_step + 1
+            if (
+                not healthy
+                and self.cfg.train.health_gates_enabled
+                and health_gate_step >= max(profile_steps // 4, 1)
+            ):
+                raise RuntimeError(f"health gate failed: {health_msg}")
+
             t_opt = time.perf_counter()
             self.optimizer.step()
             if self._scheduler is not None:
@@ -295,9 +306,6 @@ class ThreePhaseTrainer:
             )
             step_time = max(fwd + bwd + opt + h2d, 1e-9)
             alloc, reserved, peak = self._mem_stats()
-            healthy, health_msg = self._health_check(
-                breakdown.total, grad_norm, data_wait
-            )
             tel = StepTelemetry(
                 step=self.global_step,
                 phase=phase,
@@ -338,13 +346,6 @@ class ThreePhaseTrainer:
                 grad_norm=tel.grad_norm,
                 force=True,
             )
-
-            if (
-                not healthy
-                and self.cfg.train.health_gates_enabled
-                and self.phase_step >= max(profile_steps // 4, 1)
-            ):
-                raise RuntimeError(f"health gate failed: {health_msg}")
 
             if self.ckpt_dir and self.global_step % max(self.cfg.train.ckpt_every, 1) == 0:
                 self._save("periodic", phase=phase)
