@@ -125,6 +125,7 @@ class FrozenV4IterableDataset(IterableDataset):
         max_examples: int | None = None,
         use_cache: bool = True,
         path_steps: int = 8,
+        seq_max_len: dict[str, int] | None = None,
     ) -> None:
         super().__init__()
         self.mode = assert_dataset_mode(mode)
@@ -135,6 +136,7 @@ class FrozenV4IterableDataset(IterableDataset):
         self.shuffle = bool(shuffle)
         self.max_examples = max_examples
         self.path_steps = int(path_steps)
+        self.seq_max_len = dict(seq_max_len) if seq_max_len else {}
         self.base_split = _mode_to_base_split(self.mode)
         refuse_test_split(self.base_split)
 
@@ -145,6 +147,14 @@ class FrozenV4IterableDataset(IterableDataset):
             self._fold = _load_wf_fold(self.split_root, self.mode)
             self._wf_role = "train"
         self.use_cache = bool(use_cache)
+
+    def tensorize_example(self, ex: dict[str, Any]) -> dict[str, torch.Tensor]:
+        """Convert a production example using the dataset's configured caps."""
+        return example_to_tensors(
+            ex,
+            path_steps=self.path_steps,
+            max_len=self.seq_max_len or None,
+        )
 
     def _worker_paths(self) -> list[Path]:
         info = torch.utils.data.get_worker_info()
@@ -203,7 +213,7 @@ class FrozenV4IterableDataset(IterableDataset):
                 ex = builder.build(r)
                 if not ex.get("causal_ok", True):
                     continue
-                item = example_to_tensors(ex, path_steps=self.path_steps)
+                item = self.tensorize_example(ex)
                 info = torch.utils.data.get_worker_info()
                 item["loader_worker_id"] = torch.tensor(
                     0 if info is None else int(info.id), dtype=torch.long
@@ -219,7 +229,7 @@ class FrozenV4IterableDataset(IterableDataset):
                 ex = builder.build(r)
                 if not ex.get("causal_ok", True):
                     continue
-                item = example_to_tensors(ex, path_steps=self.path_steps)
+                item = self.tensorize_example(ex)
                 info = torch.utils.data.get_worker_info()
                 item["loader_worker_id"] = torch.tensor(
                     0 if info is None else int(info.id), dtype=torch.long
@@ -282,6 +292,7 @@ def make_frozen_dataloader(
     persistent_workers: bool = False,
     prefetch_factor: int | None = 2,
     use_cache: bool = True,
+    seq_max_len: dict[str, int] | None = None,
 ) -> DataLoader:
     """Build a DataLoader over frozen V4 stores for a development/train mode."""
     mode = assert_dataset_mode(mode)
@@ -294,6 +305,7 @@ def make_frozen_dataloader(
         shuffle=shuffle,
         max_examples=max_examples,
         use_cache=use_cache,
+        seq_max_len=seq_max_len,
     )
     kwargs: dict[str, Any] = {
         "batch_size": batch_size,
