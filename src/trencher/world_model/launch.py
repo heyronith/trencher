@@ -241,6 +241,9 @@ def main() -> None:
         pin_memory=(device == "cuda"),
         persistent_workers=num_workers > 0,
         prefetch_factor=2 if num_workers > 0 else None,
+        # Honor frozen encoder sequence caps. Wallet-prior is the Stage-C OOM
+        # blocker: RichSequenceReader can concatenate many wallets × last_n rows.
+        seq_max_len={"wallet_prior": int(cfg.wallet_prior.max_len)},
     )
 
     progress_path = ckpt_dir / "progress.json"

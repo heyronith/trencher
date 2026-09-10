@@ -110,6 +110,7 @@ def _mini_frozen(
     ds.shuffle = bool(shuffle)
     ds.max_examples = None
     ds.path_steps = 8
+    ds.seq_max_len = {}
     ds.base_split = "train"
     ds.assignment_paths = list(paths)
     ds._fold = None
@@ -497,17 +498,6 @@ def test_fast_skip_refuses_causal_false_after_cursor(
     monkeypatch.setattr(
         "trencher.world_model.resumable_loader.ProductionExampleBuilder",
         _Builder,
-    )
-
-    def _fake_tensors(ex: dict[str, Any], path_steps: int = 8) -> dict[str, torch.Tensor]:
-        return {
-            "observation_id_hash": torch.tensor(1, dtype=torch.long),
-            "loader_worker_id": torch.tensor(0, dtype=torch.long),
-        }
-
-    monkeypatch.setattr(
-        "trencher.world_model.resumable_loader.example_to_tensors",
-        _fake_tensors,
     )
 
     fast = FastSkipFrozenDataset(ds, skip_rows_by_worker=[0])

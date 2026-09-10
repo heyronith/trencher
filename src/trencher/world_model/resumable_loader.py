@@ -26,7 +26,6 @@ from torch.utils.data import DataLoader, IterableDataset
 
 from trencher.data.world_model.training.dataset import deterministic_shard_seed
 from trencher.data.world_model.training.example import ProductionExampleBuilder
-from trencher.world_model.batch_adapter import example_to_tensors
 from trencher.world_model.v4_loader import FrozenV4IterableDataset, shard_assignment_paths
 
 LOADER_CURSOR_CONTRACT = "FROZEN_V4_CYCLIC_CURSOR_V1"
@@ -459,7 +458,7 @@ class FastSkipFrozenDataset(IterableDataset):
                         "fast resume encountered causal_ok=False after raw-row cursor; "
                         "refusing a potentially divergent resume sequence"
                     )
-                item = example_to_tensors(ex, path_steps=self.base.path_steps)
+                item = self.base.tensorize_example(ex)
                 item["loader_worker_id"] = torch.tensor(worker_id, dtype=torch.long)
                 yielded += 1
                 yield item
