@@ -1,0 +1,89 @@
+{
+  "contract": "STEP17_SCIENTIFIC_EVALUATION_V1",
+  "status": "preflight_complete_awaiting_gpu_runs",
+  "q85_test_accessed": false,
+  "summary_table": [
+    {
+      "candidate": "Baseline controls",
+      "explosion": "see BASELINE_CORE_METRICS_V2",
+      "survival": "partial / family-specific",
+      "barriers": "family-specific",
+      "returns": "family-specific",
+      "delta_vs_stage_b": "n/a",
+      "compute": "frozen"
+    },
+    {
+      "candidate": "Simple temporal control",
+      "explosion": "PENDING",
+      "survival": "PENDING",
+      "barriers": "PENDING",
+      "returns": "PENDING",
+      "delta_vs_stage_b": "PENDING",
+      "compute": "~1 A100-hour (not launched)"
+    },
+    {
+      "candidate": "Stage B",
+      "explosion": "broad permanent-val only",
+      "survival": "broad permanent-val only",
+      "barriers": "broad permanent-val only",
+      "returns": "broad permanent-val only",
+      "delta_vs_stage_b": "reference",
+      "compute": "complete"
+    },
+    {
+      "candidate": "Stage C full",
+      "explosion": "rich permanent-val complete",
+      "survival": "rich permanent-val complete",
+      "barriers": "rich permanent-val complete",
+      "returns": "rich permanent-val complete",
+      "delta_vs_stage_b": "PENDING paired rich inference",
+      "compute": "complete"
+    },
+    {
+      "candidate": "\u2212 graph",
+      "explosion": "PENDING",
+      "survival": "PENDING",
+      "barriers": "PENDING",
+      "returns": "PENDING",
+      "delta_vs_stage_b": "PENDING",
+      "compute": "~1.5 A100-hours (not launched)"
+    },
+    {
+      "candidate": "\u2212 wallet prior",
+      "explosion": "PENDING",
+      "survival": "PENDING",
+      "barriers": "PENDING",
+      "returns": "PENDING",
+      "delta_vs_stage_b": "PENDING",
+      "compute": "~1.5 A100-hours (not launched)"
+    },
+    {
+      "candidate": "\u2212 ownership",
+      "explosion": "PENDING",
+      "survival": "PENDING",
+      "barriers": "PENDING",
+      "returns": "PENDING",
+      "delta_vs_stage_b": "PENDING",
+      "compute": "~1.5 A100-hours (not launched)"
+    },
+    {
+      "candidate": "\u2212 microstructure",
+      "explosion": "PENDING",
+      "survival": "PENDING",
+      "barriers": "PENDING",
+      "returns": "PENDING",
+      "delta_vs_stage_b": "PENDING",
+      "compute": "~1.5 A100-hours (not launched)"
+    }
+  ],
+  "answers": {
+    "stage_c_improved_over_stage_b": "PENDING: Stage-B permanent-val is broad-population; Stage-C is rich. Generate Stage-B rich permanent_val predictions before answering.",
+    "improvements_statistically_defensible": "PENDING paired bootstrap on shared rich observations",
+    "rich_modality_most": "PENDING scientific retraining ablations (diagnostics may prioritize)",
+    "rich_modality_least": "PENDING",
+    "removable_without_meaningful_degradation": "PENDING",
+    "outperforms_conventional_controls": "Partial: overlapping explosion_60s/300s cells can be compared from frozen Baseline V2 vs Stage-C rich metrics; full suite pending protocol alignment notes.",
+    "outperforms_simple_temporal_control": "PENDING GRU control training",
+    "full_stage_c_justified": "PENDING \u2014 no q85 selection"
+  }
+}

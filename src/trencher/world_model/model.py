@@ -187,17 +187,23 @@ class WorldModel(nn.Module):
         batch: dict[str, Any],
         *,
         phase: str = "broad",
+        active: set[str] | None = None,
     ) -> dict[str, torch.Tensor]:
         """
         Args:
             phase: ``ssl`` | ``broad`` | ``rich``
+            active: optional modality set override (scientific ablations / diagnostics)
         """
-        if phase == "ssl":
-            active = {"events"}
-        elif phase == "broad":
-            active = set(self.cfg.modalities_broad)
-        else:
-            active = set(self.cfg.modalities_rich)
+        if active is None:
+            if phase == "ssl":
+                active = {"events"}
+            elif phase == "broad":
+                active = set(self.cfg.modalities_broad)
+            else:
+                active = set(self.cfg.modalities_rich)
+            omit = getattr(self, "omit_modalities", None)
+            if omit:
+                active -= {str(x) for x in omit}
 
         if phase == "ssl" and "event_x" in batch:
             from trencher.world_model.ssl_masking import apply_ssl_event_masking

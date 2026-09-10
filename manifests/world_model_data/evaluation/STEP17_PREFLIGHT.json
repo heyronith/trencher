@@ -1,0 +1,581 @@
+{
+  "contract": "STEP17_SCIENTIFIC_EVALUATION_V1",
+  "status": "ready_for_gpu_decision",
+  "git_sha": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+  "required_runtime_sha": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+  "config_hash": "c2e7c0e51ef91df87333615f5e6cd66e0baed891fbabcb907c5f5fa55a6d8945",
+  "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17",
+  "stage_b": {
+    "checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+    "checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+    "checkpoint_step": 150000,
+    "checkpoint_phase": "broad",
+    "checkpoint_phase_step": 100000,
+    "consumed_microbatches": 100000,
+    "git_sha": "5f895e12779979b9140d293b42186a0e4e070ecf",
+    "config_hash": "c2e7c0e51ef91df87333615f5e6cd66e0baed891fbabcb907c5f5fa55a6d8945",
+    "permanent_val_metrics_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/stage_b_permanent_val_eval.json",
+    "permanent_val_metrics_sha256": "55b305fe602ac7cfeceab436ab87e960717e432229942c26e5a4c203505dfe75",
+    "permanent_val_population": "broad",
+    "permanent_val_examples": 1265314,
+    "prediction_artifact_uri": null,
+    "prediction_artifact_available": false,
+    "q85_test_accessed": false,
+    "paired_ready_with_stage_c_rich": false,
+    "paired_blocker": "Existing Stage-B permanent-val metrics were computed on population=broad (~1.26M examples). Stage-C permanent-val is population=rich (~10k). Paired comparison requires Stage-B permanent_val_eval inference on the rich population using the frozen Stage-B checkpoint; do not compare mismatched aggregates as paired evidence."
+  },
+  "stage_c": {
+    "checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_c_rich/latest.pt",
+    "checkpoint_sha256": "11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839",
+    "checkpoint_step": 175000,
+    "checkpoint_phase": "rich",
+    "runtime_git_sha": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+    "config_hash": "c2e7c0e51ef91df87333615f5e6cd66e0baed891fbabcb907c5f5fa55a6d8945",
+    "validation_root": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_c_rich/validation/stage_c_175000_permanent_val",
+    "prediction_sha256": "2d97c92e3bf6a9b721355d9ea2537b7a54787594ba0ee659105643e8200def13",
+    "metrics_sha256": "c4f0edcb35fd6e9cb9fcf465f4a601e3d93756c75dd0c8c2a13b7b983c2be741",
+    "mode": "permanent_val_eval",
+    "population": "rich",
+    "assignment_val_rows": 10159,
+    "rows_loaded": 10014,
+    "q85_test_accessed": false,
+    "verified": true
+  },
+  "permanent_validation_population_for_paired_eval": "rich",
+  "paired_eval_blocker": "Existing Stage-B permanent-val metrics were computed on population=broad (~1.26M examples). Stage-C permanent-val is population=rich (~10k). Paired comparison requires Stage-B permanent_val_eval inference on the rich population using the frozen Stage-B checkpoint; do not compare mismatched aggregates as paired evidence.",
+  "stage_b_rich_inference_command": "uv run python -m trencher.world_model.evaluation.step17 infer --checkpoint /content/trencher_stage/checkpoints/stage_b_broad/latest.pt --expected-checkpoint-sha256 ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208 --config /content/trencher/configs/world_model/world_model_candidate_v2.yaml --world-root /content/trencher_stage/world_model --split-root /content/trencher_stage/world_model/splits/split_v1 --population rich --phase rich --mode permanent_val_eval --run-id stage_b_rich_permanent_val --out-dir /content/trencher_stage/evaluation/step17/stage_b_rich_permanent_val --git-sha b7abd1de786bf7845b98a69752d05fb695e7d170",
+  "inference_time_diagnostics": {
+    "label": "inference_time_modality_mask_diagnostic",
+    "configs": [
+      {
+        "run_id": "diagnostic_full",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [],
+        "note": "baseline inference (no mask)"
+      },
+      {
+        "run_id": "diagnostic_no_microstructure",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [
+          "microstructure"
+        ],
+        "note": "zero availability for microstructure at inference only"
+      },
+      {
+        "run_id": "diagnostic_no_ownership",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [
+          "ownership"
+        ],
+        "note": "zero availability for ownership at inference only"
+      },
+      {
+        "run_id": "diagnostic_no_wallet_prior",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [
+          "wallet_prior"
+        ],
+        "note": "zero availability for wallet_prior at inference only"
+      },
+      {
+        "run_id": "diagnostic_no_graph",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [
+          "graph"
+        ],
+        "note": "zero availability for graph at inference only"
+      },
+      {
+        "run_id": "diagnostic_rich_all_off",
+        "label": "inference_time_modality_mask_diagnostic",
+        "omit": [
+          "microstructure",
+          "ownership",
+          "wallet_prior",
+          "graph"
+        ],
+        "note": "approximate Stage-C information removal at inference time"
+      }
+    ],
+    "results": null,
+    "note": "Not executed in the editor task (requires GPU + restored rich corpus). Run after Stage-C checkpoint restore to prioritize retraining ablations.",
+    "command": "uv run python -m trencher.world_model.evaluation.step17 diagnose-masks --checkpoint /content/trencher_stage/checkpoints/stage_c_rich/latest.pt --expected-checkpoint-sha256 11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839 --world-root /content/trencher_stage/world_model --split-root /content/trencher_stage/world_model/splits/split_v1 --out-dir /content/trencher_stage/evaluation/step17/diagnostics --git-sha b7abd1de786bf7845b98a69752d05fb695e7d170"
+  },
+  "scientific_ablations": [
+    {
+      "run_id": "stage_c_full",
+      "omit": [],
+      "retrain": false,
+      "reuse_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_c_rich/latest.pt",
+      "reuse_checkpoint_sha256": "11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839",
+      "note": "Do not retrain; reuse frozen Stage-C checkpoint"
+    },
+    {
+      "run_id": "stage_c_no_graph",
+      "omit": [
+        "graph"
+      ],
+      "retrain": true,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "rich_steps": 25000
+    },
+    {
+      "run_id": "stage_c_no_wallet_prior",
+      "omit": [
+        "wallet_prior"
+      ],
+      "retrain": true,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "rich_steps": 25000
+    },
+    {
+      "run_id": "stage_c_no_ownership",
+      "omit": [
+        "ownership"
+      ],
+      "retrain": true,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "rich_steps": 25000
+    },
+    {
+      "run_id": "stage_c_no_microstructure",
+      "omit": [
+        "microstructure"
+      ],
+      "retrain": true,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "rich_steps": 25000
+    }
+  ],
+  "proposed_ablation_gpu_runs": [
+    {
+      "run_id": "stage_c_no_graph",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "graph"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_graph/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_graph",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_graph",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "graph",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_graph\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_graph\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=graph\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_graph_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_graph_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_wallet_prior",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "wallet_prior"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_wallet_prior/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_wallet_prior",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_wallet_prior",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "wallet_prior",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_wallet_prior\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_wallet_prior\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=wallet_prior\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_wallet_prior_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_wallet_prior_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_ownership",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "ownership"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_ownership/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_ownership",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_ownership",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "ownership",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_ownership\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_ownership\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=ownership\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_ownership_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_ownership_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_microstructure",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "microstructure"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_microstructure/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_microstructure",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_microstructure",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "microstructure",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_microstructure\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_microstructure\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=microstructure\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_microstructure_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_microstructure_train.pid"
+    }
+  ],
+  "ablation_launch_commands": [
+    {
+      "run_id": "stage_c_full",
+      "action": "reuse_frozen_stage_c",
+      "checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_c_rich/latest.pt",
+      "checkpoint_sha256": "11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839",
+      "durable_eval_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_full/"
+    },
+    {
+      "run_id": "stage_c_no_graph",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "graph"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_graph/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_graph",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_graph",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "graph",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_graph\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_graph\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=graph\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_graph_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_graph_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_wallet_prior",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "wallet_prior"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_wallet_prior/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_wallet_prior",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_wallet_prior",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "wallet_prior",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_wallet_prior\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_wallet_prior\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=wallet_prior\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_wallet_prior_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_wallet_prior_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_ownership",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "ownership"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_ownership/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_ownership",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_ownership",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "ownership",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_ownership\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_ownership\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=ownership\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_ownership_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_ownership_train.pid"
+    },
+    {
+      "run_id": "stage_c_no_microstructure",
+      "action": "rich_finetune_from_stage_b",
+      "omit": [
+        "microstructure"
+      ],
+      "steps": 25000,
+      "starting_checkpoint_uri": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/runs/stage_b_broad/latest.pt",
+      "starting_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "expected_gpu": "1x A100 40GB",
+      "expected_wallclock_hours": 1.5,
+      "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/stage_c_no_microstructure/",
+      "env": {
+        "TRENCHER_LOCAL_STAGE": "/content/trencher_stage",
+        "TRENCHER_WORLD_ROOT": "/content/trencher_stage/world_model",
+        "TRENCHER_SPLIT_ROOT": "/content/trencher_stage/world_model/splits/split_v1",
+        "TRENCHER_WM_CONFIG": "/content/trencher/configs/world_model/world_model_candidate_v2.yaml",
+        "TRENCHER_WM_PHASE": "rich",
+        "TRENCHER_WM_MODE": "final_train",
+        "TRENCHER_WM_POPULATION": "rich",
+        "TRENCHER_WM_DEVICE": "cuda",
+        "TRENCHER_WM_CKPT_DIR": "/content/trencher_stage/checkpoints/stage_c_no_microstructure",
+        "TRENCHER_WM_RESUME": "/content/trencher_stage/checkpoints/stage_b_broad/latest.pt",
+        "TRENCHER_WM_MAX_STEPS": "25000",
+        "TRENCHER_WM_NUM_WORKERS": "2",
+        "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
+        "TRENCHER_WM_RUN_ID": "stage_c_no_microstructure",
+        "TRENCHER_GIT_SHA": "b7abd1de786bf7845b98a69752d05fb695e7d170",
+        "TRENCHER_GCS_URI": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1",
+        "TRENCHER_GCS_TRANSPORT": "python",
+        "TRENCHER_WM_DURABLE": "1",
+        "TRENCHER_WM_OMIT_MODALITIES": "microstructure",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0390594165"
+      },
+      "shell": "export TRENCHER_LOCAL_STAGE=/content/trencher_stage\nexport TRENCHER_WORLD_ROOT=/content/trencher_stage/world_model\nexport TRENCHER_SPLIT_ROOT=/content/trencher_stage/world_model/splits/split_v1\nexport TRENCHER_WM_CONFIG=/content/trencher/configs/world_model/world_model_candidate_v2.yaml\nexport TRENCHER_WM_PHASE=rich\nexport TRENCHER_WM_MODE=final_train\nexport TRENCHER_WM_POPULATION=rich\nexport TRENCHER_WM_DEVICE=cuda\nexport TRENCHER_WM_CKPT_DIR=/content/trencher_stage/checkpoints/stage_c_no_microstructure\nexport TRENCHER_WM_RESUME=/content/trencher_stage/checkpoints/stage_b_broad/latest.pt\nexport TRENCHER_WM_MAX_STEPS=25000\nexport TRENCHER_WM_NUM_WORKERS=2\nexport TRENCHER_WM_EXPECT_EPOCH_BATCHES=566\nexport TRENCHER_WM_RUN_ID=stage_c_no_microstructure\nexport TRENCHER_GIT_SHA=b7abd1de786bf7845b98a69752d05fb695e7d170\nexport TRENCHER_GCS_URI=gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1\nexport TRENCHER_GCS_TRANSPORT=python\nexport TRENCHER_WM_DURABLE=1\nexport TRENCHER_WM_OMIT_MODALITIES=microstructure\nexport PYTHONUNBUFFERED=1\nexport GOOGLE_CLOUD_PROJECT=gen-lang-client-0390594165\nmkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n# restore Stage-B latest.pt into local resume path before launch\nnohup bash /content/trencher/scripts/colab/launch_training.sh >/content/trencher_stage/stage_c_no_microstructure_train.log 2>&1 &\necho $! >/content/trencher_stage/stage_c_no_microstructure_train.pid"
+    }
+  ],
+  "expected_gpu_requirement_per_ablation": {
+    "accelerator": "1x NVIDIA A100 40GB",
+    "steps": 25000,
+    "batch_size": 64,
+    "expected_wallclock_hours": 1.5,
+    "expected_artifact_location": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/<run_id>/"
+  },
+  "simple_temporal_control": {
+    "run_id": "simple_temporal_gru_control",
+    "seed": 42,
+    "prespecified": true,
+    "hyperparameter_search": false,
+    "parameters": 2487682,
+    "world_model_parameters": 15679133,
+    "parameter_ratio": 0.1586619617296441,
+    "modalities": [
+      "events",
+      "curve",
+      "global"
+    ],
+    "forbidden_modules": [
+      "graph",
+      "wallet_prior",
+      "ownership_transformer",
+      "gated_multimodal_fusion"
+    ],
+    "train_steps_rich_or_equivalent": 25000,
+    "expected_gpu": "1x A100 40GB",
+    "expected_wallclock_hours": 1.0,
+    "q85_test_accessed": false,
+    "durable_prefix": "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/evaluation/step17/simple_temporal_gru_control/",
+    "note": "Scientific control only. Do not launch during the editor task. Same frozen target semantics and permanent_val_eval lock.",
+    "launch_command": "uv run python -m trencher.world_model.evaluation.step17 gru-train --world-root /content/trencher_stage/world_model --split-root /content/trencher_stage/world_model/splits/split_v1 --device cuda --max-steps 25000 --seed 42 --git-sha b7abd1de786bf7845b98a69752d05fb695e7d170",
+    "lineage_note": "Does not resume Stage-B weights (architecture differs); Stage-B sha ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208 remains the rich-finetune reference for modality ablations only."
+  },
+  "baseline_comparison_policy": {
+    "rows": [
+      {
+        "head_id": "explosion_60s",
+        "baseline_family": "lightgbm",
+        "wm_value": null,
+        "baseline_value": null,
+        "delta_wm_minus_baseline": null,
+        "comparable": false,
+        "reason": "metric roc_auc absent for explosion_60s",
+        "direction": "higher_better",
+        "wm_support": null,
+        "baseline_support": null
+      },
+      {
+        "head_id": "explosion_60s",
+        "baseline_family": "xgboost",
+        "wm_value": null,
+        "baseline_value": null,
+        "delta_wm_minus_baseline": null,
+        "comparable": false,
+        "reason": "metric roc_auc absent for explosion_60s",
+        "direction": "higher_better",
+        "wm_support": null,
+        "baseline_support": null
+      },
+      {
+        "head_id": "explosion_300s",
+        "baseline_family": "lightgbm",
+        "wm_value": null,
+        "baseline_value": null,
+        "delta_wm_minus_baseline": null,
+        "comparable": false,
+        "reason": "metric roc_auc absent for explosion_300s",
+        "direction": "higher_better",
+        "wm_support": null,
+        "baseline_support": null
+      },
+      {
+        "head_id": "explosion_300s",
+        "baseline_family": "xgboost",
+        "wm_value": null,
+        "baseline_value": null,
+        "delta_wm_minus_baseline": null,
+        "comparable": false,
+        "reason": "metric roc_auc absent for explosion_300s",
+        "direction": "higher_better",
+        "wm_support": null,
+        "baseline_support": null
+      }
+    ],
+    "catboost_status": "incomplete_compute_cost_stop",
+    "catboost_note": "Intentionally incomplete due to compute cost; excluded from ranking.",
+    "non_comparable_policy": "Only report deltas where target definition, horizon, and permanent-val protocol match. Do not manufacture cross-model rankings from incompatible cells."
+  },
+  "q85_refusal_proof": {
+    "aliases_tested": [
+      {
+        "alias": "q85_test",
+        "refused": true,
+        "error": "Step-17 refuses evaluation mode 'q85_test'; q85+ permanent TEST is locked."
+      },
+      {
+        "alias": "test",
+        "refused": true,
+        "error": "Step-17 refuses evaluation mode 'test'; q85+ permanent TEST is locked."
+      },
+      {
+        "alias": "permanent_test",
+        "refused": true,
+        "error": "Step-17 refuses evaluation mode 'permanent_test'; q85+ permanent TEST is locked."
+      }
+    ],
+    "all_refused": true,
+    "permanent_val_eval_allowed": true,
+    "q85_test_accessed": false
+  },
+  "stop_gate": {
+    "do_not_provision_gpu": true,
+    "do_not_train_ablations": true,
+    "do_not_train_gru_control": true,
+    "do_not_touch_q85_test": true,
+    "next_decision": "Whether all four scientific retraining ablations are justified, or diagnostics allow reducing the GPU experiment set."
+  },
+  "q85_test_accessed": false
+}
