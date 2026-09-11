@@ -210,11 +210,39 @@ def return_quantile_metrics(
 
 
 def mae_masked(y_true: np.ndarray, pred: np.ndarray, mask: np.ndarray) -> dict[str, Any]:
-    y = np.asarray(y_true, dtype=np.float64).reshape(-1)
-    p = np.asarray(pred, dtype=np.float64).reshape(-1)
-    m = np.asarray(mask).reshape(-1) > 0.5
+    y_arr = np.asarray(y_true, dtype=np.float64)
+    p_arr = np.asarray(pred, dtype=np.float64)
+    m_arr = np.asarray(mask)
+
+    if y_arr.shape != p_arr.shape:
+        raise ValueError(
+            f"y_true/pred shape mismatch: y={y_arr.shape} pred={p_arr.shape}"
+        )
+    if m_arr.ndim > y_arr.ndim:
+        raise ValueError(
+            f"mask rank exceeds target rank: mask={m_arr.shape} target={y_arr.shape}"
+        )
+
+    # Match training-loss semantics: append trailing singleton dimensions,
+    # then expand the target-level mask across prediction channels.
+    while m_arr.ndim < y_arr.ndim:
+        m_arr = np.expand_dims(m_arr, axis=-1)
+
+    try:
+        m_arr = np.broadcast_to(m_arr, y_arr.shape)
+    except ValueError as exc:
+        raise ValueError(
+            f"mask cannot broadcast to target shape: "
+            f"mask={np.asarray(mask).shape} target={y_arr.shape}"
+        ) from exc
+
+    y = y_arr.reshape(-1)
+    p = p_arr.reshape(-1)
+    m = m_arr.reshape(-1) > 0.5
+
     y = y[m]
     p = p[m]
+
     if y.size == 0:
         return {
             "support": 0,

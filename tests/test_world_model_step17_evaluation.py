@@ -23,7 +23,12 @@ from trencher.world_model.evaluation.masking import (
     mask_batch_modalities,
     rank_degradation,
 )
-from trencher.world_model.evaluation.metrics import barrier_metrics, binary_masked_metrics
+from trencher.world_model.evaluation.metrics import (
+    barrier_metrics,
+    binary_masked_metrics,
+    mae_masked,
+    summarize_prediction_artifact,
+)
 from trencher.world_model.evaluation.modes import assert_step17_mode, provenance_q85_flag
 from trencher.world_model.evaluation.paired import (
     align_by_observation_hash,
@@ -108,6 +113,53 @@ def test_paired_barrier_accepts_multidimensional_class_logits() -> None:
     assert result["metrics_a"]["support"] == 4
     assert result["metrics_b"]["support"] == 4
     assert result["metrics_a"]["accuracy"] == pytest.approx(1.0)
+
+
+def test_mae_masked_broadcasts_step_mask_across_path_channels() -> None:
+    y = np.zeros((2, 3, 4), dtype=np.float64)
+    pred = np.ones((2, 3, 4), dtype=np.float64)
+    mask = np.array(
+        [
+            [1.0, 0.0, 1.0],
+            [0.0, 1.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
+
+    result = mae_masked(y, pred, mask)
+
+    # 3 valid path steps * 4 path channels.
+    assert result["support"] == 12
+    assert result["mae"] == pytest.approx(1.0)
+
+
+def test_prediction_summary_accepts_path_step_mask() -> None:
+    outputs = {
+        "path_mean": np.ones((2, 3, 4), dtype=np.float64),
+    }
+    targets = {
+        "path_target": np.zeros((2, 3, 4), dtype=np.float64),
+        "path_mask": np.array(
+            [
+                [1.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+    }
+
+    result = summarize_prediction_artifact(
+        outputs,
+        targets,
+        explosion_horizons=[],
+        survival_horizons=[],
+        return_horizons=[],
+        quantile_taus=[0.1, 0.5, 0.9],
+        execution_sizes=[],
+    )
+
+    assert result["path"]["support"] == 12
+    assert result["path"]["mae"] == pytest.approx(1.0)
 
 def test_paired_alignment_and_population_mismatch() -> None:
     a = np.array([1, 2, 3, 4], dtype=np.int64)
