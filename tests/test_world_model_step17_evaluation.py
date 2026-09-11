@@ -27,6 +27,7 @@ from trencher.world_model.evaluation.metrics import barrier_metrics, binary_mask
 from trencher.world_model.evaluation.modes import assert_step17_mode, provenance_q85_flag
 from trencher.world_model.evaluation.paired import (
     align_by_observation_hash,
+    compare_barrier_head,
     population_compatibility_report,
 )
 from trencher.world_model.evaluation.preflight import build_preflight
@@ -67,6 +68,46 @@ def test_zero_support_and_zero_positives_non_identifiable() -> None:
     assert zpos["auroc"] is None
     assert zpos["ap"] is None
 
+
+
+def test_barrier_metrics_accepts_multidimensional_class_logits() -> None:
+    y = np.array([[0, 1], [2, 1]], dtype=np.int64)
+    mask = np.ones_like(y, dtype=np.float32)
+    logits = np.array(
+        [
+            [[9.0, 0.0, 0.0], [0.0, 9.0, 0.0]],
+            [[0.0, 0.0, 9.0], [0.0, 9.0, 0.0]],
+        ],
+        dtype=np.float64,
+    )
+    result = barrier_metrics(y, logits, mask)
+    assert result["support"] == 4
+    assert result["accuracy"] == pytest.approx(1.0)
+    assert result["log_loss"] is not None
+
+
+def test_paired_barrier_accepts_multidimensional_class_logits() -> None:
+    y = np.array([[0, 1], [2, 1]], dtype=np.int64)
+    mask = np.ones_like(y, dtype=np.float32)
+    logits_a = np.array(
+        [
+            [[9.0, 0.0, 0.0], [0.0, 9.0, 0.0]],
+            [[0.0, 0.0, 9.0], [0.0, 9.0, 0.0]],
+        ],
+        dtype=np.float64,
+    )
+    logits_b = logits_a.copy()
+    result = compare_barrier_head(
+        y,
+        logits_a,
+        logits_b,
+        mask,
+        n_boot=20,
+        seed=42,
+    )
+    assert result["metrics_a"]["support"] == 4
+    assert result["metrics_b"]["support"] == 4
+    assert result["metrics_a"]["accuracy"] == pytest.approx(1.0)
 
 def test_paired_alignment_and_population_mismatch() -> None:
     a = np.array([1, 2, 3, 4], dtype=np.int64)

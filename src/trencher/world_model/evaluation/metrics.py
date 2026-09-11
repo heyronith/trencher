@@ -106,9 +106,10 @@ def barrier_metrics(
     y = np.asarray(y_true).reshape(-1)
     m = np.asarray(mask).reshape(-1) > 0.5
     pred_in = np.asarray(logits_or_pred)
-    if pred_in.ndim == 2:
-        pred = pred_in.argmax(axis=-1).reshape(-1)
-        probs = _softmax(pred_in.reshape(-1, pred_in.shape[-1]))
+    if pred_in.ndim >= 2 and pred_in.shape[-1] == n_classes:
+        logits = pred_in.reshape(-1, pred_in.shape[-1])
+        pred = logits.argmax(axis=-1)
+        probs = _softmax(logits)
     else:
         pred = pred_in.reshape(-1)
         probs = None

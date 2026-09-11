@@ -145,9 +145,9 @@ def compare_barrier_head(
     ya = np.asarray(y).reshape(-1)[m]
     pa = np.asarray(logits_a)
     pb = np.asarray(logits_b)
-    if pa.ndim == 2:
-        pred_a = pa.argmax(axis=-1).reshape(-1)[m]
-        pred_b = pb.argmax(axis=-1).reshape(-1)[m]
+    if pa.ndim >= 2 and pa.shape[-1] == 3:
+        pred_a = pa.reshape(-1, pa.shape[-1]).argmax(axis=-1)[m]
+        pred_b = pb.reshape(-1, pb.shape[-1]).argmax(axis=-1)[m]
     else:
         pred_a = pa.reshape(-1)[m]
         pred_b = pb.reshape(-1)[m]
