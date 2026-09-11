@@ -174,7 +174,16 @@ def masked_mean_pool(h: torch.Tensor, mask: torch.Tensor | None) -> torch.Tensor
 
 
 def last_valid_token(h: torch.Tensor, mask: torch.Tensor | None) -> torch.Tensor:
-    """Take the last valid token per row (causal readout)."""
+    """Take the last valid token per row (causal readout).
+
+    A fully empty padded batch has shape [B, 0, D]. Return a zero pooled
+    state in that case; modality-specific encoders subsequently replace it
+    with their learned null vector when availability is zero.
+    """
+    if h.size(1) == 0:
+        # sum over an empty temporal axis gives [B, D] zeros while preserving
+        # dtype/device and autograd connectivity.
+        return h.sum(dim=1)
     if mask is None:
         return h[:, -1]
     # mask: True = valid
