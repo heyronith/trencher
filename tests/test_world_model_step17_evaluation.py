@@ -170,6 +170,10 @@ def test_stage_lineage_hashes() -> None:
     c = stage_c_lineage()
     assert b["checkpoint_sha256"].startswith("ccf27af7")
     assert c["checkpoint_sha256"].startswith("11bf593e")
+    assert b["git_sha"] == "5f895e12779979b9140d293b42186a0e4e070ecf"
+    assert b["training_git_sha"] == "5f895e12779979b9140d293b42186a0e4e070ecf"
+    assert c["runtime_git_sha"] == "b7abd1de786bf7845b98a69752d05fb695e7d170"
+    assert c["training_git_sha"] == "b7abd1de786bf7845b98a69752d05fb695e7d170"
     assert b["q85_test_accessed"] is False
     assert c["q85_test_accessed"] is False
     assert b["paired_ready_with_stage_c_rich"] is False
@@ -178,7 +182,7 @@ def test_stage_lineage_hashes() -> None:
         prediction_sha256=c["prediction_sha256"],
         metrics_sha256=c["metrics_sha256"],
         config_hash=c["config_hash"],
-        runtime_git_sha=c["runtime_git_sha"],
+        training_git_sha=c["training_git_sha"],
     )
     with pytest.raises(RuntimeError):
         verify_approved_stage_c_identity(
@@ -186,8 +190,48 @@ def test_stage_lineage_hashes() -> None:
             prediction_sha256=c["prediction_sha256"],
             metrics_sha256=c["metrics_sha256"],
             config_hash=c["config_hash"],
-            runtime_git_sha=c["runtime_git_sha"],
+            training_git_sha=c["training_git_sha"],
         )
+
+
+def test_evaluation_runtime_discovered_and_separate_from_training(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from trencher.world_model.evaluation.provenance import (
+        attach_provenance,
+        discover_evaluation_runtime,
+    )
+
+    mock_head = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    monkeypatch.setenv("TRENCHER_STEP17_EVAL_RUNTIME_SHA_OVERRIDE", mock_head)
+    monkeypatch.setenv("TRENCHER_STEP17_EVAL_RUNTIME_DIRTY_OVERRIDE", "0")
+    runtime = discover_evaluation_runtime(allow_dirty=False)
+    assert runtime["git_sha"] == mock_head
+    assert runtime["git_dirty"] is False
+    assert runtime["git_sha"] != stage_c_lineage()["training_git_sha"]
+    art = attach_provenance({"kind": "unit"}, config_hash="x", allow_dirty=False)
+    assert art["evaluation_runtime_git_sha"] == mock_head
+    assert art["evaluation_runtime_git_dirty"] is False
+    assert art["evaluation_runtime"]["git_sha"] == mock_head
+    assert art["q85_test_accessed"] is False
+    assert "required_runtime_sha" not in art
+
+
+def test_official_run_refuses_dirty_tree(monkeypatch: pytest.MonkeyPatch) -> None:
+    from trencher.world_model.evaluation.provenance import (
+        DirtyRepositoryError,
+        discover_evaluation_runtime,
+    )
+
+    monkeypatch.setenv(
+        "TRENCHER_STEP17_EVAL_RUNTIME_SHA_OVERRIDE",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    )
+    monkeypatch.setenv("TRENCHER_STEP17_EVAL_RUNTIME_DIRTY_OVERRIDE", "1")
+    with pytest.raises(DirtyRepositoryError):
+        discover_evaluation_runtime(allow_dirty=False)
+    ok = discover_evaluation_runtime(allow_dirty=True)
+    assert ok["git_dirty"] is True
 
 
 def test_artifact_sha_manifest(tmp_path: Path) -> None:
@@ -205,20 +249,34 @@ def test_report_generation() -> None:
     assert "q85" in md.lower()
 
 
-def test_preflight_builds(tmp_path: Path) -> None:
-    # Must run from repo root semantics
+def test_preflight_builds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    mock_head = "cccccccccccccccccccccccccccccccccccccccc"
+    monkeypatch.setenv("TRENCHER_STEP17_EVAL_RUNTIME_SHA_OVERRIDE", mock_head)
+    monkeypatch.setenv("TRENCHER_STEP17_EVAL_RUNTIME_DIRTY_OVERRIDE", "0")
     repo = Path(__file__).resolve().parents[1]
-    payload = build_preflight(repo_root=repo)
+    payload = build_preflight(repo_root=repo, allow_dirty=False)
     assert payload["q85_test_accessed"] is False
     assert payload["stop_gate"]["do_not_provision_gpu"] is True
+    assert "required_runtime_sha" not in payload
+    assert payload["evaluation_runtime_git_sha"] == mock_head
+    assert payload["source_models"]["stage_b"]["training_git_sha"].startswith("5f895e12")
+    assert payload["source_models"]["stage_c"]["training_git_sha"].startswith("b7abd1de")
+    assert payload["stage_b"]["git_sha"].startswith("5f895e12")
+    assert payload["stage_c"]["runtime_git_sha"].startswith("b7abd1de")
     assert payload["stage_c"]["checkpoint_sha256"].startswith("11bf593e")
     assert payload["stage_b"]["checkpoint_sha256"].startswith("ccf27af7")
+    assert "--git-sha" not in payload["stage_b_rich_inference_command"]
+    assert (
+        "b7abd1de786bf7845b98a69752d05fb695e7d170"
+        not in payload["stage_b_rich_inference_command"]
+    )
     assert len(payload["q85_refusal_proof"]["aliases_tested"]) >= 3
     retrain = payload["proposed_ablation_gpu_runs"]
     assert len(retrain) == 4
     assert all(r["omit"] for r in retrain)
     full = [a for a in scientific_ablation_configs() if a["run_id"] == "stage_c_full"][0]
     assert full["retrain"] is False
+    assert "git rev-parse HEAD" in retrain[0]["shell"]
 
 
 def test_barrier_metrics_and_rank() -> None:

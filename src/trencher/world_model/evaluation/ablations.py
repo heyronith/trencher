@@ -16,7 +16,10 @@ STAGE_C_CKPT_URI = (
     "runs/stage_c_rich/latest.pt"
 )
 STAGE_C_CKPT_SHA256 = "11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839"
-RUNTIME_SHA = "b7abd1de786bf7845b98a69752d05fb695e7d170"
+# Immutable source-training Git SHA for the frozen Stage-C checkpoint.
+STAGE_C_TRAINING_GIT_SHA = "b7abd1de786bf7845b98a69752d05fb695e7d170"
+# Deprecated alias — means Stage-C *training* provenance, not Step-17 evaluator runtime.
+RUNTIME_SHA = STAGE_C_TRAINING_GIT_SHA
 CONFIG_HASH = "c2e7c0e51ef91df87333615f5e6cd66e0baed891fbabcb907c5f5fa55a6d8945"
 RICH_STEPS = 25000
 
@@ -88,7 +91,6 @@ def ablation_launch_env(cfg: dict[str, Any]) -> dict[str, str]:
         "TRENCHER_WM_NUM_WORKERS": "2",
         "TRENCHER_WM_EXPECT_EPOCH_BATCHES": "566",
         "TRENCHER_WM_RUN_ID": run_id,
-        "TRENCHER_GIT_SHA": RUNTIME_SHA,
         "TRENCHER_GCS_URI": (
             "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1"
         ),
@@ -118,6 +120,8 @@ def ablation_launch_commands() -> list[dict[str, Any]]:
         export_lines = "\n".join(f"export {k}={v!s}" for k, v in env.items())
         cmd = (
             f"{export_lines}\n"
+            # Evaluator/training runtime SHA: discover at launch, never Stage-C historical.
+            'export TRENCHER_GIT_SHA="$(git rev-parse HEAD)"\n'
             f"mkdir -p \"$TRENCHER_WM_CKPT_DIR\"\n"
             f"# restore Stage-B latest.pt into local resume path before launch\n"
             f"nohup bash /content/trencher/scripts/colab/launch_training.sh "
@@ -137,6 +141,7 @@ def ablation_launch_commands() -> list[dict[str, Any]]:
                 "durable_prefix": f"{STEP17_DURABLE_PREFIX}/{cfg['run_id']}/",
                 "env": env,
                 "shell": cmd,
+                "evaluation_runtime_git_sha_policy": "discovered_at_launch_via_git_rev_parse_HEAD",
             }
         )
     return commands

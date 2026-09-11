@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from trencher.world_model.config import WorldModelConfig
 from trencher.world_model.evaluation import STEP17_DURABLE_PREFIX
-from trencher.world_model.evaluation.ablations import RUNTIME_SHA, STAGE_B_CKPT_SHA256
+from trencher.world_model.evaluation.ablations import STAGE_B_CKPT_SHA256
 from trencher.world_model.heads import WorldModelHeads
 
 
@@ -148,8 +148,7 @@ def gru_control_plan(*, world_model_params: int = 15_679_133) -> dict[str, Any]:
             "uv run python -m trencher.world_model.evaluation.step17 gru-train "
             "--world-root /content/trencher_stage/world_model "
             "--split-root /content/trencher_stage/world_model/splits/split_v1 "
-            "--device cuda --max-steps 25000 --seed 42 "
-            f"--git-sha {RUNTIME_SHA}"
+            "--device cuda --max-steps 25000 --seed 42"
         ),
         "lineage_note": (
             f"Does not resume Stage-B weights (architecture differs); "

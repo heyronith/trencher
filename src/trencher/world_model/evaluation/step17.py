@@ -26,7 +26,11 @@ from trencher.world_model.split_guard import PermanentTestAccessError
 
 
 def _cmd_preflight(args: argparse.Namespace) -> int:
-    payload = write_preflight(Path(args.out), repo_root=Path(args.repo_root))
+    payload = write_preflight(
+        Path(args.out),
+        repo_root=Path(args.repo_root),
+        allow_dirty=bool(args.allow_dirty),
+    )
     print(json.dumps({"wrote": args.out, "status": payload["status"]}, indent=2))
     return 0
 
@@ -42,12 +46,13 @@ def _cmd_infer(args: argparse.Namespace) -> int:
         mode=args.mode,
         phase=args.phase,
         device=args.device,
-        git_sha=args.git_sha,
         omit_modalities=[x for x in (args.omit or "").split(",") if x],
         inference_mask_omit=[x for x in (args.inference_mask or "").split(",") if x],
         run_id=args.run_id,
         max_batches=args.max_batches,
         expected_checkpoint_sha256=args.expected_checkpoint_sha256,
+        repo_root=Path(args.repo_root) if args.repo_root else None,
+        allow_dirty=bool(args.allow_dirty),
     )
     print(json.dumps(summary, indent=2, sort_keys=True, default=str))
     return 0
@@ -157,6 +162,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("preflight", help="Write STEP17_PREFLIGHT.json")
     sp.add_argument("--out", default="manifests/world_model_data/evaluation/STEP17_PREFLIGHT.json")
     sp.add_argument("--repo-root", default=".")
+    sp.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="Development/test only: allow dirty Git tree when writing preflight",
+    )
     sp.set_defaults(func=_cmd_preflight)
 
     sp = sub.add_parser("infer", help="Permanent-val inference (GPU)")
@@ -169,7 +179,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--mode", default="permanent_val_eval")
     sp.add_argument("--phase", default="rich")
     sp.add_argument("--device", default="cuda")
-    sp.add_argument("--git-sha", default="unknown")
+    sp.add_argument("--repo-root", default=None)
+    sp.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="Development/test only: allow dirty Git tree (never for scientific runs)",
+    )
     sp.add_argument("--run-id", default="permanent_val")
     sp.add_argument("--omit", default="", help="Comma-separated train-time modality omits")
     sp.add_argument(

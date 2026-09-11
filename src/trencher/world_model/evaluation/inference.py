@@ -87,12 +87,13 @@ def run_permanent_val_inference(
     mode: str = "permanent_val_eval",
     phase: str = "rich",
     device: str = "cuda",
-    git_sha: str = "unknown",
     omit_modalities: list[str] | None = None,
     inference_mask_omit: list[str] | None = None,
     run_id: str = "permanent_val",
     max_batches: int | None = None,
     expected_checkpoint_sha256: str | None = None,
+    repo_root: Path | None = None,
+    allow_dirty: bool = False,
 ) -> dict[str, Any]:
     """Run frozen permanent-val inference and write predictions + metrics artifacts."""
     mode = assert_step17_mode(mode)
@@ -214,7 +215,6 @@ def run_permanent_val_inference(
             "inference_mask_omit": sorted(mask_omit),
             "inference_mask_diagnostic": bool(mask_omit),
         },
-        git_sha=git_sha,
         config_hash=cfg.config_hash(),
         source_checkpoint_sha256=ckpt_sha,
         modality_config={
@@ -222,6 +222,8 @@ def run_permanent_val_inference(
             "omit_train": sorted(omit_train),
             "inference_mask_omit": sorted(mask_omit),
         },
+        repo_root=repo_root,
+        allow_dirty=allow_dirty,
     )
     meta.update(provenance_q85_flag(accessed=False))
     metrics_payload = dict(metrics)

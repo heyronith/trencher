@@ -6,14 +6,16 @@ from typing import Any
 
 from trencher.world_model.evaluation.ablations import (
     CONFIG_HASH,
-    RUNTIME_SHA,
     STAGE_B_CKPT_SHA256,
     STAGE_B_CKPT_URI,
     STAGE_C_CKPT_SHA256,
     STAGE_C_CKPT_URI,
+    STAGE_C_TRAINING_GIT_SHA,
 )
 
-STAGE_B_PRODUCER_SHA = "5f895e12779979b9140d293b42186a0e4e070ecf"
+STAGE_B_TRAINING_GIT_SHA = "5f895e12779979b9140d293b42186a0e4e070ecf"
+# Backward-compatible alias for historical Stage-B producer SHA.
+STAGE_B_PRODUCER_SHA = STAGE_B_TRAINING_GIT_SHA
 STAGE_B_METRICS_URI = (
     "gs://trencher-world-model-v1-ronithworks-20260907/world_model_freeze_v1/"
     "runs/stage_b_broad/stage_b_permanent_val_eval.json"
@@ -37,7 +39,9 @@ def stage_b_lineage() -> dict[str, Any]:
         "checkpoint_phase": "broad",
         "checkpoint_phase_step": 100000,
         "consumed_microbatches": 100000,
-        "git_sha": STAGE_B_PRODUCER_SHA,
+        # Historical source-training / producer SHA (immutable).
+        "git_sha": STAGE_B_TRAINING_GIT_SHA,
+        "training_git_sha": STAGE_B_TRAINING_GIT_SHA,
         "config_hash": CONFIG_HASH,
         "permanent_val_metrics_uri": STAGE_B_METRICS_URI,
         "permanent_val_metrics_sha256": STAGE_B_METRICS_SHA256,
@@ -63,7 +67,10 @@ def stage_c_lineage() -> dict[str, Any]:
         "checkpoint_sha256": STAGE_C_CKPT_SHA256,
         "checkpoint_step": 175000,
         "checkpoint_phase": "rich",
-        "runtime_git_sha": RUNTIME_SHA,
+        # Historical source-training SHA for the frozen Stage-C checkpoint.
+        # Field name preserved for lineage compatibility; not the Step-17 evaluator.
+        "runtime_git_sha": STAGE_C_TRAINING_GIT_SHA,
+        "training_git_sha": STAGE_C_TRAINING_GIT_SHA,
         "config_hash": CONFIG_HASH,
         "validation_root": STAGE_C_VAL_ROOT,
         "prediction_sha256": STAGE_C_PRED_SHA256,
@@ -77,21 +84,43 @@ def stage_c_lineage() -> dict[str, Any]:
     }
 
 
+def source_models_provenance() -> dict[str, Any]:
+    """Explicit source-model provenance (never evaluator runtime)."""
+    return {
+        "stage_b": {
+            "training_git_sha": STAGE_B_TRAINING_GIT_SHA,
+            "checkpoint_sha256": STAGE_B_CKPT_SHA256,
+            "checkpoint_uri": STAGE_B_CKPT_URI,
+        },
+        "stage_c": {
+            "training_git_sha": STAGE_C_TRAINING_GIT_SHA,
+            "checkpoint_sha256": STAGE_C_CKPT_SHA256,
+            "checkpoint_uri": STAGE_C_CKPT_URI,
+        },
+    }
+
+
 def verify_approved_stage_c_identity(
     *,
     checkpoint_sha256: str,
     prediction_sha256: str,
     metrics_sha256: str,
     config_hash: str,
-    runtime_git_sha: str,
+    training_git_sha: str | None = None,
+    runtime_git_sha: str | None = None,
 ) -> None:
+    """Verify frozen Stage-C *source-training* identity (not evaluator runtime)."""
     want = stage_c_lineage()
+    # Accept either name; both refer to Stage-C training provenance.
+    declared = training_git_sha if training_git_sha is not None else runtime_git_sha
+    if declared is None:
+        raise RuntimeError("Stage-C training_git_sha/runtime_git_sha required")
     checks = {
         "checkpoint_sha256": (checkpoint_sha256, want["checkpoint_sha256"]),
         "prediction_sha256": (prediction_sha256, want["prediction_sha256"]),
         "metrics_sha256": (metrics_sha256, want["metrics_sha256"]),
         "config_hash": (config_hash, want["config_hash"]),
-        "runtime_git_sha": (runtime_git_sha, want["runtime_git_sha"]),
+        "training_git_sha": (declared, want["training_git_sha"]),
     }
     bad = {k: v for k, v in checks.items() if v[0] != v[1]}
     if bad:

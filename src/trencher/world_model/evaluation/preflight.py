@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -10,26 +9,24 @@ from trencher.world_model.config import load_world_model_config
 from trencher.world_model.evaluation import STEP17_CONTRACT, STEP17_DURABLE_PREFIX
 from trencher.world_model.evaluation.ablations import (
     CONFIG_HASH,
-    RUNTIME_SHA,
     ablation_launch_commands,
     scientific_ablation_configs,
 )
 from trencher.world_model.evaluation.baselines import compare_world_model_to_baselines
 from trencher.world_model.evaluation.gru_control import gru_control_plan
-from trencher.world_model.evaluation.lineage import stage_b_lineage, stage_c_lineage
+from trencher.world_model.evaluation.lineage import (
+    source_models_provenance,
+    stage_b_lineage,
+    stage_c_lineage,
+)
 from trencher.world_model.evaluation.masking import diagnostic_configs
 from trencher.world_model.evaluation.modes import assert_step17_mode, provenance_q85_flag
-from trencher.world_model.evaluation.provenance import write_json_with_sidecar
+from trencher.world_model.evaluation.provenance import (
+    discover_evaluation_runtime,
+    evaluation_runtime_fields,
+    write_json_with_sidecar,
+)
 from trencher.world_model.split_guard import PermanentTestAccessError
-
-
-def _git_sha() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
-        ).strip()
-    except Exception:  # noqa: BLE001
-        return "unknown"
 
 
 def _q85_refusal_proof() -> dict[str, Any]:
@@ -43,7 +40,6 @@ def _q85_refusal_proof() -> dict[str, Any]:
             proof["aliases_tested"].append(
                 {"alias": alias, "refused": True, "error": str(exc)}
             )
-    # permanent_val must be allowed
     allowed = assert_step17_mode("permanent_val_eval")
     proof["permanent_val_eval_allowed"] = allowed == "permanent_val_eval"
     proof.update(provenance_q85_flag(accessed=False))
@@ -52,7 +48,11 @@ def _q85_refusal_proof() -> dict[str, Any]:
     return proof
 
 
-def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
+def build_preflight(
+    *,
+    repo_root: Path | None = None,
+    allow_dirty: bool = False,
+) -> dict[str, Any]:
     root = Path(repo_root) if repo_root else Path.cwd()
     cfg_path = root / "configs/world_model/world_model_candidate_v2.yaml"
     cfg = load_world_model_config(cfg_path)
@@ -60,19 +60,29 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
         raise RuntimeError(
             f"frozen config hash mismatch: got={cfg.config_hash()} want={CONFIG_HASH}"
         )
-    git_sha = _git_sha()
-    if git_sha not in {RUNTIME_SHA, "unknown"} and git_sha != RUNTIME_SHA:
-        # Allow feature-branch commits that descend from runtime SHA; record both.
-        pass
 
+    runtime = discover_evaluation_runtime(repo_root=root, allow_dirty=allow_dirty)
     stage_b = stage_b_lineage()
     stage_c = stage_c_lineage()
+    source_models = source_models_provenance()
     if stage_b["config_hash"] != stage_c["config_hash"]:
         raise RuntimeError("Stage-B/C config hash mismatch")
-    if stage_c["checkpoint_sha256"] != stage_c_lineage()["checkpoint_sha256"]:
+    if stage_c["checkpoint_sha256"] != source_models["stage_c"]["checkpoint_sha256"]:
         raise RuntimeError("Stage-C checkpoint identity drift")
+    # Evaluator runtime must NOT be required equal to Stage-C training SHA.
+    if runtime["git_sha"] == stage_c["training_git_sha"]:
+        # Equality is allowed when evaluating from that historical checkout, but
+        # it is never *required*. Record the observation only.
+        runtime_note = (
+            "evaluation_runtime_git_sha currently equals Stage-C training_git_sha; "
+            "this is incidental, not a requirement"
+        )
+    else:
+        runtime_note = (
+            "evaluation_runtime_git_sha differs from Stage-C training_git_sha "
+            "(expected for Step-17 implementation commits)"
+        )
 
-    # Baseline comparison scaffold (no WM rich metric injection yet beyond schema)
     baseline_cmp = compare_world_model_to_baselines(
         {"explosion": {"60": {"auroc": None, "support": None}, "300": {"auroc": None}}}
     )
@@ -84,10 +94,15 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "contract": STEP17_CONTRACT,
         "status": "ready_for_gpu_decision",
-        "git_sha": git_sha,
-        "required_runtime_sha": RUNTIME_SHA,
         "config_hash": CONFIG_HASH,
         "durable_prefix": STEP17_DURABLE_PREFIX,
+        **evaluation_runtime_fields(runtime),
+        "evaluation_runtime_policy": (
+            "Discovered at artifact generation / execution via git rev-parse HEAD. "
+            "Never pinned to Stage-B or Stage-C source-training SHAs."
+        ),
+        "evaluation_runtime_note": runtime_note,
+        "source_models": source_models,
         "stage_b": stage_b,
         "stage_c": stage_c,
         "permanent_validation_population_for_paired_eval": "rich",
@@ -102,8 +117,7 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
             "--split-root /content/trencher_stage/world_model/splits/split_v1 "
             "--population rich --phase rich --mode permanent_val_eval "
             "--run-id stage_b_rich_permanent_val "
-            "--out-dir /content/trencher_stage/evaluation/step17/stage_b_rich_permanent_val "
-            f"--git-sha {RUNTIME_SHA}"
+            "--out-dir /content/trencher_stage/evaluation/step17/stage_b_rich_permanent_val"
         ),
         "inference_time_diagnostics": {
             "label": "inference_time_modality_mask_diagnostic",
@@ -111,7 +125,8 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
             "results": None,
             "note": (
                 "Not executed in the editor task (requires GPU + restored rich corpus). "
-                "Run after Stage-C checkpoint restore to prioritize retraining ablations."
+                "Run after Stage-C checkpoint restore to prioritize retraining ablations. "
+                "Evaluator records evaluation_runtime_git_sha from git HEAD internally."
             ),
             "command": (
                 "uv run python -m trencher.world_model.evaluation.step17 diagnose-masks "
@@ -119,8 +134,7 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
                 f"--expected-checkpoint-sha256 {stage_c['checkpoint_sha256']} "
                 "--world-root /content/trencher_stage/world_model "
                 "--split-root /content/trencher_stage/world_model/splits/split_v1 "
-                "--out-dir /content/trencher_stage/evaluation/step17/diagnostics "
-                f"--git-sha {RUNTIME_SHA}"
+                "--out-dir /content/trencher_stage/evaluation/step17/diagnostics"
             ),
         },
         "scientific_ablations": ablations,
@@ -151,7 +165,12 @@ def build_preflight(*, repo_root: Path | None = None) -> dict[str, Any]:
     return payload
 
 
-def write_preflight(path: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
-    payload = build_preflight(repo_root=repo_root)
+def write_preflight(
+    path: Path,
+    *,
+    repo_root: Path | None = None,
+    allow_dirty: bool = False,
+) -> dict[str, Any]:
+    payload = build_preflight(repo_root=repo_root, allow_dirty=allow_dirty)
     write_json_with_sidecar(Path(path), payload)
     return payload
