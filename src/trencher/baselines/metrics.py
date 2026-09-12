@@ -8,36 +8,71 @@ import numpy as np
 
 
 def _safe_auc(y_true: np.ndarray, scores: np.ndarray) -> float | None:
+    """Tie-aware AUROC via Mann-Whitney average ranks."""
     y = np.asarray(y_true).astype(int)
     s = np.asarray(scores, dtype=np.float64)
     if y.size == 0 or len(np.unique(y)) < 2:
         return None
-    order = np.argsort(s)
+
+    order = np.argsort(s, kind="mergesort")
     y = y[order]
+    s = s[order]
+
     n_pos = float(y.sum())
     n_neg = float(y.size - n_pos)
     if n_pos == 0 or n_neg == 0:
         return None
-    ranks = np.arange(1, y.size + 1, dtype=np.float64)
-    # average ranks for ties
-    # Mann–Whitney
-    sum_ranks_pos = ranks[y == 1].sum()
-    auc = (sum_ranks_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+    sum_ranks_pos = 0.0
+    start = 0
+
+    while start < y.size:
+        end = start + 1
+        while end < y.size and s[end] == s[start]:
+            end += 1
+
+        # 1-based average rank for all observations in this tie group.
+        avg_rank = ((start + 1) + end) / 2.0
+        sum_ranks_pos += avg_rank * float(y[start:end].sum())
+        start = end
+
+    auc = (
+        sum_ranks_pos - n_pos * (n_pos + 1) / 2.0
+    ) / (n_pos * n_neg)
     return float(auc)
 
 
 def average_precision(y_true: np.ndarray, scores: np.ndarray) -> float | None:
+    """Tie-invariant average precision using equal-score threshold groups."""
     y = np.asarray(y_true).astype(int)
     s = np.asarray(scores, dtype=np.float64)
     if y.size == 0 or y.sum() == 0:
         return None
-    order = np.argsort(-s)
+
+    order = np.argsort(-s, kind="mergesort")
     y = y[order]
+    s = s[order]
+
+    total_pos = float(y.sum())
     tp = np.cumsum(y)
-    fp = np.cumsum(1 - y)
-    precision = tp / np.clip(tp + fp, 1, None)
-    # AP as sum of precision at each positive
-    return float(np.sum(precision * y) / float(y.sum()))
+    ap = 0.0
+    previous_tp = 0.0
+    start = 0
+
+    while start < y.size:
+        end = start + 1
+        while end < y.size and s[end] == s[start]:
+            end += 1
+
+        current_tp = float(tp[end - 1])
+        group_pos = current_tp - previous_tp
+        precision = current_tp / float(end)
+
+        ap += precision * group_pos / total_pos
+        previous_tp = current_tp
+        start = end
+
+    return float(ap)
 
 
 def brier_score(y_true: np.ndarray, probs: np.ndarray) -> float:
