@@ -208,6 +208,11 @@ def main() -> None:
     torch.manual_seed(int(cfg.train.seed))
     np.random.seed(int(cfg.train.seed))
     model = WorldModel(cfg)
+    omit_raw = os.environ.get("TRENCHER_WM_OMIT_MODALITIES", "").strip()
+    if omit_raw:
+        omit_set = {x.strip() for x in omit_raw.split(",") if x.strip()}
+        model.omit_modalities = omit_set  # type: ignore[attr-defined]
+        print(f"omit_modalities={sorted(omit_set)}")
     print(f"parameters={count_parameters(model):,}")
     print(f"config_hash={cfg.config_hash()}")
     print(f"git_sha={_git_sha()}")
