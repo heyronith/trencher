@@ -2,6 +2,8 @@
 
 On-chain raw data extraction for the meme-coin world model. Pulls verified Pump / PumpSwap / Solana data from Dune into immutable, partitioned Parquet with full provenance. No social data.
 
+**New lead / full program context:** see [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md) (data freeze → Stages A–C → Step-17 evaluation). This README covers the Dune/data CLI surface only.
+
 ## Setup
 
 ```bash

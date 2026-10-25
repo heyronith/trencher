@@ -17,6 +17,9 @@ htmlcov/
 # Data (never commit raw extracts or downloaded corpora)
 /data/
 
+# Local analysis scratch (downloaded GCS copies, rebuilt feature caches)
+/scratch/
+
 # Committed provenance/inventory live under manifests/
 
 
