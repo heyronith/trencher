@@ -1,0 +1,1497 @@
+{
+  "could_not_complete": [
+    "n_trades_before_T uses sequence_events_v2, not a full pumpfun corpus rescan."
+  ],
+  "q85_test_accessed": false,
+  "section1": {
+    "_cache_paths": {
+      "note": "arrays not serialized; section3 reloads matrices"
+    },
+    "boolean_prevalence": {
+      "largest_after_T_train_frac": 0.27119907254057635,
+      "largest_after_T_val_frac": 0.261049315877547,
+      "last_after_T_train_frac": 0.4534062051451916,
+      "last_after_T_val_frac": 0.416970174229747,
+      "max_curve_after_T_val_frac": 0.21655674771138891
+    },
+    "heads": {
+      "explosion_300s": {
+        "explosion_rates": {
+          "by_frac_sel_before_decile": {
+            "1": {
+              "n": 816,
+              "n_pos": 60,
+              "rate": 0.07352941176470588
+            },
+            "10": {
+              "n": 779,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "2": {
+              "n": 802,
+              "n_pos": 63,
+              "rate": 0.07855361596009976
+            },
+            "3": {
+              "n": 809,
+              "n_pos": 9,
+              "rate": 0.011124845488257108
+            },
+            "4": {
+              "n": 814,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "5": {
+              "n": 809,
+              "n_pos": 1,
+              "rate": 0.0012360939431396785
+            },
+            "6": {
+              "n": 789,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "7": {
+              "n": 797,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "8": {
+              "n": 798,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "9": {
+              "n": 780,
+              "n_pos": 0,
+              "rate": 0.0
+            }
+          },
+          "by_largest_after_T": {
+            "false": {
+              "n": 5428,
+              "n_pos": 5,
+              "rate": 0.0009211495946941784
+            },
+            "true": {
+              "n": 2594,
+              "n_pos": 128,
+              "rate": 0.04934464148033924
+            }
+          },
+          "by_last_after_T": {
+            "false": {
+              "n": 3848,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "true": {
+              "n": 4174,
+              "n_pos": 133,
+              "rate": 0.03186391950167705
+            }
+          },
+          "by_max_curve_after_T": {
+            "false": {
+              "n": 5878,
+              "n_pos": 15,
+              "rate": 0.0025518883974140864
+            },
+            "true": {
+              "n": 2144,
+              "n_pos": 118,
+              "rate": 0.05503731343283582
+            }
+          },
+          "by_micro_n_decile": {
+            "1": {
+              "n": 373,
+              "n_pos": 20,
+              "rate": 0.05361930294906166
+            },
+            "10": {
+              "n": 969,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "2": {
+              "n": 336,
+              "n_pos": 34,
+              "rate": 0.10119047619047619
+            },
+            "3": {
+              "n": 417,
+              "n_pos": 34,
+              "rate": 0.0815347721822542
+            },
+            "4": {
+              "n": 983,
+              "n_pos": 15,
+              "rate": 0.015259409969481181
+            },
+            "5": {
+              "n": 989,
+              "n_pos": 23,
+              "rate": 0.023255813953488372
+            },
+            "6": {
+              "n": 998,
+              "n_pos": 6,
+              "rate": 0.006012024048096192
+            },
+            "7": {
+              "n": 994,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "8": {
+              "n": 986,
+              "n_pos": 1,
+              "rate": 0.0010141987829614604
+            },
+            "9": {
+              "n": 977,
+              "n_pos": 0,
+              "rate": 0.0
+            }
+          }
+        },
+        "single_feature_auroc_val": {
+          "frac_sel_before": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.012919825940228512,
+            "roc_auc": 0.10670325198215465
+          },
+          "largest_after_T": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.048112865734152147,
+            "roc_auc": 0.8249094341888439
+          },
+          "last_after_T": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.03186391950167705,
+            "roc_auc": 0.7438838889593105
+          },
+          "max_curve_after_T": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.05069995552294035,
+            "roc_auc": 0.8152023803964213
+          },
+          "micro_n": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.012888099502142031,
+            "roc_auc": 0.1301393298177628
+          },
+          "n_trades_before_T": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.012690854647398888,
+            "roc_auc": 0.3303233683143084
+          }
+        }
+      },
+      "explosion_60s": {
+        "explosion_rates": {
+          "by_frac_sel_before_decile": {
+            "1": {
+              "n": 816,
+              "n_pos": 51,
+              "rate": 0.0625
+            },
+            "10": {
+              "n": 780,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "2": {
+              "n": 802,
+              "n_pos": 55,
+              "rate": 0.0685785536159601
+            },
+            "3": {
+              "n": 809,
+              "n_pos": 8,
+              "rate": 0.009888751545117428
+            },
+            "4": {
+              "n": 815,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "5": {
+              "n": 809,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "6": {
+              "n": 789,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "7": {
+              "n": 797,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "8": {
+              "n": 801,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "9": {
+              "n": 780,
+              "n_pos": 0,
+              "rate": 0.0
+            }
+          },
+          "by_largest_after_T": {
+            "false": {
+              "n": 5432,
+              "n_pos": 4,
+              "rate": 0.0007363770250368188
+            },
+            "true": {
+              "n": 2595,
+              "n_pos": 110,
+              "rate": 0.04238921001926782
+            }
+          },
+          "by_last_after_T": {
+            "false": {
+              "n": 3852,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "true": {
+              "n": 4175,
+              "n_pos": 114,
+              "rate": 0.027305389221556887
+            }
+          },
+          "by_max_curve_after_T": {
+            "false": {
+              "n": 5883,
+              "n_pos": 14,
+              "rate": 0.0023797382287948326
+            },
+            "true": {
+              "n": 2144,
+              "n_pos": 100,
+              "rate": 0.04664179104477612
+            }
+          },
+          "by_micro_n_decile": {
+            "1": {
+              "n": 373,
+              "n_pos": 20,
+              "rate": 0.05361930294906166
+            },
+            "10": {
+              "n": 969,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "2": {
+              "n": 336,
+              "n_pos": 24,
+              "rate": 0.07142857142857142
+            },
+            "3": {
+              "n": 417,
+              "n_pos": 34,
+              "rate": 0.0815347721822542
+            },
+            "4": {
+              "n": 983,
+              "n_pos": 7,
+              "rate": 0.007121057985757884
+            },
+            "5": {
+              "n": 989,
+              "n_pos": 23,
+              "rate": 0.023255813953488372
+            },
+            "6": {
+              "n": 998,
+              "n_pos": 6,
+              "rate": 0.006012024048096192
+            },
+            "7": {
+              "n": 995,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "8": {
+              "n": 988,
+              "n_pos": 0,
+              "rate": 0.0
+            },
+            "9": {
+              "n": 979,
+              "n_pos": 0,
+              "rate": 0.0
+            }
+          }
+        },
+        "single_feature_auroc_val": {
+          "frac_sel_before": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.011171484795598069,
+            "roc_auc": 0.10334758924354992
+          },
+          "largest_after_T": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.041400187492992846,
+            "roc_auc": 0.8254360468338798
+          },
+          "last_after_T": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.027305389221556887,
+            "roc_auc": 0.7433969417414381
+          },
+          "max_curve_after_T": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.04265796541020743,
+            "roc_auc": 0.8094419354338076
+          },
+          "micro_n": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.011143649981556283,
+            "roc_auc": 0.12509062369052923
+          },
+          "n_trades_before_T": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.010444245714774914,
+            "roc_auc": 0.30543343066373124
+          }
+        }
+      }
+    },
+    "lgbm_variants": {
+      "explosion_300s": {
+        "a_minus_micro_n_and_mask_micro": {
+          "pr_auc": 0.08816022629331338,
+          "roc_auc": 0.8664238870722248,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.015122350069591771,
+                0.05479664709032963
+              ],
+              "delta": 0.01829069694822108,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.0698695293450923,
+              "point_b": 0.08816022629331338,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.0075728662439358725,
+                0.07371156891944752
+              ],
+              "delta": 0.042222586508100624,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8242013005641242,
+              "point_b": 0.8664238870722248,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.05648462296664397,
+                0.005074525149643009
+              ],
+              "delta": -0.021926097188051594,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11008632348136498,
+              "point_b": 0.08816022629331338,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.06339005974398121,
+                -0.012733513280056152
+              ],
+              "delta": -0.03703881963750799,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9034627067097328,
+              "point_b": 0.8664238870722248,
+              "seed": 0
+            }
+          }
+        },
+        "arm_A": {
+          "pr_auc": 0.0698695293450923,
+          "roc_auc": 0.8242013005641242
+        },
+        "b_minus_all_microstructure": {
+          "pr_auc": 0.08142842491298573,
+          "roc_auc": 0.8438913229327597,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.014204997198096654,
+                0.04169517602558063
+              ],
+              "delta": 0.011558895567893426,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.0698695293450923,
+              "point_b": 0.08142842491298573,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.0009469179511429783,
+                0.04037096261822199
+              ],
+              "delta": 0.019690022368635485,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8242013005641242,
+              "point_b": 0.8438913229327597,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.07514850183528425,
+                0.012128625324083028
+              ],
+              "delta": -0.028657898568379248,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11008632348136498,
+              "point_b": 0.08142842491298573,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.0875848933234859,
+                -0.02932857908973731
+              ],
+              "delta": -0.05957138377697313,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9034627067097328,
+              "point_b": 0.8438913229327597,
+              "seed": 0
+            }
+          }
+        },
+        "c_micro_n_replaced_by_n_trades_before_T": {
+          "pr_auc": 0.09231637858660197,
+          "roc_auc": 0.8697329583306727,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.01955163520188698,
+                0.08282025309849501
+              ],
+              "delta": 0.022446849241509664,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.0698695293450923,
+              "point_b": 0.09231637858660197,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.004930562989976587,
+                0.08099436645347892
+              ],
+              "delta": 0.04553165776654844,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8242013005641242,
+              "point_b": 0.8697329583306727,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.05699074376293464,
+                0.03544890891664727
+              ],
+              "delta": -0.01776994489476301,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11008632348136498,
+              "point_b": 0.09231637858660197,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.057893691831090284,
+                -0.010841030027265396
+              ],
+              "delta": -0.033729748379060176,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9034627067097328,
+              "point_b": 0.8697329583306727,
+              "seed": 0
+            }
+          }
+        },
+        "committed_B_roc": 0.9034631832464924,
+        "d_plus_frac_sel_before_canary": {
+          "pr_auc": 0.09277436735764852,
+          "roc_auc": 0.8945743430702501,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.015926455153502387,
+                0.07017985270275151
+              ],
+              "delta": 0.022904838012556217,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.0698695293450923,
+              "point_b": 0.09277436735764852,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.04062664497152491,
+                0.09711532881911636
+              ],
+              "delta": 0.07037304250612586,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8242013005641242,
+              "point_b": 0.8945743430702501,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.05303980876950221,
+                0.014421862885211304
+              ],
+              "delta": -0.017311956123716457,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11008632348136498,
+              "point_b": 0.09277436735764852,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.020914745546947063,
+                0.0030114764426212104
+              ],
+              "delta": -0.008888363639482755,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9034627067097328,
+              "point_b": 0.8945743430702501,
+              "seed": 0
+            }
+          }
+        },
+        "fixed_iterations_A": 50,
+        "fixed_iterations_B": 50,
+        "full_B": {
+          "pr_auc": 0.11008632348136498,
+          "roc_auc": 0.9034627067097328,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.0041721695443978305,
+                0.0914903704786114
+              ],
+              "delta": 0.040216794136272674,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.0698695293450923,
+              "point_b": 0.11008632348136498,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.04538812386786564,
+                0.10933815163187675
+              ],
+              "delta": 0.07926140614560861,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8242013005641242,
+              "point_b": 0.9034627067097328,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                0.0,
+                0.0
+              ],
+              "delta": 0.0,
+              "metric": "pr_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11008632348136498,
+              "point_b": 0.11008632348136498,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.0,
+                0.0
+              ],
+              "delta": 0.0,
+              "metric": "roc_auc",
+              "n": 8022,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9034627067097328,
+              "point_b": 0.9034627067097328,
+              "seed": 0
+            }
+          }
+        },
+        "repro_B_within_0_005": true
+      },
+      "explosion_60s": {
+        "a_minus_micro_n_and_mask_micro": {
+          "pr_auc": 0.10649426333505584,
+          "roc_auc": 0.8924227509250822,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.010728438370048025,
+                0.08140981911644357
+              ],
+              "delta": 0.0321321892828003,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.07436207405225553,
+              "point_b": 0.10649426333505584,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.02068243367113941,
+                0.09563751384986521
+              ],
+              "delta": 0.057665489390099745,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8347572615349824,
+              "point_b": 0.8924227509250822,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.032093241312418495,
+                0.023120019591446297
+              ],
+              "delta": -0.00780548898648345,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11429975232153929,
+              "point_b": 0.10649426333505584,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.041464025181145295,
+                -0.006509922208772741
+              ],
+              "delta": -0.024417403295931006,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9168401542210132,
+              "point_b": 0.8924227509250822,
+              "seed": 0
+            }
+          }
+        },
+        "arm_A": {
+          "pr_auc": 0.07436207405225553,
+          "roc_auc": 0.8347572615349824
+        },
+        "b_minus_all_microstructure": {
+          "pr_auc": 0.10827932389581735,
+          "roc_auc": 0.8811371915191746,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                0.005269448073804462,
+                0.06937620007008534
+              ],
+              "delta": 0.033917249843561814,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.07436207405225553,
+              "point_b": 0.10827932389581735,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.020082857219223683,
+                0.06902471839799694
+              ],
+              "delta": 0.04637992998419216,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8347572615349824,
+              "point_b": 0.8811371915191746,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.05791230264253192,
+                0.04963063427185554
+              ],
+              "delta": -0.006020428425721938,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11429975232153929,
+              "point_b": 0.10827932389581735,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.06134594973739746,
+                -0.009275785458530781
+              ],
+              "delta": -0.03570296270183859,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9168401542210132,
+              "point_b": 0.8811371915191746,
+              "seed": 0
+            }
+          }
+        },
+        "c_micro_n_replaced_by_n_trades_before_T": {
+          "pr_auc": 0.10646415100055204,
+          "roc_auc": 0.8859859746674914,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.014354035966068565,
+                0.08974524452620779
+              ],
+              "delta": 0.032102076948296504,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.07436207405225553,
+              "point_b": 0.10646415100055204,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.011504090303641768,
+                0.09332907087914921
+              ],
+              "delta": 0.051228713132508985,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8347572615349824,
+              "point_b": 0.8859859746674914,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.029541801120454066,
+                0.02502766196979512
+              ],
+              "delta": -0.007835601320987248,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11429975232153929,
+              "point_b": 0.10646415100055204,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.04969018051953229,
+                -0.011316835570412912
+              ],
+              "delta": -0.030854179553521766,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9168401542210132,
+              "point_b": 0.8859859746674914,
+              "seed": 0
+            }
+          }
+        },
+        "committed_B_roc": 0.9168401542210132,
+        "d_plus_frac_sel_before_canary": {
+          "pr_auc": 0.12034240372024263,
+          "roc_auc": 0.9207566496172188,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.0006244183877618912,
+                0.09394384508620957
+              ],
+              "delta": 0.0459803296679871,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.07436207405225553,
+              "point_b": 0.12034240372024263,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.04799957323834651,
+                0.12199008413562282
+              ],
+              "delta": 0.0859993880822364,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8347572615349824,
+              "point_b": 0.9207566496172188,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                -0.016933583570840943,
+                0.02896086822633979
+              ],
+              "delta": 0.006042651398703344,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11429975232153929,
+              "point_b": 0.12034240372024263,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                -0.0059987555950719775,
+                0.012706085506472023
+              ],
+              "delta": 0.003916495396205644,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9168401542210132,
+              "point_b": 0.9207566496172188,
+              "seed": 0
+            }
+          }
+        },
+        "fixed_iterations_A": 50,
+        "fixed_iterations_B": 57,
+        "full_B": {
+          "pr_auc": 0.11429975232153929,
+          "roc_auc": 0.9168401542210132,
+          "vs_arm_A": {
+            "pr": {
+              "ci95": [
+                -0.007355881874923197,
+                0.0892101361354354
+              ],
+              "delta": 0.03993767826928375,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.07436207405225553,
+              "point_b": 0.11429975232153929,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.04591070345380713,
+                0.11773044407766002
+              ],
+              "delta": 0.08208289268603075,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.8347572615349824,
+              "point_b": 0.9168401542210132,
+              "seed": 0
+            }
+          },
+          "vs_full_B": {
+            "pr": {
+              "ci95": [
+                0.0,
+                0.0
+              ],
+              "delta": 0.0,
+              "metric": "pr_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.11429975232153929,
+              "point_b": 0.11429975232153929,
+              "seed": 0
+            },
+            "roc": {
+              "ci95": [
+                0.0,
+                0.0
+              ],
+              "delta": 0.0,
+              "metric": "roc_auc",
+              "n": 8027,
+              "n_boot": 2000,
+              "n_boot_finite": 2000,
+              "n_mints": 600,
+              "point_a": 0.9168401542210132,
+              "point_b": 0.9168401542210132,
+              "seed": 0
+            }
+          }
+        },
+        "repro_B_within_0_005": true
+      }
+    },
+    "match_n_sel_before_vs_micro_n": {
+      "train": {
+        "cutoff": "event_time_unix <= T (searchsorted side=right)",
+        "match_rate": 1.0,
+        "max_abs_diff": 0.0,
+        "mean_abs_diff": 0.0,
+        "n": 36228,
+        "n_match": 36228,
+        "time_source": "sequence_microstructure_v2.event_time_unix"
+      },
+      "val": {
+        "cutoff": "event_time_unix <= T (searchsorted side=right)",
+        "match_rate": 1.0,
+        "max_abs_diff": 0.0,
+        "mean_abs_diff": 0.0,
+        "n": 10159,
+        "n_match": 10159,
+        "time_source": "sequence_microstructure_v2.event_time_unix"
+      }
+    },
+    "n_trades_source": "sequence_events_v2 per-mint event_time_unix counts with t < T (frozen rich event store; not a full pumpfun corpus rescan)",
+    "q85_test_accessed": false
+  },
+  "section2": {
+    "broad_features": {
+      "creator_history_n": {
+        "classification": "CLEAN",
+        "file": "src/trencher/baselines/features.py",
+        "note": "Same creator-history path as creator_prior_*; pre-T creator stats."
+      },
+      "creator_prior_rank": {
+        "classification": "CLEAN",
+        "file": "src/trencher/baselines/features.py",
+        "lines": "200-201",
+        "note": "Creator priors are launch-time / history-before-mint fields in broad feature construction; not selected via post-T trade extremes."
+      },
+      "daily_network_*": {
+        "classification": "CLEAN",
+        "file": "src/trencher/data/world_model/training/global_batch.py",
+        "function": "last_completed_utc_day",
+        "lines": "23-32, 183-194",
+        "quote": "Daily aggregates: last fully completed UTC day strictly before T (never the incomplete calendar day containing T)."
+      },
+      "global_launches_1h_24h": {
+        "classification": "CLEAN",
+        "file": "src/trencher/data/world_model/training/global_batch.py",
+        "function": "GlobalContextBatch.load_for_t / _count",
+        "lines": "176-187",
+        "quote": "hi = searchsorted(arr_t, last_sec, side='right'); window back from last_completed_second(T)"
+      },
+      "other_broad_window_past_T": {
+        "classification": "CLEAN",
+        "note": "Broad event/curve windows are causal sequence prefixes / last-N before T in baseline feature_cache; no additional lifetime-stratified RPC selection."
+      },
+      "token_age_seconds": {
+        "classification": "CLEAN",
+        "note": "T - detected_at; no future dependence."
+      }
+    },
+    "q85_test_accessed": false,
+    "rich_groups": {
+      "graph": {
+        "classification": "CLEAN",
+        "evidence": "Graph-token edges are derived from the full event sequence store for the mint, then observation refs slice by observation_time_t. Selection of which event rows exist is not driven by lifetime max/last stratified RPC targets. Causal filter at T is enforced in packs_for_observation.",
+        "file": "src/trencher/data/world_model/sequences.py",
+        "function": "_build_graph_token_store",
+        "lines": "815-848",
+        "quote": "for row in sequence_events_v2: append wallet_token_{side} edge (all event rows, not stratified by future peaks)"
+      },
+      "microstructure": {
+        "also": "ownership.py ~396 uses signature_targets wallets for trade_wallets coverage",
+        "classification": "LEAK",
+        "evidence": "extract_signature_targets scans full-lifetime trades into a per-mint reservoir, then select_stratified_trades_for_mint picks first/last/median buy-sell/largest/max-curve/temporal grid. Only those signatures receive getTransaction RPC. At observation T, micro_n counts selected txs with time<T, but which txs were selected depends on post-T extremes.",
+        "file": "src/trencher/data/world_model/acquire/local_corpus.py",
+        "function": "select_stratified_trades_for_mint",
+        "lines": "131-177",
+        "quote": "add(ordered[0]); add(ordered[-1]); ... by_size[-1]; by_curve[-1]; temporal grid over lifetime ordered trades"
+      },
+      "ownership": {
+        "classification": "LEAK",
+        "evidence": "Ownership RPC token-balance recovery and trade-wallet universe are keyed off the same lifetime-stratified signature_targets, so which ownership edges exist inherits the microstructure selection leak. Per-observation slicing still uses t<T, but record membership is future-dependent.",
+        "file": "src/trencher/data/world_model/ownership.py",
+        "function": "build_ownership_evidence / trade_wallets from signature_targets",
+        "lines": "395-405",
+        "quote": "st_path = world_root / 'microstructure' / 'signature_targets.parquet'; trade_wallets[mint].add(wallet)"
+      },
+      "wallet_prior": {
+        "classification": "CLEAN",
+        "evidence": "Wallet set comes from graph-token edges available at T; each wallet's prior events are truncated to event_time < T. Forbidden lifetime edges_wallet_token aggregates are explicitly not used.",
+        "file": "src/trencher/baselines/rich_index.py",
+        "function": "_wallet_prior_pack / CausalRichSequenceIndex",
+        "lines": "184-221, 248-252",
+        "quote": "wallets from graph pack at T; prior history end = searchsorted(times, T); last N before T"
+      }
+    }
+  },
+  "section3": {
+    "clean_groups": [
+      "graph",
+      "wallet_prior"
+    ],
+    "leak_groups": [
+      "microstructure",
+      "ownership"
+    ],
+    "lgbm_clean_only": {
+      "explosion_300s": {
+        "arm_A_pr_auc": 0.0698695293450923,
+        "arm_A_roc_auc": 0.8242013005641242,
+        "clean_groups": [
+          "graph",
+          "wallet_prior"
+        ],
+        "n_features": 134,
+        "pr_auc": 0.06401403020027913,
+        "roc_auc": 0.8173310701014166,
+        "vs_arm_A_pr": {
+          "ci95": [
+            -0.02873764866471156,
+            0.010096427373974214
+          ],
+          "delta": -0.0058554991448131755,
+          "metric": "pr_auc",
+          "n": 8022,
+          "n_boot": 2000,
+          "n_boot_finite": 2000,
+          "n_mints": 600,
+          "point_a": 0.0698695293450923,
+          "point_b": 0.06401403020027913,
+          "seed": 0
+        },
+        "vs_arm_A_roc": {
+          "ci95": [
+            -0.026074653554487286,
+            0.011374657565594616
+          ],
+          "delta": -0.006870230462707627,
+          "metric": "roc_auc",
+          "n": 8022,
+          "n_boot": 2000,
+          "n_boot_finite": 2000,
+          "n_mints": 600,
+          "point_a": 0.8242013005641242,
+          "point_b": 0.8173310701014166,
+          "seed": 0
+        }
+      },
+      "explosion_60s": {
+        "arm_A_pr_auc": 0.07436207405225553,
+        "arm_A_roc_auc": 0.8347572615349824,
+        "clean_groups": [
+          "graph",
+          "wallet_prior"
+        ],
+        "n_features": 134,
+        "pr_auc": 0.07005401682303868,
+        "roc_auc": 0.8406807806829091,
+        "vs_arm_A_pr": {
+          "ci95": [
+            -0.03952597792864802,
+            0.020832528945994824
+          ],
+          "delta": -0.004308057229216858,
+          "metric": "pr_auc",
+          "n": 8027,
+          "n_boot": 2000,
+          "n_boot_finite": 2000,
+          "n_mints": 600,
+          "point_a": 0.07436207405225553,
+          "point_b": 0.07005401682303868,
+          "seed": 0
+        },
+        "vs_arm_A_roc": {
+          "ci95": [
+            -0.015961426717610857,
+            0.026044335286873947
+          ],
+          "delta": 0.005923519147926659,
+          "metric": "roc_auc",
+          "n": 8027,
+          "n_boot": 2000,
+          "n_boot_finite": 2000,
+          "n_mints": 600,
+          "point_a": 0.8347572615349824,
+          "point_b": 0.8406807806829091,
+          "seed": 0
+        }
+      }
+    },
+    "q85_test_accessed": false,
+    "rich_additive_columns_kept": [
+      "mask_graph",
+      "mask_wallet_prior",
+      "graph_n",
+      "graph_buy_edges",
+      "graph_sell_edges",
+      "graph_sol_sum",
+      "graph_token_sum",
+      "wallet_prior_n",
+      "wallet_prior_sol_sum",
+      "wallet_prior_unique_approx"
+    ],
+    "rpc_refetch_estimate": {
+      "K": 16,
+      "definition": "For each rich train+val observation, last K=16 sequence_events_v2 trades strictly before T; unique tx_signature count after dedup.",
+      "n_observations_scanned": 38218,
+      "n_unique_signatures": 54144,
+      "note": "Uses sequence_events_v2 as the trade list (same store feeding graph/events). Not a full pumpfun corpus rescan.",
+      "refetch_executed": false,
+      "requests_equals_unique_sigs": 54144,
+      "wall_time_hours_at_rps": {
+        "10": 1.504,
+        "200": 0.0752,
+        "50": 0.3008
+      },
+      "wall_time_sec_at_rps": {
+        "10": 5414.4,
+        "200": 270.72,
+        "50": 1082.88
+      }
+    }
+  },
+  "section4": {
+    "allow_dirty_reason": "Review scripts make the git tree dirty; Step-17 infer requires --allow-dirty for local diagnostic mask runs (not a scientific freeze run).",
+    "allow_dirty_used": true,
+    "checkpoint_sha256": "11bf593e10e5dcc08915fc0fa2300ce988592f660b3608a5024c43121051d839",
+    "drops_vs_baseline": {
+      "no_graph": {
+        "300": {
+          "base_roc": 0.8398569627262478,
+          "delta_pr": -0.00021711531295033615,
+          "delta_roc": -0.014970878838622803,
+          "masked_roc": 0.824886083887625
+        },
+        "60": {
+          "base_roc": 0.8500480000709469,
+          "delta_pr": -0.0014661934744892163,
+          "delta_roc": -0.025124101800058085,
+          "masked_roc": 0.8249238982708889
+        }
+      },
+      "no_microstructure": {
+        "300": {
+          "base_roc": 0.8398569627262478,
+          "delta_pr": -0.03883810555748044,
+          "delta_roc": -0.1168134558731726,
+          "masked_roc": 0.7230435068530752
+        },
+        "60": {
+          "base_roc": 0.8500480000709469,
+          "delta_pr": -0.03916289215518605,
+          "delta_roc": -0.10489955458594669,
+          "masked_roc": 0.7451484454850003
+        }
+      },
+      "no_ownership": {
+        "300": {
+          "base_roc": 0.8398569627262478,
+          "delta_pr": -0.009050061705941657,
+          "delta_roc": -0.016664490482131367,
+          "masked_roc": 0.8231924722441164
+        },
+        "60": {
+          "base_roc": 0.8500480000709469,
+          "delta_pr": -0.008903415789465227,
+          "delta_roc": -0.020855088561793633,
+          "masked_roc": 0.8291929115091533
+        }
+      },
+      "no_wallet_prior": {
+        "300": {
+          "base_roc": 0.8398569627262478,
+          "delta_pr": -0.015145965751377131,
+          "delta_roc": -0.02645064937664232,
+          "masked_roc": 0.8134063133496054
+        },
+        "60": {
+          "base_roc": 0.8500480000709469,
+          "delta_pr": -0.01390477585798068,
+          "delta_roc": -0.009932578191339525,
+          "masked_roc": 0.8401154218796074
+        }
+      }
+    },
+    "loader_citation": "World-model rich phase loads sequence_dataset_v2 modalities via make_frozen_dataloader / ProductionExampleBuilder (src/trencher/world_model/v4_loader.py, src/trencher/data/world_model/training/sequences_batch.py). Same frozen micro/ownership/graph/wallet_prior sequences as baselines.",
+    "matches_expected": true,
+    "q85_test_accessed": false,
+    "runs": {
+      "baseline": {
+        "inference_mask_omit": [],
+        "metrics_recomputed_binary_metrics": {
+          "300": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.07147603204586116,
+            "roc_auc": 0.8398569627262478
+          },
+          "60": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.07205333203766065,
+            "roc_auc": 0.8500480000709469
+          }
+        },
+        "predictions_path": "/Users/ronny/Desktop/trencher/scratch/phase3_leak_v1/infer_masks/baseline/baseline_predictions.pt"
+      },
+      "no_graph": {
+        "inference_mask_omit": [
+          "graph"
+        ],
+        "metrics_recomputed_binary_metrics": {
+          "300": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.07125891673291082,
+            "roc_auc": 0.824886083887625
+          },
+          "60": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.07058713856317143,
+            "roc_auc": 0.8249238982708889
+          }
+        },
+        "predictions_path": "/Users/ronny/Desktop/trencher/scratch/phase3_leak_v1/infer_masks/no_graph/no_graph_predictions.pt"
+      },
+      "no_microstructure": {
+        "inference_mask_omit": [
+          "microstructure"
+        ],
+        "metrics_recomputed_binary_metrics": {
+          "300": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.032637926488380715,
+            "roc_auc": 0.7230435068530752
+          },
+          "60": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.0328904398824746,
+            "roc_auc": 0.7451484454850003
+          }
+        },
+        "predictions_path": "/Users/ronny/Desktop/trencher/scratch/phase3_leak_v1/infer_masks/no_microstructure/no_microstructure_predictions.pt"
+      },
+      "no_ownership": {
+        "inference_mask_omit": [
+          "ownership"
+        ],
+        "metrics_recomputed_binary_metrics": {
+          "300": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.0624259703399195,
+            "roc_auc": 0.8231924722441164
+          },
+          "60": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.06314991624819542,
+            "roc_auc": 0.8291929115091533
+          }
+        },
+        "predictions_path": "/Users/ronny/Desktop/trencher/scratch/phase3_leak_v1/infer_masks/no_ownership/no_ownership_predictions.pt"
+      },
+      "no_wallet_prior": {
+        "inference_mask_omit": [
+          "wallet_prior"
+        ],
+        "metrics_recomputed_binary_metrics": {
+          "300": {
+            "n": 8022,
+            "n_pos": 133,
+            "pr_auc": 0.056330066294484026,
+            "roc_auc": 0.8134063133496054
+          },
+          "60": {
+            "n": 8027,
+            "n_pos": 114,
+            "pr_auc": 0.05814855617967997,
+            "roc_auc": 0.8401154218796074
+          }
+        },
+        "predictions_path": "/Users/ronny/Desktop/trencher/scratch/phase3_leak_v1/infer_masks/no_wallet_prior/no_wallet_prior_predictions.pt"
+      }
+    },
+    "stage_c_pred_sha256": "2d97c92e3bf6a9b721355d9ea2537b7a54787594ba0ee659105643e8200def13",
+    "stage_c_pred_sha_ok": true
+  },
+  "section5": {
+    "by_horizon": {
+      "300": {
+        "binary_metrics_roc_auc": 0.8750163213840152,
+        "buggy_safe_auc": 0.5178434424253052,
+        "fixed_safe_auc": 0.8750163213840152,
+        "n": 8022,
+        "n_pos": 133
+      },
+      "60": {
+        "binary_metrics_roc_auc": 0.894475225090402,
+        "buggy_safe_auc": 0.5352612068525922,
+        "fixed_safe_auc": 0.894475225090402,
+        "n": 8027,
+        "n_pos": 114
+      }
+    },
+    "current_module_safe_auc_matches_buggy": true,
+    "predictions_sha256": "2d97c92e3bf6a9b721355d9ea2537b7a54787594ba0ee659105643e8200def13",
+    "predictions_sha_ok": true,
+    "q85_test_accessed": false
+  }
+}
