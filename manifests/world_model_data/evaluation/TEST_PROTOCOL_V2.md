@@ -2,7 +2,7 @@
 
 **Status:** written and committed **before** any q85+ TEST access and **before** implementing `score_test_once`.  
 **Branch:** `review/phase7-pretest-v1`  
-**This document is the V2 preregistration.** The git commit SHA that first introduces this file is the binding preregistration ID (recorded in a follow-up commit header once known).  
+**This document is the V2 preregistration.** The git commit SHA that first introduces this file is the binding preregistration ID **Preregistration SHA:** `3299ee8d9b05286bbac9f9e1a7dc085e8d0de349`.  
 **Supersedes:** `TEST_PROTOCOL_V1.md` for the eventual one-shot TEST run. V1 remains historical.
 
 **Freeze reference:** all scoring uses artifacts under `world_model_freeze_v1` / local freeze tree `data/external/world_model/` as documented in `manifests/world_model_data/DATA_FREEZE.md` and `world_model_freeze_v1.json`.
