@@ -2,7 +2,7 @@
 
 **Status:** written and committed **before** any q85+ TEST access.  
 **Branch:** `review/phase6-paper-v1`  
-**This document is the preregistration.** The git commit SHA that first introduces this file is the binding preregistration ID.
+**This document is the preregistration.** The git commit SHA that first introduces this file is the binding preregistration ID: `fde6ced0b24ebdbf302eba307c1e94062e453772`.
 
 ## Scope
 
