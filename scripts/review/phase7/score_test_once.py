@@ -33,10 +33,11 @@ class ScorerRefusal(RuntimeError):
     """Hard refusal — no TEST access attempted."""
 
 
-def _git(args: list[str], *, cwd: Path = REPO) -> str:
-    return subprocess.check_output(
+def _git(args: list[str], *, cwd: Path = REPO, strip: bool = True) -> str:
+    out = subprocess.check_output(
         ["git", "-C", str(cwd), *args], text=True, stderr=subprocess.STDOUT
-    ).strip()
+    )
+    return out.strip() if strip else out
 
 
 def verify_preregistration(
@@ -63,7 +64,8 @@ def verify_preregistration(
 
     rel = protocol_git_path or str(protocol_path.resolve().relative_to(repo.resolve()))
     try:
-        blob = _git(["show", f"{prereg_sha}:{rel}"], cwd=repo)
+        # Preserve exact blob bytes (do not strip); protocol files end in newline.
+        blob = _git(["show", f"{prereg_sha}:{rel}"], cwd=repo, strip=False)
     except subprocess.CalledProcessError as e:
         raise ScorerRefusal(f"protocol path not found at {prereg_sha}: {rel}") from e
 
@@ -79,7 +81,7 @@ def verify_preregistration(
 
     # Allow documented follow-up that only annotates the prereg SHA in the header
     # while keeping the body identical to the introduction blob.
-    head_blob = _git(["show", f"HEAD:{rel}"], cwd=repo)
+    head_blob = _git(["show", f"HEAD:{rel}"], cwd=repo, strip=False)
     if current == head_blob and "Preregistration SHA" in current:
         return {
             "head_sha": head,

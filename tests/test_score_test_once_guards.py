@@ -53,7 +53,7 @@ def test_write_lock_then_second_write_refuses(scorer, tmp_path: Path) -> None:
 
 
 def test_refuse_dirty_tree(scorer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_git(args: list[str], *, cwd: Path = REPO) -> str:
+    def fake_git(args: list[str], *, cwd: Path = REPO, strip: bool = True) -> str:
         if args[:1] == ["rev-parse"]:
             return "abc123"
         if args[:2] == ["status", "--porcelain"]:
@@ -77,7 +77,7 @@ def test_refuse_dirty_tree(scorer, tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_refuse_sha_not_ancestor(
     scorer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    def fake_git(args: list[str], *, cwd: Path = REPO) -> str:
+    def fake_git(args: list[str], *, cwd: Path = REPO, strip: bool = True) -> str:
         if args[:1] == ["rev-parse"]:
             return "abc123"
         if args[:2] == ["status", "--porcelain"]:
@@ -103,7 +103,7 @@ def test_refuse_modified_protocol(
     proto = tmp_path / "PROTO.md"
     proto.write_text("working-tree-version\n", encoding="utf-8")
 
-    def fake_git(args: list[str], *, cwd: Path = REPO) -> str:
+    def fake_git(args: list[str], *, cwd: Path = REPO, strip: bool = True) -> str:
         if args[:1] == ["rev-parse"]:
             return "abc123"
         if args[:2] == ["status", "--porcelain"]:
