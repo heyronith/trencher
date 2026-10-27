@@ -1,0 +1,60 @@
+\section{Case Study: Selection Leakage in On-Chain Data Acquisition}
+\label{sec:leakage}
+
+Early in this project, a richer version of the dataset seemed to deliver a large improvement. The improvement was not real. We describe how it arose because the same mistake is easy to make in any study that samples on-chain data to save cost.
+
+\paragraph{The setting.}
+For a stratified random sample of 4,000 tokens (3,623 of them in the training and validation periods), we gathered four extra data sources: transaction-level metadata from a Solana RPC node (fees, compute units and success flags), token-balance changes describing ownership, a wallet--token trading graph, and the earlier trading histories of the wallets involved. Fetching every transaction for every token was too expensive, so the acquisition code fetched a small number of transactions per token (at most 16), chosen to cover the token's history: the first and last trades, the median buy and sell, the smallest and largest trades, the trades at the lowest and highest curve progress, and an evenly spaced grid over the token's lifetime.
+
+\paragraph{The leak.}
+Every fetched transaction carried an accurate timestamp, and every feature used only transactions dated before $T$, so per-record timestamp checks passed. The problem was \emph{which} transactions existed in the data at all. The selection was made over each token's entire lifetime, including trades after $T$. As a result, the number of fetched transactions dated before $T$ encoded information about the future: if the token's largest trade or curve peak was still to come, fewer of the fetched transactions fell before $T$ (Figure~\ref{fig:leak}). That count, a feature named \texttt{micro\_n}, was the strongest feature in the richer tree model, with roughly three times the importance of the next one.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,font=\footnotesize]
+  % (a) lifetime-based selection
+  \node[anchor=west] at (-0.2,3.4) {\textbf{(a) Lifetime-based selection (leaky)}};
+  \draw[->] (0,2.6) -- (11.6,2.6) node[right] {time};
+  \foreach \x in {0.3,0.8,1.1,1.6,2.0,2.4,3.1,3.6,4.0,4.4,5.2,5.9,6.3,6.8,7.4,7.9,8.5,9.1,9.8,10.6,11.2}
+    \draw[gray] (\x,2.45) -- (\x,2.75);
+  \foreach \x in {0.3,2.4,4.0,7.9,9.1,11.2}
+    \fill[black] (\x,2.6) circle (2.2pt);
+  \draw[very thick,red!70!black] (5.6,2.15) -- (5.6,3.05);
+  \node[red!70!black,above] at (5.6,3.05) {$T$};
+  \node[anchor=north,align=center,font=\scriptsize] at (9.1,2.4) {largest trade};
+  \node[anchor=south,align=center,font=\scriptsize] at (11.2,2.8) {last trade};
+  \node[anchor=west,align=left] at (0,1.55) {The fetched set is chosen using the whole lifetime, including trades after $T$, so the number\\of fetched trades before $T$ reveals whether the largest and last trades still lie ahead.};
+  % (b) causal selection
+  \node[anchor=west] at (-0.2,0.55) {\textbf{(b) Causal selection (fixed)}};
+  \draw[->] (0,-0.25) -- (11.6,-0.25) node[right] {time};
+  \foreach \x in {0.3,0.8,1.1,1.6,2.0,2.4,3.1,3.6,4.0,4.4,5.2,5.9,6.3,6.8,7.4,7.9,8.5,9.1,9.8,10.6,11.2}
+    \draw[gray] (\x,-0.4) -- (\x,-0.1);
+  \foreach \x in {3.1,3.6,4.0,4.4,5.2}
+    \fill[black] (\x,-0.25) circle (2.2pt);
+  \draw[very thick,red!70!black] (5.6,-0.7) -- (5.6,0.2);
+  \node[red!70!black,above] at (5.6,0.2) {$T$};
+  \node[anchor=west,align=left] at (0,-1.05) {Only the last $K$ trades strictly before $T$ are fetched, so adding later trades cannot change the set.};
+\end{tikzpicture}
+\caption{How the transaction-selection rule leaked future information. Grey ticks are trades; black dots are the trades whose transactions were fetched.}
+\label{fig:leak}
+\end{figure}
+
+\paragraph{The evidence.}
+On the subset's validation tokens (Table~\ref{tab:leak}), \texttt{micro\_n} was identical to the number of selected transactions before $T$ for 100\% of observations. On its own, \texttt{micro\_n} had an ROC-AUC of 0.125 for 60-second onset, that is, 0.875 once its sign is flipped. A single yes/no indicator, ``the token's largest trade happens after $T$'', reached 0.825 on its own, almost as high as the entire set of legitimate broad features (0.835). A tree model using all broad and rich features reached 0.917. Adding the explicit share of selected transactions dated before $T$, a deliberate ``canary'' feature, raised it further to 0.921, while removing the microstructure features dropped it to 0.881. Keeping only the two rich sources whose selection was causal, the trading graph and the wallet histories, gave 0.841, statistically indistinguishable from broad features alone. The ownership data reused the same transaction selection and inherited the leak. The fine-tuned multimodal Transformer depended on it as well: hiding the microstructure inputs at inference time lowered its ROC-AUC from 0.850 to 0.745.
+
+\begin{table}[t]
+\centering
+\caption{Leak case study on the multimodal subset (validation tokens; 8,027 eligible observations of 600 tokens; 60-second horizon). Single-feature ROC-AUC values below 0.5 mean that lower values of the feature predict onset.}
+\label{tab:leak}
+\tabsize
+\input{tables/tab_leak}
+\end{table}
+
+\paragraph{A second failure: the metric.}
+While investigating, we also found a bug in the project's own ROC-AUC function. A ranking step indexed labels and ranks in different orders, and on predictions whose true ROC-AUC was 0.894 the function reported 0.535. Had we trusted it, we would have discarded a working model. We found the bug only because we recomputed every reported metric with an independent implementation.
+
+\paragraph{What we changed.}
+We quarantined the leaky data sources and every result derived from them, including the fine-tuned Transformer stage. We replaced lifetime-based selection with a causal rule that fetches the last $K$ trades strictly before $T$, and added a regression test that appending arbitrary trades after $T$ does not change the selected set; the old function fails it and the new one passes. We also fixed the metric and tested it against a reference implementation on data with ties.
+
+\paragraph{Lessons.}
+Five practices would have caught these problems earlier: audit how records were \emph{selected}, not only their timestamps; test that features are invariant to appending future events; add canary features that encode the suspected leak and see whether performance jumps; compute every reported metric with two independent implementations; and treat any large, surprising gain as a leak until shown otherwise. None of these is new on its own~\citep{kapoor2023leakage,lopezdeprado2018advances}, but selection leakage of this kind is easy to miss and likely to recur in on-chain research, where cost-constrained sampling from RPC nodes is common.

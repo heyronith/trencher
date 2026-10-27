@@ -1,0 +1,70 @@
+\section{Feature List}
+\label{app:features}
+
+\begin{table}[h]
+\centering
+\caption{The 124 features used by all tabular models. Windowed features are computed over trailing windows of 10\,s, 30\,s and 120\,s and over the token's full history, and each name below stands for all of its windows.}
+\label{tab:features}
+\tabsize
+\input{tables/tab_features}
+\end{table}
+
+\section{Surge Detector Parameters}
+\label{app:detector}
+
+\begin{table}[h]
+\centering
+\caption{Parameters of the three surge definitions. The primary definition is used throughout unless stated otherwise. Parameters were fixed before any model was trained.}
+\label{tab:detector}
+\tabsize
+\input{tables/tab_detector}
+\end{table}
+
+The exhaustion drawdown marks the end of a surge (the first point after the peak at which the price has fallen by that fraction). It is recorded for description only and does not affect the labels.
+
+\section{Hyperparameters}
+\label{app:hparams}
+
+\begin{itemize}
+  \item \textbf{XGBoost (champion and age-and-curve model):} learning rate 0.05, maximum depth 8, row and column subsampling 0.8, histogram tree method, positive-class weight equal to the ratio of negatives to positives in the training data; 50 boosting rounds for both horizons (64 for the 2$\times$ target), fixed to the median best iteration on the walk-forward folds.
+  \item \textbf{LightGBM (tuned):} learning rate 0.05, 63 leaves, at least 100 observations per leaf, bagging fraction 0.8 every iteration, feature fraction 0.8, no class weighting; 50 boosting rounds. Chosen from a grid of 24 configurations by mean PR-AUC on the two walk-forward folds.
+  \item \textbf{Logistic regression:} standardized features, L2 penalty, regularization strength $C$ chosen from the set $\{0.01, 0.1, 1, 10\}$ by the mean PR-AUC on the walk-forward folds ($C=0.01$ for both horizons).
+  \item \textbf{Multilayer perceptron:} two hidden layers of 256 ReLU units, Adam with learning rate $10^{-3}$, L2 penalty $10^{-4}$, batch size 2,048; number of epochs set by early stopping on a holdout within the fold-2 training data, then refit on the full training period.
+  \item \textbf{Transformer:} see Section~\ref{sec:models}.
+\end{itemize}
+
+\section{Additional Results}
+\label{app:extra}
+
+\begin{table}[h]
+\centering
+\caption{All baselines on the validation week. Alert lift is the hourly top-ten precision divided by the base rate. Confidence intervals for the champion's PR-AUC advantage were computed for the 300-second horizon.}
+\label{tab:baselines}
+\tabsize
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_baselines_val}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Test-week ROC-AUC by stratum, 300-second horizon.}
+\label{tab:strata300}
+\tabsize
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_strata_300}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Validation-week ROC-AUC among active tokens (60-second horizon), for comparison with Table~\ref{tab:strata}.}
+\label{tab:valstrata}
+\tabsize
+\input{tables/tab_val_strata}
+\end{table}
+
+\section{Preregistration and Deviations}
+\label{app:prereg}
+
+The test protocol was committed to the project repository before any test observation was read, and an amendment adding the activity and age strata, the 2$\times$ target and the age-and-curve model was committed before the scoring code was written (commit \texttt{3299ee8}). The scoring code refused to run unless the protocol file matched the committed version, the working tree was clean and no earlier test results existed, and it wrote a lock file before reading any test data. The final report is in commit \texttt{704bd70}.
+
+Two deviations occurred, both in the Transformer's inference step and both before any metric was computed. First, a safety check in the data loader still refused test-period inputs, which stopped the first run; the check was changed to accept test inputs only while the lock file is present. Second, the standard multithreaded CPU inference loop then crashed during the long run; it was replaced with a streaming, single-threaded loop that computes only the surge-onset outputs. No model, feature, target or metric was changed, and the lock file from the first attempt was kept as a record.

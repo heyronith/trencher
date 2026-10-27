@@ -1,0 +1,30 @@
+\section{Problem Formulation}
+\label{sec:problem}
+
+\paragraph{Observations.}
+Let token $i$ be launched at time $L_i$. An observation is a pair $(i, T)$ with $T \ge L_i$. The information available at $T$ consists of all on-chain events for token $i$ with timestamps up to $T$, together with market-wide context from completed time intervals before $T$. A model maps this information to a score, and every feature must be computable at $T$ without any later data.
+
+\paragraph{Surge onset.}
+We detect surges from each token's trade stream with a rule-based detector whose parameters were fixed before any model was trained. Under the primary definition, a trade at time $t_0$ marks a surge onset if all of the following hold:
+\begin{itemize}
+  \item the 30 seconds starting at $t_0$ contain at least five trades, and the price at the last of them is at least 15\% above the price at $t_0$;
+  \item the trade rate in that window is at least three times the rate over the preceding 120 seconds;
+  \item at least three distinct wallets buy in the window;
+  \item the rate of SOL spent on buys in the window is at least 2.5 times its rate over the preceding 120 seconds;
+  \item within 60 seconds of $t_0$, the price reaches at least 25\% above its level at $t_0$ (if not, the check is extended to 300 seconds).
+\end{itemize}
+When the preceding 120 seconds contain no trades or no buys, the corresponding rate conditions fall back to requiring the minimum trade count or any buying. The peak is the highest price within 30 minutes after onset, and the surge's \emph{magnitude} is the peak price divided by the onset price, minus one. Windows that overlap a known gap in the data are skipped. Two alternative definitions, \emph{conservative} and \emph{aggressive}, tighten or loosen the thresholds (Table~\ref{tab:detector}, Appendix~\ref{app:detector}). We use the first qualifying surge of each token and write $\tau_i$ for its onset time.
+
+\paragraph{Targets.}
+For a horizon $H \in \{60, 300\}$ seconds, the label of observation $(i, T)$ is
+\begin{itemize}
+  \item \emph{positive} if $T < \tau_i \le T + H$;
+  \item \emph{negative} if no onset falls in $(T, T+H]$ and the trade data are known to cover that window;
+  \item \emph{unavailable}, and excluded, if coverage of the window is unknown, for example near the end of the data or during the known collection outage described in Section~\ref{sec:data}, or if the token's trades carry no usable prices.
+\end{itemize}
+Observations taken after a surge has already begun are negatives in the default setting. We also report two stricter variants. Variant~(a) drops observations whose surge has already started. Variant~(c) additionally drops observations whose onset falls within five seconds of $T$, so that every remaining positive leaves at least five seconds to react.
+
+A third target, which we call \emph{2$\times$}, is positive when onset occurs within 300 seconds and the surge's magnitude is at least 100\%, that is, the price at least doubles from onset to peak.
+
+\paragraph{What a good model does.}
+The task is a ranking problem with rare positives: base rates are around 2\% of observations, and much lower for 2$\times$ surges. We therefore emphasize precision among the highest-ranked observations and the fraction of real surges that a model flags in time, alongside ROC-AUC and PR-AUC.

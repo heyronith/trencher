@@ -1,0 +1,25 @@
+\section{Evaluation Protocol}
+\label{sec:protocol}
+
+\paragraph{Metrics.}
+For each model and horizon we report ROC-AUC; PR-AUC (average precision), which is more informative when positives are rare~\citep{saito2015precision}; and precision among the top 0.1\%, 0.5\%, 1\% and 2\% of observations by score.
+
+\paragraph{Alert feed.}
+To mimic a live monitor, we take, for every UTC hour, the ten highest-scoring observations, keeping at most one per token, and report the fraction of them whose token begins a surge within the next 300 seconds, compared with the base rate.
+
+\paragraph{Event-level recall and lead time.}
+Observation-level metrics can reward a model for flagging the same surge many times, so we also evaluate at the level of surge events. For each primary-definition surge whose onset falls in the evaluation window, we find the earliest observation before onset whose score is in the top 1\% (or top 2\%) of all scores. The surge is \emph{caught} if such an observation exists, and the \emph{lead time} is the gap between that observation and onset. A \emph{false alert} is a top-ranked observation whose token has no onset in the following 300 seconds; we report false alerts per caught surge.
+
+\paragraph{Strata.}
+Many observations are easy negatives: a token observed six hours after launch with no recent trades is very unlikely to surge, so pooled ROC-AUC can flatter a model. We therefore also report results within strata: by observation trigger (fixed age versus trade count); by token age; and for actively traded tokens, with at least one, or at least five, trades in the preceding 60 seconds. The trade counts used for these strata are approximated from the 30-second and 120-second feature windows.
+
+\paragraph{Uncertainty.}
+Observations from the same token are correlated, so we compute 95\% confidence intervals with a bootstrap that resamples tokens rather than observations (2,000 replicates), in the spirit of cluster-robust inference~\citep{cameron2008bootstrap}. Differences between models are computed on the same resampled tokens.
+
+\paragraph{Protocol and preregistration.}
+\begin{itemize}
+  \item \emph{Development.} All choices were made on the walk-forward folds. The validation week was used to compare model families and to diagnose problems; each final configuration was scored on it once, and every such score was logged.
+  \item \emph{Preregistration.} Before any test observation was read, we committed a written protocol to version control. It fixed five models (the XGBoost champion, the tuned LightGBM, the Transformer, logistic regression as the best simple baseline on validation, and the age-and-curve model), the targets, variants, strata and metrics listed above, and a commitment to report the results whatever they showed. All models were trained on the training period only and were not refit on validation data.
+  \item \emph{Pipeline check.} Before the test run, we froze every model to a file with a checksum and re-ran the full scoring pipeline on the validation week; all 30 checked metrics matched the earlier reports exactly.
+  \item \emph{The test run.} The scoring code refused to run unless the protocol on disk matched the committed version, and it wrote a lock file before reading any test data. The first attempt stopped during the Transformer's inference step, when a safety check refused test-period inputs, before any metric had been computed. We fixed the check and replaced the Transformer's inference loop with a streaming, single-threaded version after the multithreaded loop crashed; scoring then ran to completion. Appendix~\ref{app:prereg} documents both deviations.
+\end{itemize}

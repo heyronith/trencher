@@ -1,0 +1,32 @@
+{
+  "stage_c_mask_baseline_roc60": 0.8500480000709469,
+  "stage_c_mask_no_micro_roc60": 0.7451484454850003,
+  "safe_auc_buggy_60": 0.5352612068525922,
+  "safe_auc_true_60": 0.894475225090402,
+  "match_rate": {
+    "train": {
+      "cutoff": "event_time_unix <= T (searchsorted side=right)",
+      "match_rate": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "n": 36228,
+      "n_match": 36228,
+      "time_source": "sequence_microstructure_v2.event_time_unix"
+    },
+    "val": {
+      "cutoff": "event_time_unix <= T (searchsorted side=right)",
+      "match_rate": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "n": 10159,
+      "n_match": 10159,
+      "time_source": "sequence_microstructure_v2.event_time_unix"
+    }
+  },
+  "clean_vs_A_roc_ci": [
+    -0.015961426717610857,
+    0.026044335286873947
+  ],
+  "n_val_obs": 8027,
+  "n_val_mints": 600
+}

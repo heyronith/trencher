@@ -1,0 +1,13 @@
+\begin{tabular}{llcc}
+\toprule
+Horizon & Champion minus & $\Delta$ROC-AUC [95\% CI] & $\Delta$PR-AUC [95\% CI] \\
+\midrule
+60 s & Logistic regression & $-$0.0045 [$-$0.0068, $-$0.0021] & +0.0028 [+0.0001, +0.0058] \\
+60 s & Transformer & +0.0141 [+0.0127, +0.0155] & +0.0175 [+0.0157, +0.0196] \\
+60 s & Age + curve XGBoost & +0.0236 [+0.0222, +0.0249] & +0.0196 [+0.0175, +0.0219] \\
+\addlinespace
+300 s & Logistic regression & +0.0001 [$-$0.0023, +0.0025] & +0.0033 [+0.0008, +0.0060] \\
+300 s & Transformer & +0.0153 [+0.0138, +0.0167] & +0.0180 [+0.0162, +0.0200] \\
+300 s & Age + curve XGBoost & +0.0262 [+0.0248, +0.0276] & +0.0203 [+0.0183, +0.0224] \\
+\bottomrule
+\end{tabular}

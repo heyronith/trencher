@@ -1,0 +1,22 @@
+\section{Models}
+\label{sec:models}
+
+\paragraph{Features.}
+All tabular models use the same 124 features, computed strictly from information available at $T$ (Table~\ref{tab:features}, Appendix~\ref{app:features}). They fall into six groups:
+\begin{itemize}
+  \item \textbf{Event flow (80 features):} trade counts, buy and sell volume in SOL, buy share and flow imbalance, mean, spread and maximum trade size, price return, slope, realized volatility, drawdown and acceleration, inter-arrival times and burst intensity, each over trailing windows of 10\,s, 30\,s and 120\,s and over the token's full history;
+  \item \textbf{Curve state (21):} the latest price, virtual reserves, curve progress and trade direction, plus changes, velocity and acceleration of the curve over the same windows;
+  \item \textbf{Market context (14):} platform-wide launches and graduations over the last hour and day, measured up to the last completed second; trading activity in recent completed one-second buckets; and daily network statistics from the last fully completed UTC day;
+  \item \textbf{Creator history (3):} information on the creating wallet's earlier launches;
+  \item \textbf{Token age (2):} age in seconds and its logarithm;
+  \item \textbf{Missing-data indicators (4).}
+\end{itemize}
+
+\paragraph{Simple baselines.}
+We compare against six simple baselines: a \emph{volume-spike rule}, a z-score of the last 30 seconds' trade count and buy volume relative to the token's own preceding 120 seconds, in the spirit of \citet{bolz2024realtime}; a \emph{net-inflow rule}, net SOL inflow over the last 30 seconds; a \emph{curve-progress rate}, the empirical surge rate within 20 bins of curve progress, estimated on training data, following the conditioning idea of \citet{marino2026predicting}; the \emph{best single feature} by walk-forward ROC-AUC, which turned out to be drawdown over the token's full history; an L2-regularized \emph{logistic regression} with the regularization strength chosen on the folds; and a \emph{multilayer perceptron} with two hidden layers of 256 units, whose number of training epochs was set by early stopping on a holdout within the fold-2 training data. We also train an \emph{age-and-curve} model: XGBoost restricted to six features describing token age and curve position. It answers a natural question, namely whether the models learn anything beyond where a token sits on its curve and how old it is.
+
+\paragraph{Gradient-boosted trees.}
+We train XGBoost~\citep{chen2016xgboost} and LightGBM~\citep{ke2017lightgbm}. The number of boosting rounds is fixed to the median best iteration across the two walk-forward folds, and the final model is fit once on the full training period, with no early stopping on validation data. Scores are calibrated with Platt scaling~\citep{platt1999probabilistic} on a chronological holdout from the end of the training period. XGBoost with this frozen protocol is our designated \emph{champion}. A tuned LightGBM, whose configuration was chosen from 24 candidates on the folds, serves as a second tree model (Appendix~\ref{app:hparams}).
+
+\paragraph{Multimodal Transformer.}
+We also train a larger sequence model that reads raw inputs rather than engineered features. An event encoder (a six-layer Transformer with eight heads and width 256) reads up to 512 recent trades; separate two-layer encoders read the curve path, market context and creator history. Their outputs are combined by gated fusion and feed several prediction heads: surge onset at several horizons, survival, price barriers, returns and price paths. The model was pretrained with a self-supervised objective for 50,000 steps on the training population, then trained on the supervised targets for 100,000 steps, using AdamW with learning rate $3\times10^{-4}$, weight decay 0.01, 1,000 warmup steps and batch size 64. About 10 million parameters are active for the inputs used here; the full architecture, including encoders for additional data sources, has 15.7 million. A further fine-tuning stage on a multimodal subset of tokens was trained but is excluded from all results for the reasons given in Section~\ref{sec:leakage}.

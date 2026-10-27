@@ -1,0 +1,11 @@
+{
+  "n_events_test": 12225,
+  "alert_feed_test_300s": {
+    "mean_frac_explode_300s": 0.15217391304347827,
+    "base_rate_eligible": 0.02733569153413248,
+    "lift_vs_base": 5.566857997847524,
+    "n_hours_in_window": 169,
+    "n_hours_empty": 31,
+    "n_hours_with_observations": 138
+  }
+}

@@ -1,0 +1,24 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{What the predictability means.}
+Surge onset on pump.fun is not random. It concentrates among young tokens early on their bonding curves, and recent trading activity sharpens the ranking further. Part of this is mechanical: a token that is a few seconds old and already attracting buyers is simply in the phase of life when surges happen. The active-token results show that the models also distinguish among tokens that are all in that phase, though with ROC-AUC values in the mid-0.7s rather than the high 0.8s.
+
+\paragraph{Who could use this.}
+The most defensible uses are protective. A wallet or platform could flag tokens entering a surge phase and show users the poor median outcomes that follow, and researchers and regulators can use surge onsets, and the benchmark itself, to study manipulation and market quality. Our results argue against using such a model as a trading signal by itself.
+
+\paragraph{Limitations.}
+\begin{itemize}
+  \item \emph{Short window.} The data cover 39 days of a single platform, and the market changes quickly; the corpus documentation reports, for example, a steep rise in the graduation rate over the window and a shift in one curve-progress field after 4 July~\citep{slinkdev2026corpus}. Results may not hold in other periods or on other launchpads.
+  \item \emph{Data gaps.} One day (3 July) has no recorded trades, and some tokens' trades carry no prices; affected labels are excluded rather than imputed.
+  \item \emph{Detector-defined surges.} Surges are defined by a detector we designed. We report alternative definitions, but other reasonable definitions could give different numbers.
+  \item \emph{Gross returns.} Our return figures ignore fees, slippage and execution delay.
+  \item \emph{Approximate strata.} The active-token strata are approximated from feature windows rather than exact trade counts.
+  \item \emph{One deep model.} The Transformer represents one reasonable design with limited tuning, not the best possible sequence model.
+  \item \emph{Multimodal data excluded.} After discovering the leak, we excluded the multimodal subset from the main results, so we cannot say whether causally collected transaction-level data would help.
+  \item \emph{Test-run deviations.} The test run deviated from the planned procedure in two documented ways that did not affect any model or metric (Appendix~\ref{app:prereg}).
+  \item \emph{Manipulation not distinguished.} We make no claim about whether individual surges were organic or coordinated.
+\end{itemize}
+
+\paragraph{Ethics and dual use.}
+A surge-onset model could, in principle, help automated traders act ahead of other participants. We think the added risk is limited: the warning is a few seconds, the highest-ranked observations are followed by large median losses, and faster participants already act on similar information. We use only public on-chain data, we do not identify or profile individual wallets, and we do not release a trading strategy.

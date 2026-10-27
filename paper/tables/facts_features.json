@@ -1,0 +1,37 @@
+{
+  "n": 124,
+  "groups": {
+    "Token age": 2,
+    "Missing-data indicators": 4,
+    "Event flow": 80,
+    "Curve state": 21,
+    "Creator history": 3,
+    "Market context": 14
+  },
+  "windowed_stems": [
+    "burst_intensity",
+    "buy_count",
+    "buy_fraction",
+    "buy_sol",
+    "curve_accel",
+    "curve_delta",
+    "curve_velocity",
+    "drawdown",
+    "event_count",
+    "flow_imbalance",
+    "intensity_accel",
+    "interarrival_mean",
+    "interarrival_std",
+    "net_sol",
+    "price_accel",
+    "price_return",
+    "price_slope",
+    "realized_vol",
+    "reserve_delta_sol",
+    "sell_count",
+    "sell_sol",
+    "sol_max",
+    "sol_mean",
+    "sol_std"
+  ]
+}

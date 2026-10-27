@@ -1,0 +1,13 @@
+{
+  "twox_val_recall": {
+    "top_0.01": 0.037392939210361395,
+    "top_0.02": 0.07687486943806142
+  },
+  "twox_val_events": 4787,
+  "twox_val_alert_lift": 2.919221187111096,
+  "twox_test_alert": {
+    "lift_vs_base": 3.594835266927356,
+    "mean_frac_explode_300s": 0.03260869565217391,
+    "base_rate_eligible": 0.009070984685216416
+  }
+}

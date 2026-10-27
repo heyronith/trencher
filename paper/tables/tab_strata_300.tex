@@ -1,0 +1,16 @@
+\begin{tabular}{lrrccccc}
+\toprule
+ & & & \multicolumn{5}{c}{ROC-AUC} \\
+\cmidrule(lr){4-8}
+Stratum & $n$ & Prevalence & XGB & LGBM & Logistic & Transf. & Age+curve \\
+\midrule
+Fixed-age observations & 913{,}875 & 2.06\% & \textbf{0.902} & 0.902 & 0.895 & 0.887 & 0.886 \\
+Trade-count observations & 358{,}564 & 4.45\% & 0.684 & 0.684 & \textbf{0.706} & 0.672 & 0.640 \\
+Age $<$ 30 s & 434{,}227 & 6.95\% & 0.664 & 0.662 & \textbf{0.670} & 0.642 & 0.634 \\
+Age 30 s -- 2 min & 255{,}839 & 1.32\% & \textbf{0.720} & 0.695 & 0.644 & 0.665 & 0.608 \\
+Age 2 -- 10 min & 215{,}166 & 0.50\% & \textbf{0.814} & 0.779 & 0.707 & 0.775 & 0.661 \\
+Age 10 min -- 1 h & 187{,}981 & 0.07\% & 0.901 & 0.914 & 0.828 & \textbf{0.915} & 0.848 \\
+Active: $\geq$1 trade in last 60 s & 644{,}125 & 3.26\% & 0.731 & 0.729 & \textbf{0.740} & 0.715 & 0.681 \\
+Active: $\geq$5 trades in last 60 s & 250{,}473 & 2.59\% & 0.719 & 0.714 & \textbf{0.734} & 0.698 & 0.645 \\
+\bottomrule
+\end{tabular}
