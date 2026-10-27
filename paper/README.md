@@ -1,6 +1,6 @@
-# Paper: Seconds Before the Pump
+# Paper: Into the Trenches
 
-LaTeX source for the arXiv manuscript *Seconds Before the Pump: Forecasting Surge Onset on a Memecoin Launchpad*.
+LaTeX source for the arXiv manuscript *Into the Trenches: Predicting Memecoin Pumps Seconds Before They Start*.
 
 ## Layout
 
