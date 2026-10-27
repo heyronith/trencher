@@ -296,6 +296,13 @@ def build_test_once_report(
         f"- protocol_match: {report['protocol_match']}",
         f"- runtime_sec: {report['runtime_sec']}",
         f"- peak_rss_mb: {report['peak_rss_mb']}",
+    ]
+    if prereg_meta.get("bugfix_rerun"):
+        lines += [
+            "- bugfix_rerun: **true**",
+            f"- bugfix_note: {prereg_meta.get('bugfix_note')}",
+        ]
+    lines += [
         "",
         "## Model hashes",
         "",
@@ -419,8 +426,15 @@ def run_test_once(
     allow_dirty: bool = False,
     run_bootstrap: bool = True,
     force_stage_b_rerun: bool = False,
+    bugfix_continue: bool = False,
+    bugfix_note: str | None = None,
 ) -> dict[str, Any]:
-    """Entry with Phase-7 gates for test; val bypasses lock/TEST IO."""
+    """Entry with Phase-7 gates for test; val bypasses lock/TEST IO.
+
+    ``bugfix_continue``: resume after a failed first attempt without deleting
+    ``TEST_ACCESSED.lock``. Requires the lock to already exist; documents the
+    resume in the report. Never a silent rerun.
+    """
     protocol = Path(protocol)
     out_dir = Path(out_dir)
 
@@ -438,8 +452,26 @@ def run_test_once(
         prereg_sha=prereg_sha,
         allow_dirty=allow_dirty,
     )
-    check_test_once_dir_empty(out_dir)
-    lock = write_access_lock(out_dir, head_sha=meta["head_sha"])
+    lock = out_dir / "TEST_ACCESSED.lock"
+    if bugfix_continue:
+        if not lock.is_file():
+            raise ScorerRefusal(
+                "bugfix-continue requires existing TEST_ACCESSED.lock "
+                "(first attempt must have written the lock)"
+            )
+        if not bugfix_note:
+            raise ScorerRefusal("bugfix-continue requires --bugfix-note")
+        # Do not delete lock; do not rewrite it.
+        meta = {
+            **meta,
+            "bugfix_rerun": True,
+            "bugfix_note": bugfix_note,
+            "original_lock": json.loads(lock.read_text(encoding="utf-8")),
+        }
+    else:
+        check_test_once_dir_empty(out_dir)
+        lock = write_access_lock(out_dir, head_sha=meta["head_sha"])
+
     set_q85_test_unlock(lock)
     try:
         scored = run_split_pipeline(
@@ -461,6 +493,10 @@ def run_test_once(
     report, md = build_test_once_report(
         scored=scored, prereg_meta=meta, val_scored=val_scored
     )
+    if bugfix_continue:
+        report["bugfix_rerun"] = True
+        report["bugfix_note"] = bugfix_note
+        report["original_lock"] = meta.get("original_lock")
     write_json(out_dir / "TEST_ONCE_REPORT.json", report)
     (out_dir / "TEST_ONCE_REPORT.md").write_text(md, encoding="utf-8")
     clear_q85_test_unlock()
@@ -481,6 +517,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow-dirty", action="store_true")
     parser.add_argument("--skip-bootstrap", action="store_true")
     parser.add_argument("--force-stage-b-rerun", action="store_true")
+    parser.add_argument(
+        "--bugfix-continue",
+        action="store_true",
+        help="Resume after failed first TEST attempt; requires existing lock",
+    )
+    parser.add_argument(
+        "--bugfix-note",
+        default=None,
+        help="Required with --bugfix-continue: why the first attempt failed",
+    )
     args = parser.parse_args(argv)
     ensure_dirs()
     out = args.out
@@ -503,6 +549,8 @@ def main(argv: list[str] | None = None) -> int:
                 allow_dirty=args.allow_dirty,
                 run_bootstrap=not args.skip_bootstrap,
                 force_stage_b_rerun=args.force_stage_b_rerun,
+                bugfix_continue=args.bugfix_continue,
+                bugfix_note=args.bugfix_note,
             )
     except (ScorerRefusal, FeatureBuildRefusal, StageBRefusal) as e:
         print(f"REFUSED: {e}", file=sys.stderr)
