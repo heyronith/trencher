@@ -1,0 +1,21 @@
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{6}{c}{Test week (preregistered, scored once)} & Validation \\
+\cmidrule(lr){2-7}\cmidrule(lr){8-8}
+Model & ROC-AUC & PR-AUC & P@0.1\% & P@0.5\% & P@1\% & P@2\% & ROC / PR \\
+\midrule
+\multicolumn{8}{l}{\emph{Onset within 60 s; base rate 2.29\%}} \\
+XGBoost (champion) & 0.866 & \textbf{0.112} & 16.3\% & 15.4\% & 14.6\% & 16.0\% & 0.873 / 0.092 \\
+LightGBM (tuned) & 0.866 & 0.108 & 13.0\% & 13.4\% & 13.2\% & 14.7\% & 0.873 / 0.090 \\
+Logistic regression (L2) & \textbf{0.870} & 0.110 & 15.0\% & 14.3\% & 14.5\% & 14.8\% & 0.858 / 0.076 \\
+Transformer & 0.852 & 0.095 & 10.5\% & 12.8\% & 12.6\% & 11.5\% & 0.858 / 0.077 \\
+Age + curve XGBoost & 0.842 & 0.093 & 10.0\% & 10.6\% & 10.2\% & 9.8\% & 0.854 / 0.076 \\
+\addlinespace
+\multicolumn{8}{l}{\emph{Onset within 300 s; base rate 2.73\%}} \\
+XGBoost (champion) & \textbf{0.845} & \textbf{0.117} & 17.1\% & 15.9\% & 16.2\% & 17.2\% & 0.858 / 0.098 \\
+LightGBM (tuned) & 0.844 & 0.116 & 16.4\% & 16.1\% & 16.2\% & 16.5\% & 0.856 / 0.095 \\
+Logistic regression (L2) & 0.845 & 0.114 & 15.7\% & 15.4\% & 16.1\% & 16.2\% & 0.834 / 0.078 \\
+Transformer & 0.829 & 0.099 & 11.2\% & 12.9\% & 13.4\% & 12.4\% & 0.841 / 0.082 \\
+Age + curve XGBoost & 0.818 & 0.097 & 11.2\% & 10.9\% & 11.0\% & 10.6\% & 0.836 / 0.080 \\
+\bottomrule
+\end{tabular}

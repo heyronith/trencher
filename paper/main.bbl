@@ -1,0 +1,156 @@
+\begin{thebibliography}{29}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bolz et~al.(2024)Bolz, Br{\"u}ndler, Kane, Patsias, Tessendorf, Gogol, Kim, and Tessone]{bolz2024realtime}
+Manuel Bolz, Kevin Br{\"u}ndler, Liam Kane, Panagiotis Patsias, Liam Tessendorf, Krzysztof Gogol, Taehoon Kim, and Claudio Tessone.
+\newblock Machine learning-based detection of pump-and-dump schemes in real-time, 2024.
+
+\bibitem[Cameron et~al.(2008)Cameron, Gelbach, and Miller]{cameron2008bootstrap}
+A.~Colin Cameron, Jonah~B. Gelbach, and Douglas~L. Miller.
+\newblock Bootstrap-based improvements for inference with clustered errors.
+\newblock \emph{The Review of Economics and Statistics}, 90\penalty0 (3):\penalty0 414--427, 2008.
+
+\bibitem[Cernera et~al.(2023)Cernera, La~Morgia, Mei, and Sassi]{cernera2023token}
+Federico Cernera, Massimo La~Morgia, Alessandro Mei, and Francesco Sassi.
+\newblock Token spammers, rug pulls, and sniper bots: An analysis of the ecosystem of tokens in {Ethereum} and in the {Binance Smart Chain} ({BNB}).
+\newblock In \emph{32nd USENIX Security Symposium}, 2023.
+\newblock arXiv:2206.08202.
+
+\bibitem[Chen and Guestrin(2016)]{chen2016xgboost}
+Tianqi Chen and Carlos Guestrin.
+\newblock {XGBoost}: A scalable tree boosting system.
+\newblock In \emph{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, pages 785--794, 2016.
+
+\bibitem[Grinsztajn et~al.(2022)Grinsztajn, Oyallon, and Varoquaux]{grinsztajn2022tree}
+L{\'e}o Grinsztajn, Edouard Oyallon, and Ga{\"e}l Varoquaux.
+\newblock Why do tree-based models still outperform deep learning on typical tabular data?
+\newblock In \emph{Advances in Neural Information Processing Systems 35, Datasets and Benchmarks Track}, 2022.
+
+\bibitem[Hu et~al.(2023)Hu, Zhang, Lu, He, and Li]{hu2023sequence}
+Sihao Hu, Zhen Zhang, Shengliang Lu, Bingsheng He, and Zhao Li.
+\newblock Sequence-based target coin prediction for cryptocurrency pump-and-dump.
+\newblock \emph{Proceedings of the ACM on Management of Data}, 1\penalty0 (1):\penalty0 Article 6, 2023.
+\newblock \doi{10.1145/3588686}.
+
+\bibitem[Hu et~al.(2026)Hu, Tekin, Xu, and Liu]{hu2026melt}
+Sihao Hu, Selim~Furkan Tekin, Yichang Xu, and Ling Liu.
+\newblock {MELT}: A behavioral trace dataset for high-risk memecoin launch detection, 2026.
+
+\bibitem[Kamat(2026)]{kamat2026auditing}
+Arati~Uday Kamat.
+\newblock Auditing collector-generated graduation labels on {Pump.fun}: Measurement error and temporal non-generalization, 2026.
+
+\bibitem[Kamps and Kleinberg(2018)]{kamps2018moon}
+Josh Kamps and Bennett Kleinberg.
+\newblock To the moon: Defining and detecting cryptocurrency pump-and-dumps.
+\newblock \emph{Crime Science}, 7\penalty0 (18), 2018.
+\newblock \doi{10.1186/s40163-018-0093-5}.
+
+\bibitem[Kapoor and Narayanan(2023)]{kapoor2023leakage}
+Sayash Kapoor and Arvind Narayanan.
+\newblock Leakage and the reproducibility crisis in machine-learning-based science.
+\newblock \emph{Patterns}, 4\penalty0 (9):\penalty0 100804, 2023.
+
+\bibitem[Ke et~al.(2017)Ke, Meng, Finley, Wang, Chen, Ma, Ye, and Liu]{ke2017lightgbm}
+Guolin Ke, Qi~Meng, Thomas Finley, Taifeng Wang, Wei Chen, Weidong Ma, Qiwei Ye, and Tie-Yan Liu.
+\newblock {LightGBM}: A highly efficient gradient boosting decision tree.
+\newblock In \emph{Advances in Neural Information Processing Systems 30}, 2017.
+
+\bibitem[La~Morgia et~al.(2020)La~Morgia, Mei, Sassi, and Stefa]{lamorgia2020pump}
+Massimo La~Morgia, Alessandro Mei, Francesco Sassi, and Julinda Stefa.
+\newblock Pump and dumps in the {Bitcoin} era: Real time detection of cryptocurrency market manipulations.
+\newblock In \emph{29th International Conference on Computer Communications and Networks (ICCCN)}, 2020.
+\newblock \doi{10.1109/ICCCN49398.2020.9209660}.
+
+\bibitem[La~Morgia et~al.(2023)La~Morgia, Mei, Sassi, and Stefa]{lamorgia2023doge}
+Massimo La~Morgia, Alessandro Mei, Francesco Sassi, and Julinda Stefa.
+\newblock The doge of {Wall Street}: Analysis and detection of pump and dump cryptocurrency manipulations.
+\newblock \emph{ACM Transactions on Internet Technology}, 2023.
+\newblock \doi{10.1145/3561300}.
+
+\bibitem[Li et~al.(2026)Li, Kuznetsov, Yanovich, Nott-Whaley, and Vodolazov]{li2026catching}
+Jianghai Li, Pavel Kuznetsov, Yury Yanovich, Konstantin Nott-Whaley, and Igor Vodolazov.
+\newblock Catching the rug: Early prediction of fraudulent memecoins on {Solana} via machine learning, 2026.
+
+\bibitem[Long et~al.(2024)Long, Li, and Cai]{long2024coinclip}
+Hou-Wan Long, Hongyang Li, and Wei Cai.
+\newblock {CoinCLIP}: A multimodal framework for assessing viability in {Web3} memecoins, 2024.
+
+\bibitem[L{\'o}pez~de Prado(2018)]{lopezdeprado2018advances}
+Marcos L{\'o}pez~de Prado.
+\newblock \emph{Advances in Financial Machine Learning}.
+\newblock Wiley, 2018.
+
+\bibitem[Lundberg et~al.(2020)Lundberg, Erion, Chen, DeGrave, Prutkin, Nair, Katz, Himmelfarb, Bansal, and Lee]{lundberg2020trees}
+Scott~M. Lundberg, Gabriel Erion, Hugh Chen, Alex DeGrave, Jordan~M. Prutkin, Bala Nair, Ronit Katz, Jonathan Himmelfarb, Nisha Bansal, and Su-In Lee.
+\newblock From local explanations to global understanding with explainable {AI} for trees.
+\newblock \emph{Nature Machine Intelligence}, 2:\penalty0 56--67, 2020.
+
+\bibitem[Mancino(2025)]{mancino2025memecoin}
+Davide Mancino.
+\newblock The memecoin phenomenon: An in-depth study of {Solana}'s blockchain trends, 2025.
+
+\bibitem[Manoylov(2025)]{theblock2025pumpswap}
+MK~Manoylov.
+\newblock Pump.fun launches {DEX} called {PumpSwap} to instantly migrate graduated tokens.
+\newblock The Block, \url{https://www.theblock.co/post/347360}, 2025.
+\newblock 20 March 2025.
+
+\bibitem[Marino et~al.(2026)Marino, Naviglio, Tarantelli, and Lillo]{marino2026predicting}
+Giulio Marino, Manuel Naviglio, Francesco Tarantelli, and Fabrizio Lillo.
+\newblock Predicting the success of new crypto-tokens: The {Pump.fun} case, 2026.
+
+\bibitem[McElfresh et~al.(2023)McElfresh, Khandagale, Valverde, Prasad~C, Feuer, Hegde, Ramakrishnan, Goldblum, and White]{mcelfresh2023neural}
+Duncan McElfresh, Sujay Khandagale, Jonathan Valverde, Vishak Prasad~C, Benjamin Feuer, Chinmay Hegde, Ganesh Ramakrishnan, Micah Goldblum, and Colin White.
+\newblock When do neural nets outperform boosted trees on tabular data?
+\newblock In \emph{Advances in Neural Information Processing Systems 36, Datasets and Benchmarks Track}, 2023.
+
+\bibitem[Mongardini and Mei(2025)]{mongardini2025midsummer}
+Alberto~Maria Mongardini and Alessandro Mei.
+\newblock A midsummer meme's dream: Investigating market manipulations in the meme coin ecosystem, 2025.
+
+\bibitem[Nosek et~al.(2018)Nosek, Ebersole, DeHaven, and Mellor]{nosek2018preregistration}
+Brian~A. Nosek, Charles~R. Ebersole, Alexander~C. DeHaven, and David~T. Mellor.
+\newblock The preregistration revolution.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 115\penalty0 (11):\penalty0 2600--2606, 2018.
+\newblock \doi{10.1073/pnas.1708274114}.
+
+\bibitem[Platt(1999)]{platt1999probabilistic}
+John~C. Platt.
+\newblock Probabilistic outputs for support vector machines and comparisons to regularized likelihood methods.
+\newblock In \emph{Advances in Large Margin Classifiers}, pages 61--74. MIT Press, 1999.
+
+\bibitem[Saito and Rehmsmeier(2015)]{saito2015precision}
+Takaya Saito and Marc Rehmsmeier.
+\newblock The precision-recall plot is more informative than the {ROC} plot when evaluating binary classifiers on imbalanced datasets.
+\newblock \emph{PLoS ONE}, 10\penalty0 (3):\penalty0 e0118432, 2015.
+
+\bibitem[Shwartz-Ziv and Armon(2022)]{shwartzziv2022tabular}
+Ravid Shwartz-Ziv and Amitai Armon.
+\newblock Tabular data: Deep learning is not all you need.
+\newblock \emph{Information Fusion}, 2022.
+\newblock arXiv:2106.03253.
+
+\bibitem[{Slink Dev}(2026)]{slinkdev2026corpus}
+{Slink Dev}.
+\newblock {PumpFun} launch-to-graduation corpus (jun--jul 2026).
+\newblock Hugging Face dataset \url{https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus}, 2026.
+\newblock Accessed 3 September 2026.
+
+\bibitem[Szwajcok et~al.(2026)Szwajcok, Tsuchiya, Liu, Soska, Payer, and Christin]{szwajcok2026factories}
+Nicolas Szwajcok, Taro Tsuchiya, Enze Liu, Kyle Soska, Mathias Payer, and Nicolas Christin.
+\newblock Meme coin factories: Uncovering large-scale manipulations on pump.fun.
+\newblock In \emph{Proceedings of the 2026 ACM SIGSAC Conference on Computer and Communications Security (CCS)}, 2026.
+\newblock arXiv:2609.10246.
+
+\bibitem[Xu and Livshits(2019)]{xu2019anatomy}
+Jiahua Xu and Benjamin Livshits.
+\newblock The anatomy of a cryptocurrency pump-and-dump scheme.
+\newblock In \emph{28th USENIX Security Symposium}, 2019.
+\newblock arXiv:1811.10109.
+
+\end{thebibliography}

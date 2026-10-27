@@ -1,0 +1,8 @@
+\section{Background: How a pump.fun Token Trades}
+\label{sec:background}
+
+When a token is launched on pump.fun, its supply is fixed and placed in a bonding curve, a smart contract that initially serves as the token's only market maker. The curve maintains virtual reserves of both the token and SOL, and the ratio between these reserves sets the marginal price. Buying a token adds SOL to the curve and removes tokens, pushing the price higher along a predetermined path; selling does the opposite. A token's price on the curve can therefore be deduced from the amount of SOL that has gone into it, and ``curve progress'', the share of the sellable supply already bought, is a natural summary of where a token stands.
+
+When enough SOL has accumulated, the curve completes and the token \emph{graduates}: its liquidity migrates to a conventional automated market maker. Since March 2025 the destination has been PumpSwap, the platform's own exchange; before that it was Raydium~\citep{theblock2025pumpswap}. Graduation is rare, and most tokens never get there.
+
+Every trade on the curve is a Solana transaction, so the full trading history of every token is public. Trade records include the trader's wallet, the direction and size of the trade, and the state of the curve after the trade. Two properties of this market shape our task. First, it is fast: tokens live and die within minutes, and much of the trading is done by bots. Second, the information is public but fragmented. The trade tape of a single token is easy to obtain, but richer context, such as transaction-level fee data, token-balance changes and wallet histories, has to be assembled from additional sources, often at a cost. Section~\ref{sec:leakage} shows why that cost matters.

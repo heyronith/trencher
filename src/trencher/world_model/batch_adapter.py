@@ -24,7 +24,7 @@ from trencher.world_model.input_sanitize import (
     sanitize_feature_matrix,
     sanitize_vector,
 )
-from trencher.world_model.split_guard import PermanentTestAccessError, refuse_test_split
+from trencher.world_model.split_guard import refuse_test_split
 
 _BARRIER_CLASS = {
     BARRIER_UPPER_FIRST: 0,
@@ -144,8 +144,7 @@ def example_to_tensors(
     """Materialize one observation into WorldModel-ready tensors."""
     meta = example.get("meta") or {}
     refuse_test_split(meta.get("base_split") or example.get("base_split"))
-    if str(meta.get("base_split") or "").lower() == "test":
-        raise PermanentTestAccessError("refused test observation")
+    # refuse_test_split already no-ops when TRENCHER_Q85_TEST_UNLOCK is armed.
 
     if barrier_bids is None:
         barrier_bids = tuple(bid for _, _, bid in BARRIER_PAIRS)

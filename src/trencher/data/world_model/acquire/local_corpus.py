@@ -128,10 +128,55 @@ def _event_sort_key(ts: Any) -> float:
         return 0.0
 
 
-def select_stratified_trades_for_mint(
-    trades: list[dict[str, Any]], *, cap: int
+def select_causal_trades_before(
+    trades: list[dict[str, Any]], t: float | datetime, k: int
 ) -> list[dict[str, Any]]:
-    """Pick earliest/buy/sell/size/curve/temporal trades. Deterministic."""
+    """Return the last ``k`` trades with event_time strictly before ``t``.
+
+    Causal selection: only lifetime information available at observation time T
+    may influence which signatures are chosen. Ties break on ``tx_signature``.
+    """
+    if not trades or k <= 0:
+        return []
+    t_key = _event_sort_key(t)
+    before = [
+        row
+        for row in trades
+        if _event_sort_key(row.get("event_time")) < t_key
+    ]
+    ordered = sorted(
+        before,
+        key=lambda row: (
+            _event_sort_key(row.get("event_time")),
+            row.get("tx_signature") or "",
+        ),
+    )
+    return ordered[-k:]
+
+
+def select_stratified_trades_for_mint(
+    trades: list[dict[str, Any]],
+    *,
+    cap: int,
+    allow_lifetime_selection: bool = False,
+) -> list[dict[str, Any]]:
+    """LEAKY lifetime stratified signature selection (frozen lineage only).
+
+    Picks earliest/buy/sell/size/curve/temporal trades over the **full mint
+    lifetime**, including trades after any observation time T. That makes
+    microstructure/ownership features built from the selected signatures
+    non-causal at T.
+
+    Prefer :func:`select_causal_trades_before` for new work. This function
+    remains importable so frozen ``world_model_freeze_v1`` acquisition can
+    reproduce; callers must pass ``allow_lifetime_selection=True`` explicitly.
+    """
+    if not allow_lifetime_selection:
+        raise ValueError(
+            "select_stratified_trades_for_mint is leaky (lifetime selection). "
+            "Pass allow_lifetime_selection=True to reproduce frozen lineage, "
+            "or use select_causal_trades_before(trades, t, k) for causal selection."
+        )
     if not trades or cap <= 0:
         return []
     ordered = sorted(
@@ -237,7 +282,9 @@ def extract_signature_targets(
     selected_by_mint: dict[str, list[dict[str, Any]]] = {}
     for mint in sorted(rich_mints):
         selected_by_mint[mint] = select_stratified_trades_for_mint(
-            reservoirs.get(mint, []), cap=cap
+            reservoirs.get(mint, []),
+            cap=cap,
+            allow_lifetime_selection=True,  # frozen leaky lineage reproduction
         )
     rows = []
     depth = 0

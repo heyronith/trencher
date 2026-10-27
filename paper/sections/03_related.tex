@@ -1,0 +1,17 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Memecoin and launchpad measurement.}
+\citet{mancino2025memecoin} describes pump.fun's growth in late 2024 and its share of Solana token creation and trading. \citet{kamat2026auditing} studies graduation on pump.fun with survival models and audits how reliable collector-generated graduation labels are. \citet{szwajcok2026factories} document five manipulation strategies on pump.fun, including wash trading and coordinated selling, as well as a market for manipulation-as-a-service tools. \citet{mongardini2025midsummer} study memecoins across several chains and find signs of artificial activity in most high-return tokens. \citet{cernera2023token} study token launches, rug pulls and sniper bots on Ethereum and BNB Smart Chain. These studies describe the market we model but do not forecast price surges.
+
+\paragraph{Early prediction on launchpads.}
+\citet{marino2026predicting} estimate the probability that a pump.fun token graduates, conditional on how much SOL its curve holds and on behavioral covariates, and leave prediction of the pump leg to future work. \citet{li2026catching} predict rug pulls on Solana from the first five minutes of trading and find that XGBoost works best. \citet{hu2026melt} build a behavioral dataset of launchpad tokens and predict which will become high-risk after migration. CoinCLIP~\citep{long2024coinclip} combines on-chain data with images and text to judge memecoin viability. Our task differs in its target, a price surge rather than graduation, fraud or long-run viability, and in its timing: we predict at many points in a token's life, seconds ahead.
+
+\paragraph{Pump-and-dump detection.}
+On centralized exchanges, pump-and-dump schemes are typically organized in advance in Telegram groups. \citet{kamps2018moon} propose detection criteria. \citet{xu2019anatomy} predict which coin a group will pump. \citet{lamorgia2020pump,lamorgia2023doge} detect pumps in real time, seconds after they start. \citet{hu2023sequence} predict target coins from sequences of past pumps. \citet{bolz2024realtime} rank candidate coins shortly before an announced pump. These settings have an organizer, an announcement time and a short list of candidate coins. Launchpad surges have none of these, and the candidate set is every live token.
+
+\paragraph{Trees versus deep learning on tabular data.}
+Several benchmarks find that gradient-boosted trees match or beat deep models on tabular data~\citep{grinsztajn2022tree,shwartzziv2022tabular,mcelfresh2023neural}. Our model-family result is consistent with that literature in a setting where the deep model also had access to raw event sequences.
+
+\paragraph{Leakage and evaluation practice.}
+\citet{kapoor2023leakage} survey how data leakage has inflated results across machine-learning-based science. In finance, \citet{lopezdeprado2018advances} discusses leakage across time and proposes purged cross-validation. Preregistration is standard in parts of the empirical sciences~\citep{nosek2018preregistration} but rare in machine learning for crypto markets. Our case study adds a specific, hard-to-spot mechanism, selection leakage in the acquisition of on-chain data, together with practical tests for it.

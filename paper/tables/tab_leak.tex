@@ -1,0 +1,15 @@
+\begin{tabular}{lcc}
+\toprule
+Model or feature (multimodal subset, validation tokens) & ROC-AUC & PR-AUC \\
+\midrule
+Broad features only (arm A) & 0.835 & 0.074 \\
+Broad + all rich features (arm B) & 0.917 & 0.114 \\
+Arm B + leak canary (share of fetched txs before $T$) & 0.921 & 0.120 \\
+Arm B without microstructure & 0.881 & 0.108 \\
+Broad + causally selected rich sources only & 0.841 & 0.070 \\
+\midrule
+\texttt{micro\_n} alone & 0.125 & -- \\
+``Largest trade is after $T$'' alone & 0.825 & -- \\
+Causal trade count before $T$ alone & 0.305 & -- \\
+\bottomrule
+\end{tabular}

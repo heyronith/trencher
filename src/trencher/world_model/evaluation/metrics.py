@@ -22,7 +22,6 @@ def _safe_auc(y: np.ndarray, scores: np.ndarray) -> float | None:
     if n_pos == 0 or n_neg == 0:
         return None
     order = np.argsort(s, kind="mergesort")
-    y_ord = y[order]
     ranks = np.empty(y.size, dtype=np.float64)
     i = 0
     while i < y.size:
@@ -32,7 +31,8 @@ def _safe_auc(y: np.ndarray, scores: np.ndarray) -> float | None:
         avg = 0.5 * (i + 1 + j)
         ranks[order[i:j]] = avg
         i = j
-    sum_pos = float(ranks[y_ord == 1].sum())
+    # ranks is indexed in original sample order; select positives with y, not y[order].
+    sum_pos = float(ranks[y == 1].sum())
     return float((sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
 
 

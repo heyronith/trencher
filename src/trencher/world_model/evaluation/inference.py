@@ -156,8 +156,10 @@ def run_permanent_val_inference(
         for batch_idx, batch in enumerate(loader, 1):
             if max_batches is not None and batch_idx > max_batches:
                 break
+            n_batch = int(batch["observation_id_hash"].shape[0])
+            row_split = "test" if mode == "permanent_test_eval" else "val"
             refuse_test_base_splits(
-                ["val"] * int(batch["observation_id_hash"].shape[0]),
+                [row_split] * n_batch,
                 context="step17_inference",
             )
             causal_bad += int((batch["causal_ok"] < 0.5).sum().item())
@@ -225,7 +227,7 @@ def run_permanent_val_inference(
         repo_root=repo_root,
         allow_dirty=allow_dirty,
     )
-    meta.update(provenance_q85_flag(accessed=False))
+    meta.update(provenance_q85_flag(accessed=(mode == "permanent_test_eval")))
     metrics_payload = dict(metrics)
     metrics_payload.update(meta)
 

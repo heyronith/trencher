@@ -1,0 +1,10 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We asked whether the start of a memecoin price surge can be predicted seconds ahead using only on-chain information. On a locked, preregistered final week of pump.fun data, it can, to a useful but limited degree. The best models rank surge onsets about six times above the base rate among their top alerts, with around five seconds of warning. A simple logistic regression does about as well as gradient-boosted trees, and better than a much larger Transformer. High predictability coexists with steep losses for anyone who buys on the signal. We also showed how a plausible data-acquisition shortcut can manufacture an impressive but false result. Extending the data to longer periods and other launchpads, and collecting richer transaction-level data under strictly causal rules, are the natural next steps.
+
+\section*{Data and Code Availability}
+The source data are the public PumpFun Launch-to-Graduation Corpus~\citep{slinkdev2026corpus}. The code for data processing, labeling, model training and evaluation, together with the evaluation reports, the preregistered test protocols and the scripts that generate every table and figure in this paper, is available at \url{https://github.com/heyronith/trencher}.
+
+\section*{Acknowledgments}
+We thank the maintainers of the PumpFun Launch-to-Graduation Corpus for making their data public. This research received no external funding. AI assistants were used for research planning, code generation and review, and drafting and editing of the text. The author designed and directed the study, ran all experiments, checked the reported results, and takes full responsibility for the content of this paper.

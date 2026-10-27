@@ -1,0 +1,12 @@
+\begin{tabularx}{\linewidth}{lrX}
+\toprule
+Group & $n$ & Features (windowed features appear once per window: 10 s, 30 s, 120 s and full history) \\
+\midrule
+Event flow & 80 & \texttt{event\_count}, \texttt{buy\_count}, \texttt{sell\_count}, \texttt{buy\_fraction}, \texttt{buy\_sol}, \texttt{sell\_sol}, \texttt{net\_sol}, \texttt{flow\_imbalance}, \texttt{sol\_mean}, \texttt{sol\_std}, \texttt{sol\_max}, \texttt{price\_return}, \texttt{price\_slope}, \texttt{realized\_vol}, \texttt{drawdown}, \texttt{price\_accel}, \texttt{interarrival\_mean}, \texttt{interarrival\_std}, \texttt{burst\_intensity}, \texttt{intensity\_accel} \\
+Curve state & 21 & \texttt{reserve\_delta\_sol}, \texttt{curve\_delta}, \texttt{curve\_velocity}, \texttt{curve\_accel}, \texttt{latest\_price}, \texttt{latest\_v\_sol}, \texttt{latest\_v\_tok}, \texttt{latest\_curve\_pct}, \texttt{latest\_is\_buy} \\
+Market context & 14 & \texttt{global\_launches\_1h}, \texttt{global\_launches\_24h}, \texttt{global\_migrations\_1h}, \texttt{global\_migrations\_24h}, \texttt{daily\_network\_launches}, \texttt{daily\_network\_graduations}, \texttt{daily\_network\_trades}, \texttt{daily\_network\_buy\_volume\_sol}, \texttt{daily\_network\_graduation\_rate}, \texttt{global\_bucket\_trades\_sum}, \texttt{global\_bucket\_buy\_sol\_sum}, \texttt{global\_bucket\_sell\_sol\_sum}, \texttt{global\_bucket\_imbalance}, \texttt{global\_bucket\_unique\_mints\_mean} \\
+Creator history & 3 & \texttt{creator\_prior\_rank}, \texttt{creator\_prior\_is\_mayhem}, \texttt{creator\_history\_n} \\
+Token age & 2 & \texttt{token\_age\_seconds}, \texttt{token\_age\_log1p} \\
+Missing-data indicators & 4 & \texttt{mask\_events}, \texttt{mask\_curve}, \texttt{mask\_creator}, \texttt{mask\_global} \\
+\bottomrule
+\end{tabularx}
