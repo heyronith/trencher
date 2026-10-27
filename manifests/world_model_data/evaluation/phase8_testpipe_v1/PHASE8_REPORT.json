@@ -1,0 +1,460 @@
+{
+  "manifest": {
+    "all_val_reproduction_pass": true,
+    "model_ids": [
+      "age_curve_xgb_explosion_300s",
+      "age_curve_xgb_explosion_60s",
+      "lgbm_tuned_explosion_300s",
+      "lgbm_tuned_explosion_60s",
+      "logistic_l2_explosion_300s",
+      "logistic_l2_explosion_60s",
+      "stage_b_broad",
+      "xgb_champion_explosion_300s",
+      "xgb_champion_explosion_60s",
+      "xgb_champion_twox_reaches_plus_100pct"
+    ],
+    "n_models": 10
+  },
+  "manifest_path": "manifests/world_model_data/evaluation/TEST_MODEL_MANIFEST_V2.json",
+  "q85_test_accessed": false,
+  "reproduction_all_pass": true,
+  "reproduction_table": [
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8734024630446618,
+      "metric": "explosion_60s/xgb_champion/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8734024630446618
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.0919034170516391,
+      "metric": "explosion_60s/xgb_champion/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.0919034170516391
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8577210181555615,
+      "metric": "explosion_60s/logistic_l2/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8577210181555615
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.07590959440935077,
+      "metric": "explosion_60s/logistic_l2/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.07590959440935077
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8734519873901027,
+      "metric": "explosion_60s/lgbm_tuned/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8734519873901027
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.08981779108446239,
+      "metric": "explosion_60s/lgbm_tuned/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.08981779108446239
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8540384384127677,
+      "metric": "explosion_60s/age_curve_xgb/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8540384384127677
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.07556788685180386,
+      "metric": "explosion_60s/age_curve_xgb/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.07556788685180386
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.858235262339151,
+      "metric": "explosion_60s/stage_b/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.858235262339151
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.07725719290647641,
+      "metric": "explosion_60s/stage_b/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.07725719290647641
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 908916.0,
+      "metric": "explosion_60s/strata/fixed_age/n",
+      "pass": true,
+      "phase_report_value": 908916.0
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.923903576144711,
+      "metric": "explosion_60s/strata/fixed_age/xgb_champion/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.923903576144711
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8576585189473002,
+      "metric": "explosion_300s/xgb_champion/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8576585189473002
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.09828454105205248,
+      "metric": "explosion_300s/xgb_champion/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.09828454105205248
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8338884158684785,
+      "metric": "explosion_300s/logistic_l2/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8338884158684785
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.07846196000902864,
+      "metric": "explosion_300s/logistic_l2/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.07846196000902864
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8560427464629519,
+      "metric": "explosion_300s/lgbm_tuned/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8560427464629519
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.09513737493211791,
+      "metric": "explosion_300s/lgbm_tuned/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.09513737493211791
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8363519358731858,
+      "metric": "explosion_300s/age_curve_xgb/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8363519358731858
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.08018750684665794,
+      "metric": "explosion_300s/age_curve_xgb/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.08018750684665794
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8410435909186866,
+      "metric": "explosion_300s/stage_b/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8410435909186866
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.0818620459666531,
+      "metric": "explosion_300s/stage_b/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.0818620459666531
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 908130.0,
+      "metric": "explosion_300s/strata/fixed_age/n",
+      "pass": true,
+      "phase_report_value": 908130.0
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.909562133275878,
+      "metric": "explosion_300s/strata/fixed_age/xgb_champion/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.909562133275878
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 6867.0,
+      "metric": "twox/n_pos",
+      "pass": true,
+      "phase_report_value": 6867.0
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.8532102769799242,
+      "metric": "twox/roc_auc",
+      "pass": true,
+      "phase_report_value": 0.8532102769799242
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.022619123676620015,
+      "metric": "twox/pr_auc",
+      "pass": true,
+      "phase_report_value": 0.022619123676620015
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 2.919221187111096,
+      "metric": "twox/alert_lift",
+      "pass": true,
+      "phase_report_value": 2.919221187111096
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 0.037392939210361395,
+      "metric": "twox/pump_recall_top1pct",
+      "pass": true,
+      "phase_report_value": 0.037392939210361395
+    },
+    {
+      "abs_diff": 0.0,
+      "dry_run_value": 6.195696628932291,
+      "metric": "explosion_300s/alert_lift",
+      "pass": true,
+      "phase_report_value": 6.195696628932291
+    }
+  ],
+  "scored_val_summary": {
+    "by_head_keys": [
+      "explosion_300s",
+      "explosion_60s"
+    ],
+    "twox_n_pos": 6867,
+    "twox_roc": 0.8532102769799242
+  },
+  "summary_lines": [
+    "Frozen 10 models under scratch/test_models_v2/; all val_reproduction_max_abs_diff \u2264 1e-6.",
+    "Full val pipeline runtime_sec=2226.7, peak_rss_mb=6873.0.",
+    "Reproduction table: 30 pass / 0 fail (tol 1e-6).",
+    "TEST population (metadata only): mints=116027 obs=1295766 launch=[1783459141.407781, 1784041302.759724].",
+    "V2 prereg SHA=3299ee8d9b05286bbac9f9e1a7dc085e8d0de349. q85_test_accessed: false. --split test not run."
+  ],
+  "test_population_metadata": {
+    "launch_time_range_unix": {
+      "max": 1784041302.759724,
+      "min": 1783459141.407781
+    },
+    "n_test_mints": 116027,
+    "n_test_observations": 1295766,
+    "note": "Metadata only \u2014 no TEST features, labels, or observation_targets rows read.",
+    "q85_test_accessed": false,
+    "q85_unix": 1783459140.3081825,
+    "source": "token_assignments.parquet + observation_assignments_broad_stats.json + cutoffs.json"
+  },
+  "v2_preregistration_sha": "3299ee8d9b05286bbac9f9e1a7dc085e8d0de349",
+  "val_pipeline": {
+    "feature_meta": {
+      "builder": "build_baseline_features_v1",
+      "feature_names": [
+        "token_age_seconds",
+        "token_age_log1p",
+        "mask_events",
+        "mask_curve",
+        "mask_creator",
+        "mask_global",
+        "event_count_w10",
+        "buy_count_w10",
+        "sell_count_w10",
+        "buy_fraction_w10",
+        "buy_sol_w10",
+        "sell_sol_w10",
+        "net_sol_w10",
+        "flow_imbalance_w10",
+        "sol_mean_w10",
+        "sol_std_w10",
+        "sol_max_w10",
+        "price_return_w10",
+        "price_slope_w10",
+        "realized_vol_w10",
+        "drawdown_w10",
+        "price_accel_w10",
+        "interarrival_mean_w10",
+        "interarrival_std_w10",
+        "burst_intensity_w10",
+        "intensity_accel_w10",
+        "reserve_delta_sol_w10",
+        "curve_delta_w10",
+        "curve_velocity_w10",
+        "curve_accel_w10",
+        "event_count_w30",
+        "buy_count_w30",
+        "sell_count_w30",
+        "buy_fraction_w30",
+        "buy_sol_w30",
+        "sell_sol_w30",
+        "net_sol_w30",
+        "flow_imbalance_w30",
+        "sol_mean_w30",
+        "sol_std_w30",
+        "sol_max_w30",
+        "price_return_w30",
+        "price_slope_w30",
+        "realized_vol_w30",
+        "drawdown_w30",
+        "price_accel_w30",
+        "interarrival_mean_w30",
+        "interarrival_std_w30",
+        "burst_intensity_w30",
+        "intensity_accel_w30",
+        "reserve_delta_sol_w30",
+        "curve_delta_w30",
+        "curve_velocity_w30",
+        "curve_accel_w30",
+        "event_count_w120",
+        "buy_count_w120",
+        "sell_count_w120",
+        "buy_fraction_w120",
+        "buy_sol_w120",
+        "sell_sol_w120",
+        "net_sol_w120",
+        "flow_imbalance_w120",
+        "sol_mean_w120",
+        "sol_std_w120",
+        "sol_max_w120",
+        "price_return_w120",
+        "price_slope_w120",
+        "realized_vol_w120",
+        "drawdown_w120",
+        "price_accel_w120",
+        "interarrival_mean_w120",
+        "interarrival_std_w120",
+        "burst_intensity_w120",
+        "intensity_accel_w120",
+        "reserve_delta_sol_w120",
+        "curve_delta_w120",
+        "curve_velocity_w120",
+        "curve_accel_w120",
+        "event_count_wfull",
+        "buy_count_wfull",
+        "sell_count_wfull",
+        "buy_fraction_wfull",
+        "buy_sol_wfull",
+        "sell_sol_wfull",
+        "net_sol_wfull",
+        "flow_imbalance_wfull",
+        "sol_mean_wfull",
+        "sol_std_wfull",
+        "sol_max_wfull",
+        "price_return_wfull",
+        "price_slope_wfull",
+        "realized_vol_wfull",
+        "drawdown_wfull",
+        "price_accel_wfull",
+        "interarrival_mean_wfull",
+        "interarrival_std_wfull",
+        "burst_intensity_wfull",
+        "intensity_accel_wfull",
+        "reserve_delta_sol_wfull",
+        "curve_delta_wfull",
+        "curve_velocity_wfull",
+        "curve_accel_wfull",
+        "latest_price",
+        "latest_v_sol",
+        "latest_v_tok",
+        "latest_curve_pct",
+        "latest_is_buy",
+        "creator_prior_rank",
+        "creator_prior_is_mayhem",
+        "creator_history_n",
+        "global_launches_1h",
+        "global_launches_24h",
+        "global_migrations_1h",
+        "global_migrations_24h",
+        "daily_network_launches",
+        "daily_network_graduations",
+        "daily_network_trades",
+        "daily_network_buy_volume_sol",
+        "daily_network_graduation_rate",
+        "global_bucket_trades_sum",
+        "global_bucket_buy_sol_sum",
+        "global_bucket_sell_sol_sum",
+        "global_bucket_imbalance",
+        "global_bucket_unique_mints_mean"
+      ],
+      "n_features": 124,
+      "q85_test_accessed": false,
+      "resumed_existing": true,
+      "source": "phase4_split_overlay",
+      "split_root": "/Users/ronny/Desktop/trencher/scratch/phase4_clean_v1/split_overlay"
+    },
+    "peak_rss_mb": 6873.0,
+    "runtime_sec": 2226.7074179649353,
+    "stage_b_meta": {
+      "checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+      "force_rerun": false,
+      "note": "Reused CPU step17 permanent_val_eval artifact after verifying checkpoint SHA. Set force_rerun to re-execute infer (~2.3h).",
+      "predictions_parquet": "/Users/ronny/Desktop/trencher/scratch/phase8_testpipe_v1/stage_b_infer_val/stage_b_broad_permanent_val.parquet",
+      "q85_test_accessed": false,
+      "source": "phase4_step17_infer_reused",
+      "step17_path": "trencher.world_model.evaluation.step17 infer",
+      "summary": {
+        "metadata": {
+          "active_modalities": [
+            "creator",
+            "curve",
+            "events",
+            "global"
+          ],
+          "artifact": "stage_b_broad_permanent_val_permanent_val",
+          "causal_failures": 0,
+          "checkpoint_phase": "broad",
+          "checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+          "checkpoint_step": 150000,
+          "config_hash": "c2e7c0e51ef91df87333615f5e6cd66e0baed891fbabcb907c5f5fa55a6d8945",
+          "elapsed_sec": 8397.627229213715,
+          "evaluation_runtime": {
+            "allow_dirty": true,
+            "discovery": "git_rev_parse_head",
+            "git_dirty": true,
+            "git_sha": "8aba4991af562f4a9885daa73ca5f8dda031c0bc"
+          },
+          "evaluation_runtime_git_dirty": true,
+          "evaluation_runtime_git_sha": "8aba4991af562f4a9885daa73ca5f8dda031c0bc",
+          "examples_per_sec": 150.6751806746337,
+          "inference_mask_diagnostic": false,
+          "inference_mask_omit": [],
+          "modality_config": {
+            "active": [
+              "creator",
+              "curve",
+              "events",
+              "global"
+            ],
+            "inference_mask_omit": [],
+            "omit_train": []
+          },
+          "mode": "permanent_val_eval",
+          "omit_modalities": [],
+          "parameters": 15679133,
+          "phase": "broad",
+          "population": "broad",
+          "q85_test_accessed": false,
+          "rows_loaded": 1265314,
+          "run_id": "stage_b_broad_permanent_val",
+          "source_checkpoint_sha256": "ccf27af79bf178f095c70a84e48ad2e573bae8d5cfcfdde9d32fbb0a1f7aa208",
+          "written_at": "2026-10-26T18:35:57.544812+00:00"
+        },
+        "metrics_path": "scratch/phase4_clean_v1/infer_stage_b_broad/stage_b_broad_permanent_val_metrics.json",
+        "metrics_sha256": "04c8ccb578df0d17e3b43c07367f8d14fd286766cef942de08448e31d84897c6",
+        "predictions_path": "scratch/phase4_clean_v1/infer_stage_b_broad/stage_b_broad_permanent_val_predictions.pt",
+        "predictions_sha256": "bc527999cae7ceae1aa5c8c120f1d20508399d0230130739288a2c335bee9433"
+      }
+    }
+  }
+}
