@@ -136,18 +136,21 @@ def alert_feed_hourly(
     mints: np.ndarray,
     obs_t: np.ndarray,
     top_n: int = 10,
+    window_lo: float | None = None,
+    window_hi: float | None = None,
 ) -> dict[str, Any]:
-    """Cover every hour in the val observation window; report empty hours separately."""
-    q70, q85 = val_window()
-    # Hour bins spanning the permanent-val launch/obs window using obs times
+    """Cover every hour in the observation window; report empty hours separately."""
+    if window_lo is None or window_hi is None:
+        window_lo, window_hi = val_window()
+    # Hour bins spanning the launch/obs window using obs times
     finite = np.isfinite(obs_t) & elig300.astype(bool)
     if not finite.any():
         return {"error": "no finite obs times", **Q85}
     t_min = float(np.nanmin(obs_t[finite]))
     t_max = float(np.nanmax(obs_t[finite]))
     # Also span full cutoff window hours
-    h0 = int(np.floor(min(t_min, q70) / 3600.0))
-    h1 = int(np.floor(max(t_max, q85 - 1e-9) / 3600.0))
+    h0 = int(np.floor(min(t_min, float(window_lo)) / 3600.0))
+    h1 = int(np.floor(max(t_max, float(window_hi) - 1e-9) / 3600.0))
     all_hours = list(range(h0, h1 + 1))
 
     hours = np.floor(obs_t / 3600.0).astype(np.int64)
@@ -200,7 +203,12 @@ def alert_feed_hourly(
         "base_rate_eligible": base,
         "lift_vs_base": (float(np.mean(fracs) / base) if fracs and base > 0 else None),
         "per_hour": hour_stats,
-        "window": {"obs_t_min": t_min, "obs_t_max": t_max, "q70": q70, "q85": q85},
+        "window": {
+            "obs_t_min": t_min,
+            "obs_t_max": t_max,
+            "window_lo": float(window_lo),
+            "window_hi": float(window_hi),
+        },
         **Q85,
     }
 

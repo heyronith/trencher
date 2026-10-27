@@ -155,15 +155,32 @@ def predict_twox(
     )
 
 
-def load_stage_b_val_preds(manifest: dict[str, Any]) -> dict[str, Any]:
-    """Load pinned Stage-B permanent-val parquet (from step17 infer)."""
+def load_stage_b_preds(
+    manifest: dict[str, Any],
+    *,
+    split: str = "val",
+    preds_parquet: Path | None = None,
+) -> dict[str, Any]:
+    """Load Stage-B per-row parquet for ``split``.
+
+    val: prefer pinned manifest artifact (sha verified).
+    test: require ``preds_parquet`` produced after TEST_ACCESSED.lock.
+    """
     import pyarrow.parquet as pq
 
     m = manifest["models"]["stage_b_broad"]
     ckpt = REPO / m["path"]
     _verify(ckpt, m["sha256"])
-    preds_path = REPO / m["val_preds_parquet"]
-    _verify(preds_path, m["val_preds_sha256"])
+    if split == "val":
+        preds_path = Path(preds_parquet) if preds_parquet else REPO / m["val_preds_parquet"]
+        if preds_path == REPO / m["val_preds_parquet"]:
+            _verify(preds_path, m["val_preds_sha256"])
+    elif split == "test":
+        if preds_parquet is None:
+            raise ValueError("TEST Stage-B preds require preds_parquet after unlock")
+        preds_path = Path(preds_parquet)
+    else:
+        raise ValueError(f"unknown split {split!r}")
     table = pq.read_table(preds_path)
     return {
         "table": table,
@@ -176,4 +193,10 @@ def load_stage_b_val_preds(manifest: dict[str, Any]) -> dict[str, Any]:
         .astype(np.float64),
         "checkpoint_sha256": m["sha256"],
         "preds_path": str(preds_path),
+        "split": split,
     }
+
+
+def load_stage_b_val_preds(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Backward-compatible alias for permanent-val Stage-B preds."""
+    return load_stage_b_preds(manifest, split="val")

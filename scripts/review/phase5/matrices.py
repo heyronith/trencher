@@ -1,8 +1,9 @@
-"""Broad train/val matrix loaders for Phase-5 (overlay features + WF meta)."""
+"""Broad train/val/test matrix loaders for Phase-5 (overlay features + WF meta)."""
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -11,11 +12,16 @@ import pyarrow.parquet as pq
 from scripts.review.phase4.broad_matrices import head_spec, load_broad_head_arrays
 from scripts.review.phase5.common import Q85, REPO, SCRATCH, SPLIT
 
+from trencher.baselines.split_guard import refuse_test_split
+
 OVERLAY = REPO / "scratch" / "phase4_clean_v1" / "split_overlay"
 
 
 def broad_split_root() -> Path:
-    """Prefer phase4 overlay (full 256 partitions); freeze only has 2."""
+    """Prefer explicit phase8/9 overlay, else phase4 overlay, else freeze."""
+    env = os.environ.get("TRENCHER_PHASE8_SPLIT_ROOT")
+    if env:
+        return Path(env)
     feat = OVERLAY / "baseline_features_v1" / "broad" / "by_mint_partition"
     if len(list(feat.glob("*/features.parquet"))) >= 200:
         return OVERLAY
@@ -23,7 +29,8 @@ def broad_split_root() -> Path:
 
 
 def load_detected_at_map(split: str) -> dict[str, float]:
-    """oid -> detected_at_unix for train or val assignments."""
+    """oid -> detected_at_unix for train/val/test assignments."""
+    refuse_test_split(split)
     out: dict[str, float] = {}
     # Prefer overlay assignments if present, else freeze
     for root in (broad_split_root(), SPLIT):
@@ -52,7 +59,14 @@ def load_detected_at_map(split: str) -> dict[str, float]:
 
 def load_head_bundle(head_id: str, split: str) -> dict[str, Any]:
     """Load X/y/elig/times/oids/mints + detected_at for one head."""
-    cache_dir = SCRATCH / "matrices" / head_id
+    refuse_test_split(split)
+    # Cache TEST matrices under phase9 scratch to avoid colliding with val caches.
+    if split == "test":
+        cache_dir = (
+            REPO / "scratch" / "phase9_test_once_v1" / "matrices" / head_id
+        )
+    else:
+        cache_dir = SCRATCH / "matrices" / head_id
     cache_dir.mkdir(parents=True, exist_ok=True)
     meta_path = cache_dir / f"{split}_meta.json"
     x_path = cache_dir / f"{split}_X.npy"
@@ -77,6 +91,7 @@ def load_head_bundle(head_id: str, split: str) -> dict[str, Any]:
             "split": split,
             "head_id": head_id,
             **Q85,
+            **({"q85_test_accessed": True} if split == "test" else {}),
         }
 
     root = broad_split_root()
@@ -100,6 +115,7 @@ def load_head_bundle(head_id: str, split: str) -> dict[str, Any]:
         "n_features": int(arr["X"].shape[1]),
         "split_root": str(root),
         **Q85,
+        **({"q85_test_accessed": True} if split == "test" else {}),
     }
     meta_path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     return {
@@ -114,6 +130,7 @@ def load_head_bundle(head_id: str, split: str) -> dict[str, Any]:
         "split": split,
         "head_id": head_id,
         **Q85,
+        **({"q85_test_accessed": True} if split == "test" else {}),
     }
 
 

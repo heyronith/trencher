@@ -126,6 +126,7 @@ def _index_assignments(
     q85: float,
     max_partitions: int | None,
     progress: ProgressEmitter,
+    base_splits: tuple[str, ...] = ("train", "val"),
 ) -> tuple[dict[str, list[dict[str, Any]]], int]:
     from trencher.data.world_model.broad.sequences import mint_partition as _mint_partition
 
@@ -134,8 +135,11 @@ def _index_assignments(
         # Keep full assignment scan for correct population counts; max_partitions
         # limits mint partitions after grouping.
         pass
+    want = frozenset(base_splits)
+    if "test" in want:
+        refuse_test_split("test")  # no-op when q85 unlock armed; else raises
     by_mp: dict[str, list[dict[str, Any]]] = {}
-    n_skipped_test = 0
+    n_skipped_other = 0
     cols = [
         "observation_id",
         "mint",
@@ -155,16 +159,16 @@ def _index_assignments(
         table = pq.read_table(path, columns=use)
         for row in table.to_pylist():
             split = str(row.get("base_split") or "")
-            if split == "test":
-                n_skipped_test += 1
-                continue
-            if split not in ("train", "val"):
+            if split not in want:
+                n_skipped_other += 1
                 continue
             refuse_test_split(split)
-            det = row.get("detected_at_unix")
-            if det is not None and float(det) >= q85:
-                n_skipped_test += 1
-                continue
+            # For train+val builds, also drop any row with det >= q85 (defense in depth).
+            if "test" not in want:
+                det = row.get("detected_at_unix")
+                if det is not None and float(det) >= q85:
+                    n_skipped_other += 1
+                    continue
             mint = str(row.get("mint") or "")
             mp = str(row.get("mint_partition") or "") or (
                 _mint_partition(mint) if mint else ""
@@ -181,7 +185,7 @@ def _index_assignments(
     if max_partitions is not None:
         keep = sorted(by_mp.keys())[:max_partitions]
         by_mp = {k: by_mp[k] for k in keep}
-    return by_mp, n_skipped_test
+    return by_mp, n_skipped_other
 
 
 def _broad_features_for_row(
@@ -351,14 +355,28 @@ def build_baseline_features_v1(
     progress: ProgressEmitter | None = None,
     include_rich: bool | None = None,
     resume: bool = True,
+    base_splits: tuple[str, ...] = ("train", "val"),
+    out_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Build feature cache for train+val only (never test).
+    """Build feature cache with the locked feature order.
 
-    ``population='broad'`` → 124 features for full broad train+val.
-    ``population='rich'`` → 146 features for frozen rich observation IDs only.
+    Default: train+val into ``feature_cache_root(split_root)`` (never TEST).
+
+    For TEST: pass ``base_splits=("test",)`` with q85 unlock armed and a
+    **separate** ``out_root`` under scratch so train/val caches are untouched.
     """
     world_root = Path(world_root)
     split_root = Path(split_root or world_root / "splits" / "split_v1")
+    base_splits = tuple(base_splits)
+    if not base_splits:
+        raise ValueError("base_splits must be non-empty")
+    if "test" in base_splits and out_root is None:
+        raise ValueError(
+            "building TEST features requires an explicit out_root "
+            "(separate from the train+val feature cache)"
+        )
+    if "test" in base_splits and set(base_splits) != {"test"}:
+        raise ValueError("TEST features must be built alone (base_splits=('test',))")
 
     if population is None:
         if (populations and "rich" in populations and "broad" not in populations) or include_rich:
@@ -370,8 +388,12 @@ def build_baseline_features_v1(
 
     include_rich = population == "rich"
     feature_names = all_feature_names(include_rich=include_rich)
-    out_root = ensure_dir(feature_cache_root(split_root=split_root))
-    progress = progress or ProgressEmitter(f"Baseline feature cache ({population})")
+    out_root = ensure_dir(
+        Path(out_root) if out_root is not None else feature_cache_root(split_root=split_root)
+    )
+    progress = progress or ProgressEmitter(
+        f"Baseline feature cache ({population}; splits={','.join(base_splits)})"
+    )
     progress.emit(1, message="start", force=True)
 
     cutoffs = json.loads((split_root / "cutoffs.json").read_text(encoding="utf-8"))
@@ -395,12 +417,13 @@ def build_baseline_features_v1(
         if population == "rich"
         else "observation_assignments_broad"
     )
-    progress.emit(5, message=f"index {assign_name} train+val")
+    progress.emit(5, message=f"index {assign_name} {base_splits}")
     by_mp, n_skipped_test = _index_assignments(
         assign_dir=split_root / assign_name,
         q85=q85,
         max_partitions=max_partitions,
         progress=progress,
+        base_splits=base_splits,
     )
 
     mps = sorted(by_mp.keys())
@@ -603,6 +626,7 @@ def build_baseline_features_v1(
 
     train_n = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "train")
     val_n = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "val")
+    test_n = sum(1 for rows in by_mp.values() for r in rows if r["base_split"] == "test")
     manifest = {
         "feature_cache_version": FEATURE_CACHE_VERSION,
         "population": population,
@@ -611,6 +635,9 @@ def build_baseline_features_v1(
         "rows_resumed": rows_resumed,
         "train_n": train_n,
         "val_n": val_n,
+        "test_n": test_n,
+        "base_splits": list(base_splits),
+        "out_root": str(out_root),
         "assignment_rows_expected": expected_rows,
         "unique_observation_ids": len(seen_oids),
         "partitions": len(mps),
@@ -618,7 +645,7 @@ def build_baseline_features_v1(
         "partitions_skipped": partitions_skipped,
         "resume": resume,
         "feature_n": len(feature_names),
-        "skipped_test_rows": n_skipped_test,
+        "skipped_other_rows": n_skipped_test,
         "populations": [population],
         "include_rich": include_rich,
         "rich_source": "sequences/sequence_dataset_v2" if include_rich else None,
@@ -630,7 +657,8 @@ def build_baseline_features_v1(
         ),
         "missing_broad_refs": 0,
         "missing_rich_refs": 0,
-        "no_permanent_test": True,
+        "no_permanent_test": "test" not in base_splits,
+        "q85_test_accessed": "test" in base_splits,
         "forbidden_sources": [
             "graph/edges_wallet_token.parquet lifetime aggregates",
             "nearest_time_oid_matching_across_populations",

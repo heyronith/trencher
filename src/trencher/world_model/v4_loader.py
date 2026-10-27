@@ -13,7 +13,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 
-from trencher.data.world_model.splits.cutoffs import SPLIT_TRAIN, SPLIT_VAL
+from trencher.data.world_model.splits.cutoffs import SPLIT_TEST, SPLIT_TRAIN, SPLIT_VAL
+from trencher.data.world_model.splits.q85_unlock import q85_test_unlocked
 from trencher.data.world_model.splits.walkforward import fold_split_for_launch
 from trencher.data.world_model.training.dataset import StreamingSplitDataset
 from trencher.data.world_model.training.example import ProductionExampleBuilder
@@ -29,10 +30,14 @@ DatasetMode = Literal[
     "wf_fold_2",
     "final_train",
     "permanent_val_eval",
+    "permanent_test_eval",
 ]
 
 _ALLOWED_MODES: frozenset[str] = frozenset(
     {"wf_fold_1", "wf_fold_2", "final_train", "permanent_val_eval"}
+)
+_ALLOWED_MODES_UNLOCKED: frozenset[str] = _ALLOWED_MODES | frozenset(
+    {"permanent_test_eval"}
 )
 
 
@@ -50,7 +55,12 @@ def assert_dataset_mode(mode: str) -> DatasetMode:
     mode = str(mode)
     if mode.lower() in {"test", "permanent_test", "q85_test"}:
         raise PermanentTestAccessError(f"dataset mode {mode!r} is forbidden")
-    if mode not in _ALLOWED_MODES:
+    allowed = _ALLOWED_MODES_UNLOCKED if q85_test_unlocked() else _ALLOWED_MODES
+    if mode == "permanent_test_eval" and not q85_test_unlocked():
+        raise PermanentTestAccessError(
+            "dataset mode 'permanent_test_eval' requires TRENCHER_Q85_TEST_UNLOCK"
+        )
+    if mode not in allowed:
         raise PermanentTestAccessError(f"unknown/forbidden dataset mode {mode!r}")
     return mode  # type: ignore[return-value]
 
@@ -58,6 +68,8 @@ def assert_dataset_mode(mode: str) -> DatasetMode:
 def _mode_to_base_split(mode: DatasetMode) -> str:
     if mode == "permanent_val_eval":
         return SPLIT_VAL
+    if mode == "permanent_test_eval":
+        return SPLIT_TEST
     return SPLIT_TRAIN
 
 
@@ -176,7 +188,10 @@ class FrozenV4IterableDataset(IterableDataset):
 
     def _accept(self, row: dict[str, Any]) -> bool:
         refuse_test_split(row.get("base_split"))
-        if str(row.get("base_split")).lower() == "test":
+        row_split = str(row.get("base_split")).lower()
+        if row_split == "test" and self.mode != "permanent_test_eval":
+            return False
+        if row_split != "test" and self.mode == "permanent_test_eval":
             return False
         if self._fold is not None and self._wf_role is not None:
             return _row_in_wf_role(row, self._fold, self._wf_role)

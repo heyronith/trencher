@@ -9,7 +9,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from scripts.review.phase5.common import metrics_block
 from scripts.review.phase6.boot import mint_bootstrap_delta
-from scripts.review.phase6.common import BROAD_EVENTS, DEFINITIONS, val_window
+from scripts.review.phase6.common import BROAD_EVENTS, DEFINITIONS
 from scripts.review.phase6.overlays import load_val_side_fields, variant_keep
 from scripts.review.phase6.pump_eval import alert_feed_hourly, pump_level_recall
 from scripts.review.phase7.common import AGE_CURVE_FEATURES
@@ -21,6 +21,7 @@ from scripts.review.phase7.strata import (
 )
 from scripts.review.phase7.twox import _build_twox_labels, _load_reach_and_upside_maps
 from scripts.review.phase8.common import Q85
+from scripts.review.phase8.windows import event_onset_window
 
 
 def _align_stage_b(
@@ -49,17 +50,15 @@ def score_head_bundle(
     already: np.ndarray,
     tte: np.ndarray,
     run_bootstrap: bool = True,
+    split: str = "val",
 ) -> dict[str, Any]:
     """Variants × models metrics + strata + Δ CIs for one explosion head."""
     name_to_i = {n: i for i, n in enumerate(feature_names)}
-    # Finite score mask across tree/linear models; stage_b may miss rows
+    win_lo, win_hi = event_onset_window(split)  # type: ignore[arg-type]
     base_models = ("xgb_champion", "lgbm_tuned", "logistic_l2", "age_curve_xgb")
     finite = elig.astype(bool).copy()
     for m in base_models:
         finite &= np.isfinite(scores[m])
-    if "stage_b" in scores:
-        # stage_b evaluated on its own finite mask inside variants
-        pass
 
     variants: dict[str, Any] = {}
     for mode in ("all", "a_exclude_already_started", "c_onset_ge_5s"):
@@ -80,7 +79,6 @@ def score_head_bundle(
                     block["models"][name] = {"roc_auc": None, "pr_auc": None}
                     continue
                 block["models"][name] = metrics_block(yy, s[keep])
-        # Bootstrap Δ on variant all only
         if mode == "all" and run_bootstrap and keep.any():
             yy = y[keep].astype(int)
             mm = mints[keep]
@@ -104,7 +102,6 @@ def score_head_bundle(
             block["deltas_vs_champion"] = deltas
         variants[mode] = block
 
-    # Strata on variant all / finite
     triggers = _load_triggers(oids)
     age = np.asarray(X[:, name_to_i["token_age_seconds"]], dtype=np.float64)
     buckets = _age_bucket(age)
@@ -116,7 +113,6 @@ def score_head_bundle(
         for k in ("xgb_champion", "logistic_l2", "stage_b", "age_curve_xgb")
         if k in scores
     }
-    # Include lgbm in strata models too
     if "lgbm_tuned" in scores:
         score_for_strata["lgbm_tuned"] = scores["lgbm_tuned"]
 
@@ -144,7 +140,6 @@ def score_head_bundle(
         y, score_for_strata, elig_s & (trades_60 >= 5)
     )
 
-    # Alert feed on xgb champion 300s / 60s using y of this head as proxy when 300s
     alert = None
     if head_id == "explosion_300s":
         alert = alert_feed_hourly(
@@ -153,11 +148,16 @@ def score_head_bundle(
             elig300=finite,
             mints=mints,
             obs_t=times,
+            window_lo=win_lo,
+            window_hi=win_hi,
         )
 
     return {
         **Q85,
+        **({"q85_test_accessed": True} if split == "test" else {}),
         "head_id": head_id,
+        "split": split,
+        "event_window": [win_lo, win_hi],
         "variants": variants,
         "strata": strata,
         "alert_feed": alert,
@@ -173,15 +173,22 @@ def score_twox(
     elig300: np.ndarray,
     mints: np.ndarray,
     times: np.ndarray,
+    split: str = "val",
 ) -> dict[str, Any]:
     maps = _load_reach_and_upside_maps()
     y, elig = _build_twox_labels(oids, y300, elig300, maps["reach"])
     keep = elig.astype(bool) & np.isfinite(scores)
     met = metrics_block(y[keep].astype(int), scores[keep])
+    win_lo, win_hi = event_onset_window(split)  # type: ignore[arg-type]
     alert = alert_feed_hourly(
-        scores=scores, y300=y.astype(int), elig300=elig, mints=mints, obs_t=times
+        scores=scores,
+        y300=y.astype(int),
+        elig300=elig,
+        mints=mints,
+        obs_t=times,
+        window_lo=win_lo,
+        window_hi=win_hi,
     )
-    q70, q85 = val_window()
     ev = pq.read_table(BROAD_EVENTS)
     prim = ev.filter(
         (pc.field("definition_id") == DEFINITIONS["primary"])
@@ -196,7 +203,7 @@ def score_twox(
     ):
         if o is None or g is None:
             continue
-        if not (q70 <= float(o) < q85):
+        if not (win_lo <= float(o) < win_hi):
             continue
         if float(g) < 1.0:
             continue
@@ -209,7 +216,10 @@ def score_twox(
     )
     return {
         **Q85,
+        **({"q85_test_accessed": True} if split == "test" else {}),
         "definition": "within_300s AND reaches_plus_100pct",
+        "split": split,
+        "event_window": [win_lo, win_hi],
         "n_elig": int(keep.sum()),
         "n_pos": int(y[keep].sum()),
         "prevalence": float(y[keep].mean()) if keep.any() else None,
@@ -230,8 +240,9 @@ def pump_recall_primary(
     mints: np.ndarray,
     times: np.ndarray,
     elig: np.ndarray,
+    split: str = "val",
 ) -> dict[str, Any]:
-    q70, q85 = val_window()
+    win_lo, win_hi = event_onset_window(split)  # type: ignore[arg-type]
     ev = pq.read_table(BROAD_EVENTS)
     prim = ev.filter(
         (pc.field("definition_id") == DEFINITIONS["primary"])
@@ -241,7 +252,7 @@ def pump_recall_primary(
     for m, o in zip(prim["mint"].to_pylist(), prim["onset_unix"].to_pylist(), strict=True):
         if o is None:
             continue
-        if q70 <= float(o) < q85:
+        if win_lo <= float(o) < win_hi:
             events.append({"mint": str(m), "onset_unix": float(o)})
     keep = elig.astype(bool) & np.isfinite(scores)
     return pump_level_recall(
